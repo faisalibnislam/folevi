@@ -13,6 +13,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 - CI's e2e suite is 8 shards on 2-CPU runners; `e2e/tab-switch.spec.ts` timed out once on 2026-11-25 and passed on a re-run.
 
 - Spell check, suggestions and next-word prediction on Tab (PR 143, released in 1.8.78): Folevi's own checker in a worker, nine spelling languages plus Chinese prediction, the personal dictionary synced, Foli AI completions only when Foli AI is on and never for encrypted notes. The ghost word is CSS (`data-ghost`), never part of the text.
+- Sidebar More and Customize sidebar (2026-11-27, `lib/app/sidebarLayout.ts`, `convex/sidebarLayout.ts`): the app's own items follow a per-account layout; Shared with Me, Changes and Templates start under More; Home and Drafts always on the sidebar. Web, Windows and Linux only: the native Mac, iPhone/iPad and Android sidebars don't have it yet.
 
 ## Next steps
 - Spell check and prediction: not yet tried in the native builds (Mac, iPhone, Windows) or on devices.

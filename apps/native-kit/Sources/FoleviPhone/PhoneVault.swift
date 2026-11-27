@@ -290,16 +290,21 @@ private struct PhoneVaultTabs: View {
 
 /// `flex flex-wrap items-center gap`: each child at its own width, a new line when the next doesn't fit; with
 /// `pushAfterFirst` the first child's `mr-auto` sends the rest of its line to the end (the header's subtitle, a
-/// section's title). Children are centred in their line.
+/// section's title). Children are centred in their line. With `maxLines`, only that many lines show: the children
+/// past them are set far outside the frame at no size, for a container that clips them (Home's tags, two lines).
 struct PhoneVaultFlow: Layout {
     let gap: CGFloat
     let rowGap: CGFloat
     let pushAfterFirst: Bool
+    var maxLines: Int? = nil
 
-    private func lines(_ width: CGFloat, _ sizes: [CGSize]) -> [[Int]] { Self.lines(sizes.map(\.width), width: width, gap: gap) }
+    private func lines(_ width: CGFloat, _ sizes: [CGSize]) -> [[Int]] {
+        Self.lines(sizes.map(\.width), width: width, gap: gap, maxLines: maxLines)
+    }
 
-    /// Which children share a line: each at its width (at most the line's), a new line when the next doesn't fit.
-    static func lines(_ widths: [CGFloat], width: CGFloat, gap: CGFloat) -> [[Int]] {
+    /// Which children share a line: each at its width (at most the line's), a new line when the next doesn't fit;
+    /// with `maxLines`, only the first that many lines.
+    static func lines(_ widths: [CGFloat], width: CGFloat, gap: CGFloat, maxLines: Int? = nil) -> [[Int]] {
         var out: [[Int]] = []
         var line: [Int] = []
         var used: CGFloat = 0
@@ -314,6 +319,7 @@ struct PhoneVaultFlow: Layout {
             line.append(i)
         }
         if !line.isEmpty { out.append(line) }
+        if let maxLines { return Array(out.prefix(max(0, maxLines))) }
         return out
     }
 
@@ -345,8 +351,13 @@ struct PhoneVaultFlow: Layout {
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let sizes = measure(subviews, bounds.width)
+        let ls = lines(bounds.width, sizes)
+        let shown = Set(ls.joined())
+        for i in subviews.indices where !shown.contains(i) {
+            subviews[i].place(at: CGPoint(x: bounds.maxX + 10_000, y: bounds.minY), proposal: .zero)
+        }
         var y = bounds.minY
-        for l in lines(bounds.width, sizes) {
+        for l in ls {
             let h = l.map { sizes[$0].height }.max() ?? 0
             let rest = l.dropFirst().map { min(sizes[$0].width, bounds.width) }.reduce(0, +) + gap * CGFloat(max(0, l.count - 1))
             var x = bounds.minX

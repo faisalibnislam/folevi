@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowDownUp, Archive, CalendarDays, SquareCheckBig, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
+import { Fragment, useEffect, useId, useMemo, useState } from "react";
+import { ArrowDownUp, Archive, CalendarDays, SquareCheckBig, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, SlidersHorizontal, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
 import { Bookmark } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -38,6 +38,9 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useBackendMode, useCanCall, useCapabilities } from "@/lib/mode";
 import { useReviewWindow } from "@/components/study/review";
+import { LOCKED_SIDEBAR_ITEMS, moveSidebarItem, type SidebarItemId } from "@/lib/app/sidebarLayout";
+import { useSidebarLayout } from "@/lib/app/useSidebarLayout";
+import { SidebarCustomize } from "./SidebarCustomize";
 
 /**
  * The last answer of a query whose arguments move with the clock or the page (a minute, a review window, the note in
@@ -81,6 +84,22 @@ function isActive(route: Route, href: string): boolean {
   return false;
 }
 
+/** The keyboard's right-click: the Menu key or Shift+F10. */
+function isMenuKey(e: React.KeyboardEvent): boolean {
+  return e.key === "ContextMenu" || (e.shiftKey && e.key === "F10");
+}
+
+/** Where a right-click menu opens: at the pointer, or under the row when the keyboard asked (Shift+F10). */
+function menuPoint(e: React.MouseEvent | React.KeyboardEvent): { x: number; y: number } {
+  if ("key" in e) {
+    const box = (e.currentTarget as Element).getBoundingClientRect();
+    return { x: box.left + 16, y: box.bottom };
+  }
+  if (e.clientX || e.clientY) return { x: e.clientX, y: e.clientY };
+  const box = (e.currentTarget as Element).getBoundingClientRect();
+  return { x: box.left + 16, y: box.bottom };
+}
+
 function NavItem({
   href,
   icon,
@@ -93,6 +112,7 @@ function NavItem({
   noteId,
   locked,
   tabFolder,
+  menu,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -111,6 +131,8 @@ function NavItem({
   locked?: boolean;
   /** The folder this row opens: ⌘-click or middle-click opens it in a tab behind (useFolderTabClicks). */
   tabFolder?: { id: string; name: string };
+  /** The row's right-click menu (the app's own items: Move to More, Customize sidebar). */
+  menu?: MenuItem[];
 }) {
   const { route } = useAppRouter();
   const tabClicks = useFolderTabClicks(tabFolder ?? { id: "", name: "" });
@@ -123,17 +145,26 @@ function NavItem({
     <>
     <AppLink
       onContextMenu={
-        noteId
+        noteId || menu
           ? (e: React.MouseEvent) => {
-              const items = floatMenuItems({ id: noteId, title: label });
+              const items = noteId ? floatMenuItems({ id: noteId, title: label }) : menu!;
               if (!items.length) return;
               e.preventDefault();
               e.stopPropagation();
-              setMenuAt({ x: e.clientX, y: e.clientY, items });
+              setMenuAt({ ...menuPoint(e), items });
             }
           : undefined
       }
       href={href}
+      onKeyDown={
+        menu && !noteId
+          ? (e: React.KeyboardEvent) => {
+              if (!isMenuKey(e)) return;
+              e.preventDefault();
+              setMenuAt({ ...menuPoint(e), items: menu });
+            }
+          : undefined
+      }
       onClick={(e) => {
         if (tabFolder) {
           tabClicks.onClick(e);
@@ -201,6 +232,23 @@ function FolderRow({ id, name, depth, open, hasChildren, children }: { id: strin
     </div>
   );
 }
+
+/** The app's own sidebar items (lib/app/sidebarLayout.ts): where each goes, and how it's drawn. */
+const SIDEBAR_ITEMS: Record<SidebarItemId, { label: string; href: string; icon: React.ReactNode }> = {
+  home: { label: "Home", href: "/documents", icon: <Home size={16} /> },
+  ai: { label: "Work with Foli AI", href: "/ai", icon: <AiIcon size={16} /> },
+  dna: { label: "Foli DNA", href: "/graph", icon: <Waypoints size={16} /> },
+  bookmarks: { label: "Bookmarks", href: "/starred", icon: <Bookmark size={16} /> },
+  drafts: { label: "Drafts", href: "/drafts", icon: <Inbox size={16} /> },
+  notes: { label: "All notes", href: "/notes", icon: <Files size={16} /> },
+  tasks: { label: "Tasks", href: "/tasks/today", icon: <SquareCheckBig size={16} /> },
+  calendar: { label: "Calendar", href: "/calendar", icon: <CalendarDays size={16} /> },
+  reviews: { label: "Reviews", href: "/review", icon: <Layers size={16} /> },
+  shared: { label: "Shared with Me", href: "/shared", icon: <Share2 size={16} /> },
+  vault: { label: "Vault", href: "/vault", icon: <Lock size={16} /> },
+  changes: { label: "Changes", href: "/changes", icon: <FileDiff size={16} /> },
+  templates: { label: "Templates", href: "/templates", icon: <LayoutTemplate size={16} /> },
+};
 
 /** Sidebar lists show a few items; the rest are one click away on the section's own page. */
 const SIDEBAR_LIMIT = 5;
@@ -612,6 +660,115 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const allTags = org?.tags ?? [];
   const shownTags = allTags.filter((t, i) => i < SIDEBAR_LIMIT || (route.name === "tag" && route.id === t.id));
 
+  // The app's own items (lib/app/sidebarLayout.ts): on the sidebar or under More, in this person's order, saved
+  // with their account. Each shows only where it's available here (Foli AI when it's on, Changes where others edit).
+  const { slots: layout, save: saveLayout } = useSidebarLayout();
+  const [customizing, setCustomizing] = useState(false);
+  const [spaceMenu, setSpaceMenu] = useState<{ x: number; y: number } | null>(null);
+  const moreId = useId();
+  const available = (id: SidebarItemId): boolean => {
+    switch (id) {
+      case "ai":
+        return aiOn;
+      case "dna":
+        return Boolean(graph);
+      case "reviews":
+        return Boolean(reviews?.hasCards) || route.name === "review";
+      case "shared":
+        return caps.sharing;
+      case "vault":
+        return vaultHere && vault !== null && vault !== undefined;
+      case "changes":
+        return caps.changes;
+      default:
+        return true;
+    }
+  };
+  const shownIds = layout.filter((s) => available(s.id));
+  // (Templates on the sidebar waits with the rows below it, so nothing jumps as the start settles: see lowerSettled.)
+  const onSidebar = shownIds.filter((s) => !s.more && (s.id !== "templates" || lowerSettled)).map((s) => s.id);
+  const underMore = shownIds.filter((s) => s.more).map((s) => s.id);
+  // More starts closed and remembers being opened or closed on this device; it opens by itself for the page you're on.
+  const [moreToggled, setMoreOpen] = useLocalStorage("folevi:sidebar-more-open", false);
+  const activeInMore = underMore.some((id) => isActive(route, SIDEBAR_ITEMS[id].href));
+  useEffect(() => {
+    if (activeInMore && !moreToggled) setMoreOpen(true);
+  }, [activeInMore, moreToggled, setMoreOpen]);
+  const moreOpen = moreToggled || activeInMore;
+  const customizeItems = useMemo(
+    () => new Map(shownIds.map((s) => [s.id, { label: SIDEBAR_ITEMS[s.id].label, icon: SIDEBAR_ITEMS[s.id].icon }] as const)),
+    // (shownIds is new each render; its ids are what matter.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [shownIds.map((s) => s.id).join(" ")],
+  );
+  const itemMenu = (id: SidebarItemId): MenuItem[] => {
+    const customize = { label: "Customize sidebar…", onSelect: () => setCustomizing(true) };
+    if (LOCKED_SIDEBAR_ITEMS.has(id)) return [{ label: "Always on the sidebar", disabled: true, onSelect: () => {} }, customize];
+    const more = layout.find((s) => s.id === id)?.more ?? false;
+    return [{ label: more ? "Move to sidebar" : "Move to More", onSelect: () => saveLayout(moveSidebarItem(layout, id, !more)) }, customize];
+  };
+  const item = (id: SidebarItemId, extra?: Partial<Parameters<typeof NavItem>[0]>) => (
+    <NavItem href={SIDEBAR_ITEMS[id].href} icon={SIDEBAR_ITEMS[id].icon} label={SIDEBAR_ITEMS[id].label} onNavigate={onNavigate} menu={itemMenu(id)} {...extra} />
+  );
+  const renderItem = (id: SidebarItemId): React.ReactNode => {
+    switch (id) {
+      case "dna":
+        return (
+          <>
+            {item("dna")}
+            {dnaViews?.length ? (
+              <div className="space-y-0.5 pl-5" aria-label="Saved Foli DNA views" role="group">
+                {dnaViews.slice(0, SIDEBAR_LIMIT).map((v) => (
+                  <NavItem key={v.id} href={`/graph?view=${v.id}`} icon={<Waypoints size={14} />} label={v.name} onNavigate={onNavigate} />
+                ))}
+              </div>
+            ) : null}
+          </>
+        );
+      case "bookmarks": {
+        const listed = starred?.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)) ?? [];
+        return (
+          <>
+            <div className="group/starred relative">
+              {item("bookmarks")}
+              {starred?.page.length ? (
+                <button
+                  type="button"
+                  onClick={() => setStarredOpen(!starredOpen)}
+                  aria-expanded={starredOpen}
+                  aria-label={starredOpen ? "Collapse Bookmarks" : "Expand Bookmarks"}
+                  className="ui-hit absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  {/* (The 44 pt touch area is on a span inside: on a tablet .ui-hit makes its element relative, and this
+                      button is absolute.) */}
+                  <span aria-hidden className="ui-hit grid h-full w-full place-items-center">{starredOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</span>
+                </button>
+              ) : null}
+            </div>
+            {starred?.page.length && starredOpen ? (
+              <div className="space-y-0.5 pl-5" aria-label="Bookmarked notes" role="group">
+                {listed.map((d) => (
+                  <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={14} />} label={d.title || "Untitled"} onNavigate={onNavigate} dragNoteId={canEdit ? d.id : undefined} noteId={d.id} locked={(d as { locked?: boolean }).locked === true} />
+                ))}
+                <MoreLink href="/starred" count={starred.page.length - listed.length} noun="bookmarked pages" onNavigate={onNavigate} exact={starred.isDone} />
+              </div>
+            ) : null}
+          </>
+        );
+      }
+      case "drafts":
+        return item("drafts", { count: drafts ?? undefined, dropFolderId: "" });
+      case "tasks":
+        return item("tasks", { count: counts ? counts.today : undefined });
+      case "reviews":
+        return item("reviews", { count: reviews ? reviews.due + reviews.new : undefined });
+      case "changes":
+        return item("changes", { count: (changes?.notes.length ?? 0) + (proposed ?? 0) || undefined });
+      default:
+        return item(id);
+    }
+  };
+
   return (
     // A page opened from the sidebar starts a fresh tab, with no Back to the page you were on (lib/app/tabs.tsx).
     <nav aria-label="Folio" className="flex h-full flex-col" onClickCapture={(e) => (e.target as Element).closest("a[href]") && openNextFresh()}>
@@ -622,51 +779,59 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {/* Ask AI lives in the floating chat button (bottom right) and on the AI page. */}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4">
-        <div className="mt-3 space-y-0.5">
-          <NavItem href="/documents" icon={<Home size={16} />} label="Home" onNavigate={onNavigate} />
-          {aiOn ? <NavItem href="/ai" icon={<AiIcon size={16} />} label="Work with Foli AI" onNavigate={onNavigate} /> : null}
-          {graph ? <NavItem href="/graph" icon={<Waypoints size={16} />} label="Foli DNA" onNavigate={onNavigate} /> : null}
-          {graph && dnaViews?.length ? (
-            <div className="space-y-0.5 pl-5" aria-label="Saved Foli DNA views" role="group">
-              {dnaViews.slice(0, SIDEBAR_LIMIT).map((v) => (
-                <NavItem key={v.id} href={`/graph?view=${v.id}`} icon={<Waypoints size={14} />} label={v.name} onNavigate={onNavigate} />
-              ))}
-            </div>
-          ) : null}
-          <div className="group/starred relative">
-            <NavItem href="/starred" icon={<Bookmark size={16} />} label="Bookmarks" onNavigate={onNavigate} />
-            {starred?.page.length ? (
-              <button
-                type="button"
-                onClick={() => setStarredOpen(!starredOpen)}
-                aria-expanded={starredOpen}
-                aria-label={starredOpen ? "Collapse Bookmarks" : "Expand Bookmarks"}
-                className="ui-hit absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                {/* (The 44 pt touch area is on a span inside: on a tablet .ui-hit makes its element relative, and this
-                    button is absolute.) */}
-                <span aria-hidden className="ui-hit grid h-full w-full place-items-center">{starredOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</span>
-              </button>
+      <div
+        className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4"
+        onContextMenu={(e) => {
+          // Empty sidebar space (not a row, a button or another menu's host): Customize sidebar.
+          if (e.defaultPrevented || (e.target as Element).closest("a,button,input,textarea,[data-ctx-host],[role='menu']")) return;
+          e.preventDefault();
+          setSpaceMenu(menuPoint(e));
+        }}
+      >
+        <div className="mt-3 space-y-0.5" data-sidebar-items="">
+          {onSidebar.map((id) => <Fragment key={id}>{renderItem(id)}</Fragment>)}
+          <div>
+            <button
+              type="button"
+              aria-expanded={moreOpen}
+              aria-controls={moreId}
+              onClick={() => setMoreOpen(!moreOpen)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setSpaceMenu(menuPoint(e));
+              }}
+              onKeyDown={(e) => {
+                if (!isMenuKey(e)) return;
+                e.preventDefault();
+                setSpaceMenu(menuPoint(e));
+              }}
+              className="group flex h-8 w-full items-center gap-2.5 rounded-chip px-2.5 text-left text-body text-ink/90 outline-none transition-colors duration-150 hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none pointer-coarse:h-11"
+            >
+              <span aria-hidden className="text-muted transition-colors group-hover:text-heading">
+                <MoreHorizontal size={16} />
+              </span>
+              <span className="min-w-0 flex-1 truncate">More</span>
+              <span aria-hidden className="text-faint group-hover:text-heading">
+                {moreOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              </span>
+            </button>
+            {moreOpen ? (
+              <div id={moreId} role="group" aria-label="More" className="mt-0.5 space-y-0.5">
+                {underMore.map((id) => <Fragment key={id}>{renderItem(id)}</Fragment>)}
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  onClick={() => setCustomizing(true)}
+                  className="group flex h-8 w-full items-center gap-2.5 rounded-chip px-2.5 text-left text-body text-muted outline-none transition-colors duration-150 hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none pointer-coarse:h-11"
+                >
+                  <span aria-hidden className="transition-colors group-hover:text-heading">
+                    <SlidersHorizontal size={16} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">Customize</span>
+                </button>
+              </div>
             ) : null}
           </div>
-          {starred?.page.length && starredOpen ? (
-            <div className="space-y-0.5 pl-5" aria-label="Bookmarked notes" role="group">
-              {starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).map((d) => (
-                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={14} />} label={d.title || "Untitled"} onNavigate={onNavigate} dragNoteId={canEdit ? d.id : undefined} noteId={d.id} locked={(d as { locked?: boolean }).locked === true} />
-              ))}
-              <MoreLink href="/starred" count={starred.page.length - starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).length} noun="bookmarked pages" onNavigate={onNavigate} exact={starred.isDone} />
-            </div>
-          ) : null}
-          <NavItem href="/drafts" icon={<Inbox size={16} />} label="Drafts" count={drafts ?? undefined} onNavigate={onNavigate} dropFolderId="" />
-          <NavItem href="/notes" icon={<Files size={16} />} label="All notes" onNavigate={onNavigate} />
-          <NavItem href="/tasks/today" icon={<SquareCheckBig size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
-          <NavItem href="/calendar" icon={<CalendarDays size={16} />} label="Calendar" onNavigate={onNavigate} />
-          {reviews?.hasCards || route.name === "review" ? <NavItem href="/review" icon={<Layers size={16} />} label="Reviews" count={reviews ? reviews.due + reviews.new : undefined} onNavigate={onNavigate} /> : null}
-          {caps.sharing ? <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} /> : null}
-          {vaultHere && vault !== null && vault !== undefined ? <NavItem href="/vault" icon={<Lock size={16} />} label="Vault" onNavigate={onNavigate} /> : null}
-          {caps.changes ? <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={(changes?.notes.length ?? 0) + (proposed ?? 0) || undefined} onNavigate={onNavigate} /> : null}
-          {lowerSettled ? <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} /> : null}
         </div>
 
         {lowerSettled ? (
@@ -726,6 +891,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         ) : null}
       </div>
 
+      {spaceMenu ? <ContextMenu at={spaceMenu} label="Sidebar" items={[{ label: "Customize sidebar…", onSelect: () => setCustomizing(true) }]} onClose={() => setSpaceMenu(null)} /> : null}
+      <SidebarCustomize
+        open={customizing}
+        onClose={() => setCustomizing(false)}
+        slots={layout}
+        items={customizeItems}
+        onChange={(next) => saveLayout(next)}
+        onReset={() => saveLayout(null)}
+      />
       <PromptDialog
         open={folderDialog}
         title="New folder"

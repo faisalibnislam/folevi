@@ -246,6 +246,7 @@ import type * as serverAdmin from "../serverAdmin.js";
 import type * as serverInvites from "../serverInvites.js";
 import type * as settings from "../settings.js";
 import type * as sharing from "../sharing.js";
+import type * as sidebarLayout from "../sidebarLayout.js";
 import type * as sidebarOrder from "../sidebarOrder.js";
 import type * as signInOptions from "../signInOptions.js";
 import type * as smtpSend from "../smtpSend.js";
@@ -518,6 +519,7 @@ declare const fullApi: ApiFromModules<{
   serverInvites: typeof serverInvites;
   settings: typeof settings;
   sharing: typeof sharing;
+  sidebarLayout: typeof sidebarLayout;
   sidebarOrder: typeof sidebarOrder;
   signInOptions: typeof signInOptions;
   smtpSend: typeof smtpSend;

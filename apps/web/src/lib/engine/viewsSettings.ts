@@ -417,6 +417,8 @@ const QUERIES = {
   "workspaces.guests": api.workspaces.guests,
   // Writing: spell check and prediction settings and the personal dictionary (convex/spelling.ts).
   "spelling.get": api.spelling.get,
+  // The sidebar's layout (convex/sidebarLayout.ts): the Mac's sidebar and Customize sidebar read it here too.
+  "sidebarLayout.get": api.sidebarLayout.get,
 } as const;
 const MUTATIONS = {
   "aiMemory.add": api.aiMemory.add,
@@ -443,6 +445,7 @@ const MUTATIONS = {
   "workspaces.removeGuest": api.workspaces.removeGuest,
   "spelling.setPrefs": api.spelling.setPrefs,
   "spelling.setWord": api.spelling.setWord,
+  "sidebarLayout.set": api.sidebarLayout.set,
 } as const;
 const ACTIONS = {
   "exports.exportScope": api.exports.exportScope,

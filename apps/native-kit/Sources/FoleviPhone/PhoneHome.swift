@@ -1,7 +1,7 @@
 // Home on the iPhone, as the web draws it (apps/web/src/components/iphone/IphoneHome.tsx): recent notes as cards
-// in a row, Catch me up as its own card, All notes, Drafts, Shared with Me, Changes and Reviews as tiles two by
-// two, Bookmarks (rows in a rounded card), Folders (their cards in a row) and Tags (folded at first), and
-// All folders, Foli DNA (where it's on), the Vault (for someone with one), Templates, Archive and Trash in a card
+// in a row, Catch me up as its own card, All notes, Drafts, Foli DNA (Shared with Me where it's off), Changes and
+// Reviews as tiles two by two, Bookmarks (rows in a rounded card), Folders (their cards in a row) and Tags (two
+// lines), and All folders, Shared with Me (when Foli DNA has its tile), the Vault (for someone with one), Templates, Archive and Trash in a card
 // at the end. Everything
 // comes from the engine's `home` view (HomeModel); the frame draws the bar, the large title and the search field.
 #if os(iOS)
@@ -65,8 +65,9 @@ public struct PhoneHomeContent: View {
             PhoneRowGroup("More") {
                 // In sight, not in a menu (the owner, 2026-11-19).
                 PhoneListRow("All folders", action: { actions.open("/folders") }) { PhoneRowGlyph(.folder) }
-                if model.graphOn {
-                    PhoneListRow("Foli DNA", action: { actions.open("/graph") }) { PhoneRowGlyph(.waypoints) }
+                // Shared with Me moves down here when Foli DNA takes its tile (the owner, 2026-11-27).
+                if let shared = sharedBelow {
+                    PhoneListRow(shared.title, action: { actions.open(shared.route) }) { PhoneRowGlyph(Self.icon(shared.id)) }
                 }
                 // Only for someone with a Vault, as the web's sidebar lists it (the phone has no sidebar).
                 if model.hasVault {
@@ -94,15 +95,46 @@ public struct PhoneHomeContent: View {
 
     // MARK: Places
 
-    /// All notes, Drafts, Shared with Me, Changes (and Reviews) two by two; an odd last tile takes the whole row.
+    /// One of the tiles: a place from the engine's rows, or Foli DNA.
+    private struct Tile: Identifiable {
+        let id: String
+        let title: String
+        let icon: WebIcon
+        let count: Int?
+        let route: String
+    }
+
+    /// Home's places: the tiles in order (nil is Foli DNA) and the row that goes to the card at the end. With Foli
+    /// DNA on, it takes Shared with Me's tile and Shared with Me becomes a row at the end (the owner, 2026-11-27);
+    /// with no Shared with Me, Foli DNA comes third. With it off, the engine's rows as they come.
+    nonisolated static func places(_ rows: [HomeRow], graphOn: Bool) -> (tiles: [HomeRow?], sharedBelow: HomeRow?) {
+        guard graphOn else { return (rows.map { $0 }, nil) }
+        let shared = rows.first { $0.id == .shared }
+        var tiles: [HomeRow?] = rows.map { $0.id == .shared ? nil : $0 }
+        if shared == nil { tiles.insert(nil, at: min(2, tiles.count)) }
+        return (tiles, shared)
+    }
+
+    /// Shared with Me, when Foli DNA is on and takes its tile: it's then a row in the card at the end.
+    private var sharedBelow: HomeRow? { Self.places(model.rows, graphOn: model.graphOn).sharedBelow }
+
+    /// All notes, Drafts, Foli DNA (Shared with Me where Foli DNA is off), Changes (and Reviews), two by two.
+    private var tileList: [Tile] {
+        Self.places(model.rows, graphOn: model.graphOn).tiles.map { row in
+            guard let row else { return Tile(id: "graph", title: "Foli DNA", icon: .waypoints, count: nil, route: "/graph") }
+            return Tile(id: row.id.rawValue, title: row.title, icon: Self.icon(row.id), count: model.count(row), route: row.route)
+        }
+    }
+
+    /// The tiles two by two; an odd last tile takes the whole row.
     private var tiles: some View {
-        let rows = model.rows
+        let rows = tileList
         let pairs = stride(from: 0, to: rows.count, by: 2).map { Array(rows[$0..<min($0 + 2, rows.count)]) }
         return Grid(horizontalSpacing: PhoneLook.gap, verticalSpacing: PhoneLook.gap) {
             ForEach(pairs, id: \.first!.id) { pair in
                 GridRow {
-                    ForEach(pair, id: \.id) { row in
-                        PhoneHomeTile(row.title, icon: Self.icon(row.id), count: model.count(row)) { actions.open(row.route) }
+                    ForEach(pair) { tile in
+                        PhoneHomeTile(tile.title, icon: tile.icon, count: tile.count) { actions.open(tile.route) }
                             .gridCellColumns(pair.count == 1 ? 2 : 1)
                     }
                 }
@@ -239,16 +271,21 @@ public struct PhoneHomeContent: View {
 
     // MARK: Tags
 
-    /// Tags as chips that wrap, as on the Mac's Home (the owner, 2026-11-23), always in sight; See all opens every
+    /// How many lines of tag chips Home shows; See all opens the rest (the owner, 2026-11-27).
+    static let tagLinesShown = 2
+
+    /// Tags as chips that wrap, as on the Mac's Home (the owner, 2026-11-23), two lines of them; See all opens every
     /// tag (/tags). A chip's long press is the tag's menu.
     private var tags: some View {
         PhoneHomeSection("Tags", seeAll: { actions.open("/tags") }) {
-            PhoneVaultFlow(gap: 8, rowGap: 8, pushAfterFirst: false) {
+            PhoneVaultFlow(gap: 8, rowGap: 8, pushAfterFirst: false, maxLines: Self.tagLinesShown) {
                 ForEach(model.tags, id: \.id) { tag in
                     PhoneTagChip(name: tag.name, color: Self.tagColor(tag.color, scheme).color, open: { actions.open("/tags/\(tag.id)") },
                                  menu: actions.tagMenu.map { menu in { menu(tag, $0) } })
                 }
             }
+            // The chips past the second line are set outside the frame; clipping keeps them out of sight.
+            .clipped()
             .padding(.horizontal, PhoneRowGroupMetrics.inset)
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Tags")

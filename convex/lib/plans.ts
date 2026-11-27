@@ -110,7 +110,7 @@ const BASE: Pick<PlanEntitlements, "members" | "guests" | "versionHistoryDays" |
   exports: true,
 };
 
-const tierEntitlements = (tier: PlanTier, scope: PlanScope): PlanEntitlements => ({
+const tierEntitlements = (tier: PlanTier, _scope: PlanScope): PlanEntitlements => ({
   ...BASE,
   storageBytes: STORAGE_BYTES[tier],
   storageRule: tier === "free" ? "shared_free" : "per_person",

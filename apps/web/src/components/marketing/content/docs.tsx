@@ -165,8 +165,8 @@ export const DOC_ARTICLES: DocArticle[] = [
         </p>
         <ul>
           <li><strong>Sync with iCloud</strong>: a Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account.</li>
-          <li><strong>Sync with Dropbox</strong>: sign in to Dropbox once. Folevi only uses its own folder, Apps › Folevi.</li>
-          <li><strong>Sync with Google Drive</strong>: sign in to Google once. Folevi only sees the files it makes.</li>
+          <li><strong>Sync with Dropbox</strong>: sign in to Dropbox once. Folevi only uses its own folder, Apps › Folevi. In the Mac, iPhone and iPad apps for now.</li>
+          <li><strong>Sync with Google Drive</strong>: sign in to Google once. Folevi only sees the files it makes. In the Mac, iPhone and iPad apps for now.</li>
           <li><strong>Choose a folder</strong>: any folder on a computer, or any folder the Files app offers on iPhone and iPad, such as one in OneDrive.</li>
           <li><strong>This device only</strong>: your notes never leave the device. When you’re online, the app only checks Folevi for new note styles, and sends nothing about you or your notes. You can turn on sync later in Settings.</li>
         </ul>

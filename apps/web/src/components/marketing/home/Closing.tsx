@@ -81,7 +81,7 @@ export function PricingSection() {
               <span className="text-[14px] text-muted">forever</span>
             </p>
             <p className="mt-3 max-w-[60ch] text-[15px] leading-snug text-muted">
-              Mac, Windows, Linux (Beta), iPhone, iPad and Android. Unlimited notes in iCloud Drive, Dropbox, Google Drive, any folder or your own Folevi Server. They work offline, and Foli AI works with your own OpenAI, Anthropic or Google key, or Apple Intelligence on your Mac.
+              Mac, Windows, Linux (Beta), iPhone, iPad and Android. Unlimited notes in a folder you pick or on your own Folevi Server. They work offline, and Foli AI works with your own OpenAI, Anthropic or Google key, or Apple Intelligence on your Mac.
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">

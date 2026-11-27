@@ -10,7 +10,7 @@ export const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "Is Folevi really free?",
-    a: "Yes. The Mac, iPhone and iPad apps are free forever when you keep notes on your devices: no account, no trial, no card and no limit on notes. Folevi Cloud plans are optional.",
+    a: "Yes. The Mac, Windows, Linux, iPhone and iPad apps are free forever when you keep notes on your devices: no account, no trial, no card and no limit on notes. Folevi Cloud plans are optional.",
   },
   {
     q: "Do I need an account?",
@@ -21,7 +21,7 @@ export const HOME_FAQS: FaqItem[] = [
     a: "In a folder you pick: iCloud Drive, Dropbox, Google Drive, any other folder, or just your device. Each note is its own file, and Folevi’s servers never see them.",
   },
   {
-    q: "How do my notes sync between my Mac, iPhone and iPad?",
+    q: "How do my notes sync between my devices?",
     a: "Through the folder’s own service. With iCloud Drive, your notes appear on every iPhone, iPad and Mac signed in to your iCloud account. If the same note changes on two devices, Folevi merges the changes.",
   },
   {
@@ -33,8 +33,8 @@ export const HOME_FAQS: FaqItem[] = [
     a: `It adds Folevi Cloud: the web app, editing together in real time, public pages, workspaces for teams, email-in and the web clipper. The Free plan costs nothing. Paid plans from ${formatPrice(PRICES.core.month)} a month add more storage and Foli AI credits.`,
   },
   {
-    q: "Is there an app for Windows or Android?",
-    a: "Not yet. On Windows, Linux or Android, use the web app in your browser with a free Folevi account.",
+    q: "Is there an app for Windows, Linux or Android?",
+    a: "Yes for Windows and Linux: get them from folevi.com/downloads. Linux is in beta. The Android app is coming soon to Google Play; until then, use the web app in your phone’s browser.",
   },
 ];
 

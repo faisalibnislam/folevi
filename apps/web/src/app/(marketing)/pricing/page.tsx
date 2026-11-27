@@ -33,7 +33,7 @@ const credits = (n: number) => n.toLocaleString("en-US");
 
 export const metadata = pageMetadata({
   title: `Pricing: a free workspace app, Folevi Cloud from ${formatPrice(PRICES.core.month)}/month`,
-  description: `Docs, tasks and databases on Mac, iPhone and iPad, free forever with no account. Folevi Cloud adds the web app, teams and Foli AI from ${formatPrice(PRICES.core.month)} a month.`,
+  description: `Docs, tasks and databases on Mac, Windows, Linux, iPhone and iPad, free forever with no account. Folevi Cloud adds the web app, teams and Foli AI from ${formatPrice(PRICES.core.month)} a month.`,
   path: "/pricing",
 });
 
@@ -51,7 +51,7 @@ const saving = (tier: "core" | "pro" | "pro_ai") =>
 const faqs: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: `Yes. Folevi for Mac, iPhone and iPad is free forever when you keep notes on your devices: docs, tasks and databases, with no account and no limit on notes. The Mac app is a download from folevi.com (${MAC_REQUIREMENT}); the iPhone and iPad app is on the App Store (${IOS_REQUIREMENT}).`,
+    a: `Yes. Folevi for Mac, Windows, Linux, iPhone and iPad is free forever when you keep notes on your devices: docs, tasks and databases, with no account and no limit on notes. The Mac app is a download from folevi.com (${MAC_REQUIREMENT}); the iPhone and iPad app is on the App Store (${IOS_REQUIREMENT}).`,
   },
   {
     q: "Do I need an account?",
@@ -131,7 +131,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Can I use my account in the apps?",
-    a: `Yes. Every plan works in the web app and in the Mac, iPhone and iPad apps. On ${TIER_NAMES.free}, an account works on ${PLANS.free.devices} devices at a time.`,
+    a: `Yes. Every plan works in the web app and in the Mac, Windows, Linux, iPhone and iPad apps. On ${TIER_NAMES.free}, an account works on ${PLANS.free.devices} devices at a time.`,
   },
 ];
 
@@ -156,7 +156,7 @@ export default function PricingPage() {
           <Mark kind="circle">Free</Mark> forever on your devices.
         </h1>
         <p className="mk-lede mt-6 max-w-[60ch]">
-          Your workspace for docs, tasks and databases is free on Mac, iPhone and iPad, with no account. Folevi Cloud
+          Your workspace for docs, tasks and databases is free on Mac, Windows, Linux, iPhone and iPad, with no account. Folevi Cloud
           adds the web app, team workspaces, sharing and Foli AI when you want them.
         </p>
       </HeaderCard>
@@ -169,7 +169,7 @@ export default function PricingPage() {
                 No account
               </Sticker>
             </p>
-            <Eyebrow>Folevi for Mac, iPhone and iPad</Eyebrow>
+            <Eyebrow>Folevi for Mac, Windows, Linux, iPhone and iPad</Eyebrow>
             <h2 id="apps-title" className="mt-4 flex items-baseline gap-3">
               <span className="mk-display text-[56px] leading-none sm:text-[64px]">$0</span>{" "}
               <span className="text-[17px] font-semibold text-(--color-heading)">forever</span>

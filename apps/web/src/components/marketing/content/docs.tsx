@@ -140,7 +140,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "apps-and-local-notes",
     title: "The apps and notes on your devices",
     nav: "Apps and no-account notes",
-    description: "Folevi for Mac, iPhone and iPad: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
+    description: "Folevi for Mac, Windows, Linux, iPhone and iPad: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
     published: "2026-11-06",
     updated: "2026-11-19",
     body: () => (
@@ -151,14 +151,16 @@ export const DOC_ARTICLES: DocArticle[] = [
           head={["App", "Where to get it"]}
           rows={[
             ["Mac", <>A free download from <Link href="/mac">folevi.com/mac</Link>. Open it and drag Folevi to Applications; it updates itself. {MAC_REQUIREMENT}.</>],
+            ["Windows", <>A free download from <Link href="/downloads#windows">folevi.com/downloads</Link>, for Intel and AMD or Arm PCs; it updates itself.</>],
+            ["Linux", <>A free download from <Link href="/downloads#linux">folevi.com/downloads</Link>: AppImage, .deb or .rpm, for Intel and AMD or ARM. Linux is in beta.</>],
             ["iPhone and iPad", <>Free on the <a href={APP_STORE_URL}>App Store</a>. {IOS_REQUIREMENT}.</>],
             ["Web", <>In any modern browser: <a href={WEB_APP_URL}>open the web app</a>. Needs a Folevi account.</>],
           ]}
         />
-        <p>There is no Android or Windows app. On those, use the web app.</p>
+        <p>The Android app is coming soon to Google Play. Until then, use the web app in your phone’s browser.</p>
         <h2 id="no-account">Keep notes on your devices</h2>
         <p>
-          The first time you open the Mac, iPhone or iPad app, choose <strong>Keep notes on my devices</strong>. It’s free forever and needs no account. Then pick where your library lives:
+          The first time you open the Mac, Windows, Linux, iPhone or iPad app, choose <strong>Keep notes on my devices</strong>. It’s free forever and needs no account. Then pick where your library lives:
         </p>
         <ul>
           <li><strong>Sync with iCloud</strong>: a Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account.</li>
@@ -305,7 +307,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     body: () => (
       <>
         <p>
-          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; the Mac, iPhone and iPad apps keep them on the device. You can keep writing with no connection at all. (This is how an account syncs. A library kept on your devices with no account syncs through your own cloud instead: see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)
+          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; the Mac, Windows, Linux, iPhone and iPad apps keep them on the device. You can keep writing with no connection at all. (This is how an account syncs. A library kept on your devices with no account syncs through your own cloud instead: see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)
         </p>
         <h2 id="offline">What works offline</h2>
         <p>With no connection you can:</p>
@@ -940,7 +942,7 @@ app.listen(3000);`}</code>
     body: () => (
       <>
         <ul>
-          <li>Email verification is required before you can use a Folevi account. (The Mac, iPhone and iPad apps also work with no account; see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)</li>
+          <li>Email verification is required before you can use a Folevi account. (The Mac, Windows, Linux, iPhone and iPad apps also work with no account; see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)</li>
           <li>
             Folevi won’t accept a password that has appeared in a known data breach. It checks with Have I Been Pwned using only the first five characters of a scrambled (hashed) version of the password, so the password itself never leaves Folevi.
           </li>

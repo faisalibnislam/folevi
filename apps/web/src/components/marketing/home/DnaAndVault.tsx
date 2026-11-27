@@ -120,7 +120,7 @@ const SECURITY: Array<{ title: string; body: string }> = [
   { title: "End-to-end encryption", body: "Turn it on in Settings → Privacy, on every plan. Your notes are encrypted on your devices before they’re sent." },
   { title: "Passkeys and two-step sign-in", body: "Sign in with a passkey, and add an authenticator app as a second step." },
   { title: "No trackers", body: "Folevi loads no ads and no third-party trackers." },
-  { title: "Your notes off our servers", body: "In the Mac, iPhone and iPad apps with no account, our servers never see your notes." },
+  { title: "Your notes off our servers", body: "In the Mac, Windows, Linux, iPhone and iPad apps with no account, our servers never see your notes." },
 ];
 
 export function VaultSecurity() {

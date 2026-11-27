@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-27 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-26 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -249,17 +249,6 @@ The ones most likely to be broken:
 - The version changes only in an owner-requested release via `scripts/version.mjs`.
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
-
-## 9. Current state (as of 2026-11-27)
-
-**New pricing, not deployed** (branch `claude/pricing-2026-11-27`, not pushed; plan in `docs/PRICING_PLAN.md`,
-rules in `docs/BILLING.md`). Every app is free; people pay only for Folevi Cloud. Free 500 MB and 30 AI credits a
-month, Core $2 / $20 (5 GB, no credits), Pro $4 / $40 (10 GB, 150), Pro AI $10 / $100 (25 GB, 450), packs $8 / $15
-on every plan, no device limit on any plan. Core no longer blocks AI: turning Foli AI off is a setting for a
-person (`profiles.aiEnabled`) and for a workspace (`workspaces.aiDisabled`, Settings → Workspace → Privacy).
-There are no paying users yet, so nobody is kept on old terms. Marketing,
-pricing page, settings, admin, Mac and iPhone strings are updated. Convex tests 1259 passed; web tests pass.
-Own AI keys for Folevi Cloud accounts are a separate session and branch (Foli AI: bring your own AI key).
 
 ## 9. Current state (as of 2026-11-26)
 
@@ -1166,10 +1155,6 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- **New pricing (PR 173), left for the owner:** review the terms page wording
-  (`apps/web/src/app/(marketing)/terms/page.tsx`, plan and AI paragraphs). Set the new prices in Polar (Admin →
-  Billing setup shows what Polar should have). Folevi has no paying users yet (owner, 2026-11-27), so there are
-  no old subscriptions to move. Ship Mac and iPhone builds for the string changes.
 - **Security audit 2026-11-26, left for the owner** (branch `claude/security-audit-2026-11-26`):
   - Push the branch, open the PR and merge once CI is green (see Current state: the repo is public). After the
     merge, deploy Connect (`services/connect`) and ship new Folevi Server packages and app builds: the folevid
@@ -1515,9 +1500,6 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
-- 2026-11-27: **New pricing and "Folevi is free" marketing** (branch `claude/pricing-2026-11-27`, not pushed).
-  Catalog, Core AI block replaced by Foli AI off settings, no device limit (no paying users yet, so no old terms kept),
-  pricing page, marketing pages, in-app and native copy, tests. `docs/PRICING_PLAN.md`, `docs/BILLING.md`.
 - 2026-11-26: **Security audit and fixes** (branch `claude/security-audit-2026-11-26`, not pushed). Six audits,
   about 90 findings, fixed with regression tests across `convex/`, `apps/web`, `packages/editor-schema`, the Swift,
   Tauri and Android shells, `server/folevid`, `services/connect`, `packaging/` and the workflows. What changed and

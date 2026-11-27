@@ -182,6 +182,7 @@ export function Onboarding() {
     if (step === 4 && (v.aiEnabled === "true" || v.aiEnabled === "false")) return { step: "ai" as const, aiEnabled: v.aiEnabled === "true" };
     return null;
   };
+  const firstName = profile.displayName.trim().split(/\s+/)[0] || profile.displayName;
   const nativeGate = (
     <NativeGate
       gate="onboarding"
@@ -198,6 +199,7 @@ export function Onboarding() {
         noteStyleOptions: [PLAIN_STYLE, ...ONBOARDING_NOTE_STYLES],
         appearance: look,
         aiEnabled: ai,
+        firstName,
       })}
       actions={[
         ...(step < LAST
@@ -270,7 +272,6 @@ export function Onboarding() {
     />
   );
 
-  const firstName = profile.displayName.trim().split(/\s+/)[0] || profile.displayName;
   const heading = [
     `Welcome, ${firstName}.`,
     "What will you use Folevi for?",

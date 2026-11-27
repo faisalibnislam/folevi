@@ -54,6 +54,14 @@ data object AiRoute : Route
 @Serializable
 data object SearchRoute : Route
 
+/** All folders (Home's Folders header). */
+@Serializable
+data object FoldersRoute : Route
+
+/** The bell on Home. */
+@Serializable
+data object NotificationsRoute : Route
+
 /** The iPhone's tabs, with Foli AI as its own (owner decision 2026-11-23). */
 enum class Tab(val label: String, val icon: WebIcon, val root: Route) {
     HOME("Home", WebIcon.HOUSE, HomeRoute),

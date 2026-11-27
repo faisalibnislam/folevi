@@ -7,7 +7,9 @@
         <item name="postSplashScreenTheme">@style/Theme.Folevi</item>
     </style>
 
-    <style name="Theme.Folevi" parent="android:Theme.Material.NoActionBar">
+    <!-- Light by day (values-night has the dark one): the Page View's prefers-color-scheme follows the activity
+         theme's isLightTheme, so a dark parent here made every note page dark on a light phone. -->
+    <style name="Theme.Folevi" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/canvas</item>
     </style>
 

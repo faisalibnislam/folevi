@@ -1,10 +1,27 @@
-// The tab strip at the top of tablet, open-foldable and Googlebook windows (Tabs.kt has the rules): Home first as an
-// icon, then a tab per page, the one on screen raised. A tab closes with its ×, a middle click or Ctrl+W; a right
-// click (or a long press) offers Close and Close other tabs; + starts a new note in a fresh tab.
+// The tab strip at the top of tablet, open-foldable and Googlebook windows (Tabs.kt has the rules), as the web draws
+// it on a tablet (apps/web/src/components/app/TabStrip.tsx, data-ipad-tabs): a 52 glass capsule 8 from the edges
+// holding Show sidebar (while it's hidden), Back and Forward, the tabs as 40 capsules in body text (Home first with
+// its name, the one on screen on the row color in semibold with a soft shadow), then Foli AI and New note as round
+// buttons. A tab closes with its ×, a middle click or Ctrl+W; a right click (or a long press) offers Close and Close
+// other tabs.
 package com.folevi.android.ui
+
+import androidx.compose.foundation.layout.heightIn
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.DpOffset
+import com.folevi.android.design.AiMark
+import com.folevi.android.design.PhoneType
+import com.folevi.android.design.foleviGlass
+import com.folevi.android.design.phoneColors
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -56,8 +73,13 @@ import com.folevi.android.design.LocalPalette
 import com.folevi.android.design.WebIcon
 
 @Composable
-fun TabStrip(tabs: TabsModel, onNewNote: () -> Unit, modifier: Modifier = Modifier) {
-    val p = LocalPalette.current
+fun TabStrip(
+    tabs: TabsModel,
+    onNewNote: () -> Unit,
+    modifier: Modifier = Modifier,
+    onShowSidebar: (() -> Unit)? = null,
+    onAi: (() -> Unit)? = null,
+) {
     val scroll = rememberScrollState()
     // The tab on screen stays in view when the strip is wider than the window.
     LaunchedEffect(tabs.activeId, tabs.tabs.size) {
@@ -65,11 +87,15 @@ fun TabStrip(tabs: TabsModel, onNewNote: () -> Unit, modifier: Modifier = Modifi
         if (i == tabs.tabs.lastIndex) scroll.animateScrollTo(scroll.maxValue)
     }
     Row(
-        modifier.fillMaxWidth().height(48.dp).background(p.sidebar).padding(horizontal = 8.dp),
+        modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp).height(52.dp).foleviGlass(CircleShape).padding(horizontal = 6.dp).testTag("tab-strip"),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        if (onShowSidebar != null) StripButton(WebIcon.PANEL_LEFT, "Show sidebar", onShowSidebar)
+        StripButton(WebIcon.CHEVRON_LEFT, "Back", { tabs.goBack() }, enabled = tabs.canGoBack)
+        StripButton(WebIcon.CHEVRON_RIGHT, "Forward", { tabs.goForward() }, enabled = tabs.canGoForward)
         Row(
-            Modifier.weight(1f, fill = false).horizontalScroll(scroll),
+            Modifier.weight(1f).horizontalScroll(scroll),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -77,9 +103,21 @@ fun TabStrip(tabs: TabsModel, onNewNote: () -> Unit, modifier: Modifier = Modifi
                 TabChip(t, active = t.id == tabs.activeId, tabs = tabs)
             }
         }
-        IconButton(onClick = onNewNote, modifier = Modifier.size(40.dp).pointerHoverIcon(PointerIcon.Hand)) {
-            FoleviIcon(WebIcon.PLUS, "New note", size = 18.dp, tint = p.inkMuted)
-        }
+        if (onAi != null) StripButton(null, "Foli AI", onAi) { AiMark(20.dp) }
+        StripButton(WebIcon.PLUS, "New note", onNewNote, iconSize = 22.dp)
+    }
+}
+
+/** A round 44 button in the strip (the web's PillButton). */
+@Composable
+private fun StripButton(icon: WebIcon?, label: String, onClick: () -> Unit, enabled: Boolean = true, iconSize: androidx.compose.ui.unit.Dp = 20.dp, content: (@Composable () -> Unit)? = null) {
+    val p = LocalPalette.current
+    Box(
+        Modifier.size(44.dp).clip(CircleShape).clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick)
+            .pointerHoverIcon(PointerIcon.Hand).semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (content != null) content() else FoleviIcon(icon!!, null, size = iconSize, tint = if (enabled) p.ink else p.inkFaint.copy(alpha = 0.5f))
     }
 }
 
@@ -90,19 +128,23 @@ private fun TabChip(t: FrameTab, active: Boolean, tabs: TabsModel) {
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
     var menu by remember { mutableStateOf(false) }
+    val c = phoneColors()
+    val dark = p == com.folevi.android.design.FoleviPalette.Dark
+    // The web's tablet tab: 40 tall, a capsule; the one on screen on the row color with a soft shadow and a hairline.
+    val row = LocalPalette.current.groupedRow
     val container = when {
-        active -> p.surface
-        hovered -> p.surfaceSunken
+        active -> row
+        hovered -> c.active
         else -> Color.Transparent
     }
     Box {
-        Surface(
-            color = container,
-            shape = RoundedCornerShape(10.dp),
-            shadowElevation = if (active) 1.dp else 0.dp,
+        Row(
             modifier = Modifier
-                .height(36.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .heightIn(min = 40.dp)
+                .then(if (active) Modifier.dropShadow(CircleShape, Shadow(radius = 4.dp, offset = DpOffset(0.dp, 1.dp), color = Color.Black.copy(alpha = 0.08f))) else Modifier)
+                .clip(CircleShape)
+                .background(container)
+                .then(if (active) Modifier.border(0.5.dp, c.separator, CircleShape) else Modifier)
                 .hoverable(hover)
                 .pointerHoverIcon(PointerIcon.Hand)
                 .pointerInput(t.id) {
@@ -125,36 +167,33 @@ private fun TabChip(t: FrameTab, active: Boolean, tabs: TabsModel) {
                 .semantics {
                     selected = active
                     contentDescription = t.name
-                },
-        ) {
-            if (t.isHome) {
-                Box(Modifier.width(44.dp), contentAlignment = Alignment.Center) {
-                    FoleviIcon(WebIcon.HOUSE, null, size = 18.dp, tint = if (active) p.ink else p.inkMuted)
                 }
+                .padding(start = 14.dp, end = if (t.isHome) 14.dp else 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val ink = if (active) p.heading else p.inkMuted
+            val text = PhoneType.body.copy(fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal)
+            if (t.isHome) {
+                FoleviIcon(WebIcon.HOUSE, null, size = 17.dp, tint = ink)
+                Spacer(Modifier.width(8.dp))
+                Text("Home", style = text, color = ink, maxLines = 1)
             } else {
-                Row(Modifier.padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    FoleviIcon(t.route.tabIcon(), null, size = 16.dp, tint = if (active) p.ink else p.inkMuted)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        t.name,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (active) p.ink else p.inkMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(min = 48.dp, max = 180.dp),
-                    )
-                    // The × shows on the tab on screen and under the pointer (always reachable by touch on the active one).
-                    Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-                        if (active || hovered) {
-                            IconButton(onClick = { tabs.close(t.id) }, modifier = Modifier.size(28.dp)) {
-                                FoleviIcon(WebIcon.X, "Close ${t.name}", size = 14.dp, tint = p.inkMuted)
-                            }
-                        }
+                FoleviIcon(t.route.tabIcon(), null, size = 16.dp, tint = ink)
+                Spacer(Modifier.width(8.dp))
+                Text(t.name, style = text, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(min = 48.dp, max = 200.dp))
+                // A finger closes only the tab on screen; a pointer sees every tab's × on hover.
+                // The × is 28 to the eye and 40 to the finger (the tab's own height).
+                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                    if (active || hovered) {
+                        Box(
+                            Modifier.size(40.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Close ${t.name}") { tabs.close(t.id) }.semantics { contentDescription = "Close ${t.name}" },
+                            contentAlignment = Alignment.Center,
+                        ) { FoleviIcon(WebIcon.X, null, size = 15.dp, tint = p.inkMuted) }
                     }
                 }
             }
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+        PhoneMenu(menu, { menu = false }) {
             if (!t.isHome) DropdownMenuItem(text = { Text("Close tab") }, onClick = { menu = false; tabs.close(t.id) })
             DropdownMenuItem(text = { Text("Close other tabs") }, enabled = tabs.tabs.size > 2 || (tabs.tabs.size == 2 && t.isHome), onClick = { menu = false; tabs.closeOthers(t.id) })
             if (tabs.closed.isNotEmpty()) DropdownMenuItem(text = { Text("Reopen closed tab") }, onClick = { menu = false; tabs.reopenClosed() })

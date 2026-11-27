@@ -1529,6 +1529,7 @@ export const FIXTURES: Record<string, Fixture> = {
       ],
     }),
   }),
+  "event.gate.changed.onboarding.named": event({ name: "gate.changed", description: "Onboarding's first step, with the person's first name (revision 36).", data: gateEvent({ gate: "onboarding", onboarding: onboardingInfo({ step: "workspace", index: 0, firstName: "Mia" }) }) }),
   "event.gate.changed.onboarding": event({ name: "gate.changed", description: "Onboarding isn't finished.", data: gateEvent({ gate: "onboarding", onboarding: onboardingInfo({ step: "uses", index: 1, useCaseOptions: [{ id: "work", label: "Work" }, { id: "study", label: "Study" }], noteStyleOptions: ["art-03", "art-39"] }) }) }),
   "event.gate.changed.migration": event({
     name: "gate.changed",

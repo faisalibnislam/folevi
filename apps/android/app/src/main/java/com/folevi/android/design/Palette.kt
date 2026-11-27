@@ -52,6 +52,22 @@ data class FoleviPalette(
     val highlightGreen: Color,
     val highlightBlue: Color,
     val highlightPink: Color,
+    /** The web's glass on Android (.ui-liquid's solid fill, --iphone-solid): the bars, pills, sheets. */
+    val glassBase: Color = Color(0xFFF7F7F8),
+    /** The grouped lists' background and their rows (--iphone-grouped, --iphone-row: Settings, the tab strip). */
+    val groupedBg: Color = Color(0xFFF2F2F4),
+    val groupedRow: Color = Color(0xFFFFFFFF),
+    /** The swipe actions' colors (Swipe.tsx), the same in both themes. */
+    val swipeBookmark: Color = Color(0xFFC58A12),
+    val swipeUnbookmark: Color = Color(0xFFB07A12),
+    val swipeTrash: Color = Color(0xFFD6453D),
+    val swipeArchive: Color = Color(0xFF6B6B73),
+    val swipeRestore: Color = Color(0xFF3F7D58),
+    val swipeDate: Color = Color(0xFF5B6AD0),
+    /** The task priorities' flags (QuickAddSheet.tsx), the same in both themes. */
+    val priorityLow: Color = Color(0xFF5B6AD0),
+    val priorityMedium: Color = Color(0xFFC58A12),
+    val priorityHigh: Color = Color(0xFFD6453D),
 ) {
     companion object {
         val Light = FoleviPalette(
@@ -151,6 +167,9 @@ data class FoleviPalette(
             highlightGreen = Color(0xFF1F3A29),
             highlightBlue = Color(0xFF22314F),
             highlightPink = Color(0xFF4A2A2E),
+            glassBase = Color(0xFF2C2C2E),
+            groupedBg = Color(0xFF000000),
+            groupedRow = Color(0xFF1C1C1E),
         )
     }
 }

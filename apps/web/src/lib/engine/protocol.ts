@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 35;
+export const CONTRACT_REVISION = 36;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -1126,6 +1126,11 @@ export interface OnboardingGateInfo {
   noteStyleOptions: string[];
   appearance: string;
   aiEnabled: boolean;
+  /**
+   * Revision 36: the person's first name, for the first step's "Welcome, {firstName}." (the native apps draw that
+   * heading themselves). Left out when the page doesn't know it yet.
+   */
+  firstName?: string;
 }
 
 export interface OnboardingChoice {

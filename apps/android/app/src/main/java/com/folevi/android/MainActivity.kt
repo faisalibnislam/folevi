@@ -20,6 +20,8 @@ import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
@@ -88,6 +90,29 @@ class MainActivity : FragmentActivity(), PageView.Host {
             root.addView(web, FrameLayout.LayoutParams(1, 1))
             followKeyboard(root, web)
         }
+        // The note page's native chrome floats over the page (NoteScreen): a layer above it, transparent where it
+        // draws nothing, so touches there reach the page.
+        val overlay = ComposeView(this)
+        root.addView(overlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        overlay.setContent {
+            CompositionLocalProvider(LocalSession provides session) {
+                FoleviTheme(dark = session.dark.value) {
+                    val slot = session.noteSlot.value
+                    val chrome = session.noteOverlay.value
+                    if (slot != null && chrome != null) {
+                        val d = androidx.compose.ui.platform.LocalDensity.current
+                        // The root takes the whole window; the chrome's own box is the note pane's spot inside it.
+                        Box(Modifier.fillMaxSize()) {
+                            Box(
+                                Modifier
+                                    .offset { androidx.compose.ui.unit.IntOffset(slot.left.roundToInt(), slot.top.roundToInt()) }
+                                    .size(with(d) { slot.width.toDp() }, with(d) { slot.height.toDp() }),
+                            ) { chrome() }
+                        }
+                    }
+                }
+            }
+        }
         setContentView(root)
 
         compose.setContent {
@@ -111,6 +136,7 @@ class MainActivity : FragmentActivity(), PageView.Host {
                     window.isNavigationBarContrastEnforced = false
                     onDispose {}
                 }
+                androidx.compose.runtime.SideEffect { session.dark.value = dark }
                 FoleviTheme(dark = dark) {
                     LaunchedEffect(Unit) { snapshotFlow { session.noteSlot.value }.collect { placePage(it) } }
                     // Edge to edge: each area keeps itself clear of the bars, the cutout and the keyboard (AppShell's
@@ -234,7 +260,22 @@ class MainActivity : FragmentActivity(), PageView.Host {
             .put("webViewVersion", WebViewCompat.getCurrentWebViewPackage(this)?.versionName ?: "")
             // Native chrome: the native bars sit around the page, so it has no insets of its own.
             .put("insets", JSONObject().put("top", 0).put("right", 0).put("bottom", 0).put("left", 0).put("keyboard", 0))
-            .put("places", JSONObject().put("current", app.places.state.current ?: JSONObject.NULL).put("background", false))
+            // A camera for "Scan QR code" (places.scanCode); without one the page hides the button.
+            .put("camera", packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY))
+            .put("places", placesBoot())
+    }
+
+    /**
+     * What the page knows of its place before its first render. `server` (CONTRACT §6.1): the open place's Folevi
+     * Server, or the sign-in screen's, with the addresses in use now; null for Folevi Cloud and the library.
+     * `serverReach` stays in the bridge script (the best connection); the page never sees it.
+     */
+    private fun placesBoot(): JSONObject {
+        val current = app.places.state.current
+        val server = app.places.serverOf(current)
+        val boot = JSONObject().put("current", current ?: JSONObject.NULL).put("background", false).put("server", server?.json() ?: JSONObject.NULL)
+        if (server != null && current != null) boot.put("serverReach", server.reachJson())
+        return boot
     }
 
     /** Several places: the session older builds kept moves to its account, then the page opens in it. */

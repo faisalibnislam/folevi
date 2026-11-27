@@ -581,10 +581,45 @@
     return r && Array.isArray(r.places) ? r.places : [];
   };
   var placesBoot = boot.places && typeof boot.places === "object" ? boot.places : null;
+  // A Folevi Server place's server (docs/self-hosting/CONTRACT.md §6.1): its name and the addresses in use now
+  // ({ origin, addedOrigin, name, version, serverId, urls: { app, convex, convexSite } }); null: Folevi Cloud.
+  var bootServer = function (v) {
+    if (!v || typeof v !== "object" || !v.urls || typeof v.urls !== "object") return null;
+    try {
+      return Object.freeze(JSON.parse(JSON.stringify(v)));
+    } catch (e) {
+      return null;
+    }
+  };
   var places = placesBoot
     ? Object.freeze({
         current: typeof placesBoot.current === "string" ? placesBoot.current : null,
         background: false,
+        server: bootServer(placesBoot.server),
+        // "Your own server": the app checks the address and the server's /.well-known/folevi.json itself, then
+        // opens that server's sign-in (the page loads again). `info` is the page's copy, not trusted. Rejects with
+        // { code: "bad_address" | "unreachable" | "not_folevi" | "folevi_cloud" | "server_outdated" | "app_outdated" | "needs_setup", message }.
+        addServerPlace: function (o) {
+          var origin = o && typeof o.origin === "string" ? o.origin : "";
+          return call("FoleviPlaces", "addServer", { origin: origin }, "Error").then(function (r) {
+            return r && r.value ? r.value : null;
+          });
+        },
+        // "Scan QR code": the camera reads a QR code (Google's code scanner); its text, or null when closed. Only on
+        // a device with a camera (CONTRACT §6.1: hosts without one leave it out).
+        scanCode: boot.camera === true
+          ? function () {
+              return call("FoleviPlaces", "scanCode", {}, "Error").then(function (r) {
+                return r && typeof r.value === "string" ? r.value : null;
+              });
+            }
+          : undefined,
+        // Folevi servers on the home network (DNS-SD `_folevi._tcp`): [{ name, origin, serverId, version }].
+        listLocalServers: function () {
+          return call("FoleviPlaces", "localServers", {}, "Error").then(function (r) {
+            return r && Array.isArray(r.servers) ? r.servers : [];
+          });
+        },
         list: function () {
           return call("FoleviPlaces", "list").then(placeList);
         },
@@ -635,6 +670,26 @@
       })
     : undefined;
 
+  // The best connection to the open Folevi Server place (CONTRACT §6.1): lib/server-edition/connection.ts, bundled
+  // as FoleviServerReach (scripts/bundle-bridge.mjs), asks every name the server has (home names first) and the app
+  // moves the place to the first that answers; the page then loads again there, still signed in. At start, when the
+  // phone comes back online and when the app comes back to the front.
+  var serverReach = placesBoot && placesBoot.serverReach && typeof placesBoot.serverReach === "object" ? placesBoot.serverReach : null;
+  if (serverReach && reach && typeof reach.watchBestOrigin === "function" && typeof serverReach.active === "string") {
+    try {
+      reach.watchBestOrigin(
+        { addedOrigin: String(serverReach.addedOrigin || ""), hostnames: Array.isArray(serverReach.hostnames) ? serverReach.hostnames.map(String) : [], serverId: typeof serverReach.serverId === "string" ? serverReach.serverId : null },
+        serverReach.active,
+        function (origin) {
+          ready(function () {
+            call("FoleviPlaces", "setActiveOrigin", { origin: origin, path: location.pathname + location.search }).catch(function () {});
+          });
+        },
+      );
+    } catch (e) {
+      // Without it the place stays on the name it has.
+    }
+  }
   var shellBridge = {
     platform: "android",
     places: places,
@@ -690,6 +745,39 @@
   });
 
   var NATIVE = "FoleviNative";
+  // The native note chrome (NoteScreen.kt) folds its place chip into the title and shows its bar fade as the page
+  // scrolls: 0 at the top, 1 scrolled, 2 past 96 (Screen.tsx collapseAt). Only a vertical scroller counts (a wide
+  // table scrolling sideways doesn't), and only a change is sent.
+  (function () {
+    var last = -1;
+    var pending = false;
+    function measure(target) {
+      var el = target && target.nodeType === 1 ? target : document.scrollingElement || document.documentElement;
+      if (!el || el.scrollHeight - el.clientHeight < 120) return;
+      var y = el.scrollTop || 0;
+      var state = y > 96 ? 2 : y > 4 ? 1 : 0;
+      if (state === last) return;
+      last = state;
+      call(NATIVE, "pageScroll", { state: state }).catch(function () {});
+    }
+    window.addEventListener(
+      "scroll",
+      function (e) {
+        if (pending) return;
+        pending = true;
+        var target = e.target;
+        requestAnimationFrame(function () {
+          pending = false;
+          measure(target);
+        });
+      },
+      { capture: true, passive: true },
+    );
+    // A new page starts at the top.
+    window.addEventListener("folevi:native-scroll-reset", function () {
+      last = -1;
+    });
+  })();
   var nativeBridge = {
     platform: "android",
     version: boot.version,

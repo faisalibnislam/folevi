@@ -116,6 +116,7 @@ class PageView(private val activity: ComponentActivity, private val host: Host) 
                 }
             },
             onStarted = { transport.pageWillReload() },
+            pagePolicy = { pagePolicy() },
             onGone = {
                 Log.w(TAG, "the page's renderer ended; reloading")
                 transport.renderProcessGone()
@@ -130,9 +131,40 @@ class PageView(private val activity: ComponentActivity, private val host: Host) 
      * Capacitor stand-in before it) with fresh boot values.
      */
     fun installScript() {
+        applyMixedContent()
         marker?.remove()
         marker = WebViewTransport.installMarker(webView, FoleviApp.instance.places.state.current, origins)
         script.install(webView, host.bootValues(), APP_ORIGIN, prelude = Bridge.STAND_IN)
+    }
+
+    /**
+     * The open place's Content-Security-Policy header (CONTRACT §6.1): a Folevi Server place's pages (and its
+     * sign-in screen) reach that server's names only, never Folevi Cloud's Convex. Release builds narrow every other
+     * place back to what the export allowed before servers; debug builds leave them to the export's own policy,
+     * since a dev export talks to a dev server. Pages with no place open keep the export's policy too.
+     */
+    private fun pagePolicy(): String? {
+        val places = FoleviApp.instance.places
+        val current = places.state.current
+        val server = places.serverOf(current)
+        return when {
+            server != null -> com.folevi.android.server.ShellServer.Policy.forServer(server)
+            BuildConfig.DEBUG || current == null -> null
+            else -> com.folevi.android.server.ShellServer.Policy.CLOUD_NARROWING
+        }
+    }
+
+    /**
+     * The page is https://localhost, so a Folevi Server on the home network over plain http is mixed content. It's
+     * allowed only while such a server's place (or its sign-in screen) is open, or no place is (looking up a typed
+     * address); the policy header still limits it to that server. Everything else: never.
+     */
+    private fun applyMixedContent() {
+        val places = FoleviApp.instance.places
+        val current = places.state.current
+        val server = places.serverOf(current)
+        val http = server?.candidates?.any { it.startsWith("http://") } == true || server?.activeUrls?.app?.startsWith("http://") == true
+        webView.settings.mixedContentMode = if (http || current == null) android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW else android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
     }
 
     fun load(path: String = "/documents") {

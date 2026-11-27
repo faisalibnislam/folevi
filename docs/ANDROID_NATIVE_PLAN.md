@@ -152,3 +152,187 @@ The Capacitor README's list still applies (`apps/android/README.md`, "Steps only
 Console app and Play App Signing, an upload key outside the repo, App Links fingerprints on Vercel, Firebase
 for push, Google Cloud Android OAuth client for Drive, the Dropbox redirect URI. If the Play account is a
 personal one, budget 14 days of closed testing with 12 testers before production.
+
+## 6. Resumed 2026-11-25: native UI, "Today's UI, Material 3 native"
+
+Owner's answers (2026-11-25, relayed by the iOS session):
+
+- **Look:** keep today's screens, layout, spacing, type and colours from the web phone and tablet layout
+  (`apps/web/src/components/iphone/*`, the tablet Shell). Build them with Android's own elements: Material 3
+  Expressive buttons, sheets, menus, motion, predictive back and edge-to-edge.
+- **Shape:** Compose for every screen and for the note page's chrome; only the writing area stays the web editor.
+  The data layer stays the web engine (this plan's section 3).
+- **Rollout:** one big switch. The Capacitor app (`apps/mobile/android`, PR 69 with PR 103 and PR 108) ships until
+  then and gets only serious bug fixes. Emulators only; no Play upload without the owner's OK.
+- **Match iOS:**
+  - Foli AI chat is native.
+  - Settings are native, except Webhooks, API tokens, Connected apps, AI export and workspace Data, which open as
+    in-app web pages.
+  - Phone first, then tablet and foldable.
+
+More owner answers (2026-11-25):
+
+- The UX to keep is the **Capacitor app's** (the web phone and tablet UI).
+- Surfaces use **Folevi's own glass, colors and shadows** (`design/Glass.kt`, the web's `.ui-liquid` values), not
+  Material's tonal tint or elevation.
+- Touch feedback is **Android's ripple**.
+- "Your own server" is drawn natively **under the sign-in buttons, like the web**.
+
+Starting point: this app (sections 3 and 4), which still builds (59 unit tests pass, 2026-11-25) and runs in demo
+mode.
+
+### Gaps, in order
+
+1. **Phone bar** matches the web's (done 2026-11-25, `ui/PhoneBar.kt`):
+   - Home, Tasks and Calendar in one floating capsule; Foli AI and + in another.
+   - + offers New note, New folder and Quick task. On Tasks, + is Quick task straight away.
+   - Restyled to the web's look:
+     - Glass capsules with the web's shadow.
+     - Icon-only tabs, with a lens that slides between them.
+     - The gradient Foli AI mark (`design/AiMark.kt`).
+     - The dark + disc.
+   - One difference from the web: the bar sits above Android's gesture area.
+   - Headless UI tests: `PhoneBarTest`.
+   - Still to do:
+     - From template (needs a native templates screen).
+     - Content scrolling under the bar.
+2. **Port the Capacitor app's newer service work** into `apps/android` (done 2026-11-25 for "Your own server";
+   most file differences are only the plugin base class). Ported:
+   - "Your own server": `server/ShellServer.kt`, `server/LocalServers.kt`, `Places.kt` (server places),
+     `AuthBridge` per-site sign-in, `PlacesPlugin` (addServer, localServers, scanCode, setActiveOrigin).
+   - The per-place CSP and the Http home-network rule.
+   - SaveTargets and PlaceOutbox skipping server places.
+   - Also:
+     - The page's bridge (`places.server`, `addServerPlace`, `scanCode`, `listLocalServers`, best connection
+       through `folevi-server.js`).
+     - Cleartext only to home addresses.
+     - `server/ServerSignIn.kt`, shared by the bridge and the native block.
+   - The native block is `ui/OwnServer.kt` (`OwnServerTest`), shown under Folevi Cloud's sign-in gate.
+   - Not yet checked on an emulator: the sign-in gate needs the dev server. A full server sign-in and a real QR
+     read are untested.
+   - Not ported, since they're Capacitor-only and the native chrome replaces them: PR 108's keyboard and polish
+     fixes in the Capacitor `MainActivity`.
+3. **Screen-by-screen match with the web phone layout**, with screenshot tests per screen against the web's:
+   - Home (glass top bar, Recent cards, rows, Starred).
+   - Notes lists (swipe actions, Select mode, Organize).
+   - Note chrome (NoteBars: top bar, floating bottom bars, keyboard bar, tool sheets).
+   - Tasks (WeekStrip, TaskSheet).
+   - Calendar (Agenda).
+   - Search scopes.
+   - Account sheet.
+   - New folder sheet.
+   - Pull to refresh.
+   - Sync status.
+4. **Settings:** native for every section except the technical ones above, which open through `WebShowRoute`.
+5. **Missing native screens** (section 4's open items):
+   - Onboarding and sign-in (Credential Manager: Google, passkeys).
+   - Note sharing sheet.
+   - Templates.
+   - Archive and Trash.
+   - Search filters.
+   - Material 3 widgets.
+6. **Tablet and foldable**, matching the web tablet Shell (sidebar and tab strip are already here). Then
+   Googlebook.
+7. **The switch:**
+   - Release build checks.
+   - The owner's OK.
+   - Play upload by the owner.
+   - The Capacitor app retires.
+
+### Where it stands (2026-11-25, evening)
+
+Built natively, to the web phone layout's sizes, type, colors and shadows (`design/PhoneKit.kt`, `design/Glass.kt`):
+
+| Area | Where | Notes |
+| --- | --- | --- |
+| Phone bar | `ui/PhoneBar.kt` | The tab capsule and the Foli AI and + capsule. |
+| Home | `ui/HomeScreens.kt` | Avatar, sync and bell, the "…" menu, search pill, notebook cards, Catch me up, tiles, Bookmarks, Folders, Tags, then Vault, Templates, Archive and Trash. |
+| Note lists | `ui/HomeScreens.kt` | Cards or rows, filter, view and sort, swipe actions, long-press menu, Select mode with its bar, Empty Trash, built-in templates. |
+| All folders, Notifications | `ui/HomeScreens.kt` | |
+| Note page chrome | `ui/NoteScreen.kt` | A Compose layer over the page (MainActivity). Glass top bar (Back, place chip, Share, menu, Done while writing), tool capsules, keyboard bar, native Format sheet, the note menu from `NoteMenuState`. |
+| Tasks, Quick add | `ui/TasksScreens.kt` | Chips with counts, groups, task lines, swipes, the task sheet. |
+| Calendar | `ui/CalendarScreens.kt` | Week strip and month, the agenda with events. |
+| Search | `ui/SearchScreens.kt` | |
+| Account sheet, New folder | `ui/AccountSheet.kt`, `ui/NewFolderSheet.kt` | |
+| Settings | `ui/SettingsScreens.kt` | Native sections. The technical ones (and those the engine has no typed view for) open as web pages. |
+| Your own server | `ui/OwnServer.kt`, `server/*` | |
+
+Checked on the Android 37 emulator with real data (local mode):
+- The screens above.
+- The chrome over the live editor.
+- The Format sheet and the keyboard bar.
+- A tablet-sized window.
+
+The 87 app unit tests and 5 engine unit tests pass; 14 of the app tests are Robolectric UI tests.
+
+Still open:
+- **Engine and page side:**
+  - Insert, Comments, Style and Foli AI panels are still the page's own sheets. There is no Kotlin Insert catalogue, and no flag to stop the page drawing its sheet.
+  - The place chip doesn't fold into the title on scroll, because the page sends no scroll event.
+- **Screens not restyled yet:** the Foli AI chat, Vault, Shared and Changes keep the earlier native styling.
+- **Smaller gaps:**
+  - Search's Actions section.
+  - The month view's 1:1 drag.
+  - The tablet's rail is Material, not the web tablet sidebar.
+- **Not tested:**
+  - Signing in to Folevi Cloud on the emulator. Chrome's first-run screen asks to accept Google's terms, which is left to the owner.
+  - A real QR code.
+  - Signing in to a home server.
+- **Activity theme:** it is now light by day and dark at night, so the page follows the phone (it was always dark).
+
+### Finished (2026-11-25, night)
+
+New since the evening:
+- **Insert sheet**, native: `ui/InsertSheet.kt`, `design/InsertArt.kt`. Its catalogue `design/InsertCatalog.kt` comes from the same web test that writes iOS's `InsertCatalog.swift`.
+- **Foli AI tab and chat**, restyled: `ui/AiScreens.kt`.
+- **Vault**, restyled: `ui/VaultScreen.kt`.
+- **Shared with Me and Changes**, restyled: `ui/SharedChangesScreens.kt`.
+- **Tablet frame**, the web's sidebar and glass tab strip: `ui/TabletSidebar.kt`, `ui/TabStrip.kt`.
+- **Note bar on scroll:** it folds the place chip into the title and fades in. The bridge script reports the page's scroll to `FoleviNative.pageScroll`.
+
+Checked on the emulator:
+- Folevi Cloud sign-in end to end (Custom Tab, the app's consent step, back to Home signed in), against the local backend. The owner allowed passing Chrome's first-run on the test emulator.
+- Local mode with real data on phone and tablet sizes.
+
+Tests: 101 app unit tests and 5 engine unit tests pass.
+
+Left as they are, by choice or for later:
+- **Comments and Style:** they stay the page's own panels, as in the iPhone app; the engine has no native data for them.
+- **Onboarding:** uses the generic native gate screen.
+- **Foli AI chat:** attachments, research and agent runs aren't shown natively.
+- **Not tested:** home-server sign-in and a real QR code.
+
+### Onboarding and polish (2026-11-25, late)
+
+**Onboarding**
+- Every screen before the app is native (`ui/Gates.kt`):
+  - Loading and the first-launch choice.
+  - Library setup, and the locked library.
+  - Sign-in, with Your own server.
+  - All six onboarding steps, with the same values as the web.
+  - One native card for every other gate.
+- Tested end to end with fresh accounts on the emulator. Finishing onboarding opens the Welcome page, because a navigation that arrives before the frame is ready now waits for it.
+
+**Polish pass** (the android-design skill, within the owner's style rules)
+- **TalkBack:**
+  - Swipe actions are also custom actions.
+  - Switch, choice and check rows each have one target that reports its state.
+  - Long presses are labelled.
+  - Section titles are headings.
+- **Touch and text:**
+  - Touch targets are at least 44 to 48.
+  - Containers grow with large text.
+  - Notebook cards grow at 200% text instead of breaking words.
+- **Motion:** uses the theme's motion scheme and snaps when animations are off (`design/Motion.kt`).
+- **Theming:**
+  - Palette tokens for the glass, grouped rows, swipe and priority colors.
+  - Avatar rings are visible in dark mode.
+- **Layout:**
+  - On a landscape phone, the content keeps a centered column.
+  - On short windows, the sidebar starts hidden and slides over the page.
+
+Checked on the emulator in light, dark, 200% text, landscape and tablet size.
+
+**Former gaps, fixed:**
+- Dark mode: a plain note's paper now runs up under the native top bar (globals.css).
+- Onboarding: the first step greets by first name (`OnboardingGateInfo.firstName`, contract revision 36).

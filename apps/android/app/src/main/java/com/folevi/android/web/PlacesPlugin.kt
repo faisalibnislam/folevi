@@ -13,6 +13,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.folevi.android.server.LocalServers
+import com.folevi.android.server.ServerSignIn
+import com.folevi.android.server.ShellServer
 
 /**
  * "FoleviPlaces": `foleviShell.places` (docs/MULTI_ACCOUNT_PLAN.md §2.2): the library and any number of accounts.
@@ -124,6 +128,74 @@ class PlacesPlugin : Plugin() {
         scope.launch {
             val token = runCatching { app.auth.convexTokenFor(user) }.getOrNull()
             call.resolve(JSObject().put("value", token ?: JSObject.NULL))
+        }
+    }
+
+    // ---------------------------------------------------------------- Folevi Server (CONTRACT §6.1)
+
+    private val localServers by lazy { LocalServers(context) }
+
+    /**
+     * "Your own server" (the page's addServerPlace): checks the address, fetches the server's folevi.json here
+     * (what the page read is never trusted), checks the versions, then opens that server's sign-in screen: the page
+     * loads again bound to it, and the account that signs in there becomes a place on that server. Answers
+     * { value: server } or rejects with the reason (ShellServer.Problem's code and words).
+     */
+    @PluginMethod
+    fun addServer(call: PluginCall) {
+        val raw = call.getString("origin") ?: ""
+        scope.launch {
+            when (val result = ServerSignIn.lookUp(raw)) {
+                is ShellServer.Result.Refused -> call.reject(result.problem.message, result.problem.code)
+                is ShellServer.Result.Ok -> {
+                    ServerSignIn.open(result.server)
+                    call.resolve(JSObject().put("value", JSObject(result.server.json().toString())))
+                    reload()
+                }
+            }
+        }
+    }
+
+    /**
+     * "Scan QR code" (the page's scanCode): Google's code scanner reads a QR code with its own camera screen (the
+     * app asks for no camera permission) and answers its text, or null when the person closed it.
+     */
+    @PluginMethod
+    fun scanCode(call: PluginCall) {
+        val a = activity ?: return call.resolve(JSObject().put("value", JSObject.NULL))
+        scope.launch {
+            try {
+                call.resolve(JSObject().put("value", ServerSignIn.scan(a) ?: JSObject.NULL))
+            } catch (e: ServerSignIn.ScanUnavailable) {
+                call.reject(e.message ?: "", "unavailable")
+            }
+        }
+    }
+
+    /** Folevi servers on the home network (DNS-SD): { servers: [{ name, origin, serverId, version }] }. */
+    @PluginMethod
+    fun localServers(call: PluginCall) {
+        scope.launch {
+            val list = runCatching { localServers.list() }.getOrDefault(emptyList())
+            call.resolve(JSObject().put("servers", com.folevi.android.bridge.JSArray(org.json.JSONArray(list).toString())))
+        }
+    }
+
+    /**
+     * The best connection (the bridge script runs lib/server-edition/connection.ts): the open server place now
+     * uses `origin`, one of its own names only. The page loads again there (`path`), still signed in: the
+     * session is the server's, not one name's.
+     */
+    @PluginMethod
+    fun setActiveOrigin(call: PluginCall) {
+        val place = places.state.current
+        val origin = call.getString("origin")
+        if (place == null || origin == null || places.serverOf(place) == null) return call.resolve(JSObject().put("value", false))
+        val changed = places.setActiveOrigin(place, origin)
+        call.resolve(JSObject().put("value", changed))
+        if (changed) {
+            val path = call.getString("path")?.takeIf { it.startsWith("/") && !it.startsWith("//") && it.length <= 500 } ?: "/documents"
+            reload(path)
         }
     }
 

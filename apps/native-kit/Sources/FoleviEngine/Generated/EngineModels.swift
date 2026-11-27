@@ -2060,8 +2060,11 @@ public struct OnboardingGateInfo: Codable, Hashable, Sendable {
     public var noteStyleOptions: [String]
     public var appearance: String
     public var aiEnabled: Bool
+    /// Revision 36: the person's first name, for the first step's "Welcome, {firstName}." (the native apps draw that
+    /// heading themselves). Left out when the page doesn't know it yet.
+    public var firstName: String?
 
-    public init(step: String, index: Int, total: Int, useCases: [String], useCaseOptions: [OnboardingChoice], noteStyle: String, noteStyleOptions: [String], appearance: String, aiEnabled: Bool) {
+    public init(step: String, index: Int, total: Int, useCases: [String], useCaseOptions: [OnboardingChoice], noteStyle: String, noteStyleOptions: [String], appearance: String, aiEnabled: Bool, firstName: String? = nil) {
         self.step = step
         self.index = index
         self.total = total
@@ -2071,6 +2074,7 @@ public struct OnboardingGateInfo: Codable, Hashable, Sendable {
         self.noteStyleOptions = noteStyleOptions
         self.appearance = appearance
         self.aiEnabled = aiEnabled
+        self.firstName = firstName
     }
 }
 

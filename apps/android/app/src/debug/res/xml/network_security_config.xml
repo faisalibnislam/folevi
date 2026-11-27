@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Debug builds only: the local dev server over plain http (app.localhost through adb reverse, or the
-     emulator's 10.0.2.2). Release builds use main/res/xml/network_security_config.xml (https only). -->
+<!-- Debug builds: as main/res/xml/network_security_config.xml (cleartext only where the app allows it: the dev
+     server at app.localhost through adb reverse or the emulator's 10.0.2.2, and Folevi Servers on the home
+     network; net/Http.kt enforces it). -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-        <domain includeSubdomains="false">10.0.2.2</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

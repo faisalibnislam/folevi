@@ -47,6 +47,9 @@ fun Route.tabKey(): String = when (this) {
     SearchRoute -> "view:search"
     is PageRoute -> "view:web:$route"
     is WebShowRoute -> "view:web:$page"
+    FoldersRoute -> "view:folders"
+    NotificationsRoute -> "view:notifications"
+    is SettingsPageRoute -> "view:settings:$page"
 }
 
 /** A folder: it shows in a folder tab that moves between folders. */
@@ -69,6 +72,9 @@ fun Route.tabTitle(): String = when (this) {
     SearchRoute -> "Search"
     is PageRoute -> title
     is WebShowRoute -> title
+    FoldersRoute -> "Folders"
+    NotificationsRoute -> "Notifications"
+    is SettingsPageRoute -> title
 }
 
 fun Route.tabIcon(): WebIcon = when (this) {
@@ -88,6 +94,9 @@ fun Route.tabIcon(): WebIcon = when (this) {
     CalendarRoute -> WebIcon.CALENDAR_DAYS
     SearchRoute -> WebIcon.SEARCH
     is PageRoute, is WebShowRoute -> WebIcon.FILE_TEXT
+    FoldersRoute -> WebIcon.FOLDER_TREE
+    NotificationsRoute -> WebIcon.BELL
+    is SettingsPageRoute -> WebIcon.SETTINGS
 }
 
 /** A tab's own Back and Forward (Finder style): the pages it showed, oldest first, and the one it shows. */

@@ -1,13 +1,13 @@
 // The app's frame, adaptive by window width (docs/ANDROID_NATIVE_PLAN.md section 3; owner layouts 2026-11-23, tabs
 // 2026-11-24):
 //
-// - Compact (phones, a folded foldable): Material navigation bar with Home, Tasks, Calendar and Foli AI, a
-//   floating New note button, one page with Back; a note opens full screen (as on iPhone). Each bar tab keeps its
-//   own Navigation 3 back stack.
-// - Medium and wider (tablets, an open foldable, Googlebooks): a navigation rail (Medium, Expanded) or the sidebar
-//   with the folders (Large and wider), and a tab strip at the top like the web app's, with the web's rules
-//   (Tabs.kt): everything opened from a page gets a tab that goes Back to it; the rail, the sidebar and New note
-//   open fresh tabs.
+// - Compact (phones, a folded foldable): the web's phone bar (PhoneBar.kt; owner 2026-11-25, "Today's UI, Material
+//   3 native"): Home, Tasks and Calendar in one floating capsule, Foli AI and + in another; one page with Back; a
+//   note opens full screen (as on iPhone). Each tab keeps its own Navigation 3 back stack.
+// - Medium and wider (tablets, an open foldable, Googlebooks): the web's tablet layout. Its sidebar
+//   (TabletSidebar.kt) sits beside the page on expanded and wider windows and slides over it on a medium one; the
+//   tab strip (TabStrip.kt) floats at the top, with the web's rules (Tabs.kt): everything opened from a page gets
+//   a tab that goes Back to it; the sidebar and New note open fresh tabs.
 //
 // A fold carries the page on screen between the two: unfolding opens it as a tab, folding puts the tab on screen
 // on the phone's stack.
@@ -41,14 +41,25 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PermanentDrawerSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -167,6 +178,24 @@ fun AppShell() {
         // The page's own requests: a link inside a note replaces that note's tab (a new tab with a modifier click or
         // "Open in new tab"), a link to a screen opens its tab, a web address opens in the browser. Note titles name
         // their tabs.
+        val navigate: (com.folevi.engine.generated.NavigateRequestEvent) -> Unit = { d ->
+            if (d.external) {
+                runCatching { (context as? MainActivity)?.openBrowser(Uri.parse(d.route)) }
+            } else {
+                val r = routeOfPath(d.route, d.noteId)
+                when {
+                    !isTabbed -> openOnPhone(r)
+                    d.newTab -> tabs.addInBackground(r)
+                    else -> tabs.show(r, if (r.isNote && tabs.activeRoute.isNote) TabsModel.Opening.REPLACE else TabsModel.Opening.NEW_TAB)
+                }
+            }
+        }
+        DisposableEffect(session) {
+            session.shellListening = true
+            // One the page sent before the frame was here (the end of onboarding).
+            session.pendingNavigate?.let { session.pendingNavigate = null; navigate(it) }
+            onDispose { session.shellListening = false }
+        }
         LaunchedEffect(session) {
             session.client.events.collect { e ->
                 when (e) {
@@ -222,20 +251,34 @@ fun AppShell() {
         // out again.) Resizing within a class, as dragging a Googlebook window's edge does, keeps every screen's
         // state: it used to start over at every step.
         val window = "$width@${LocalConfiguration.current.densityDpi}"
+        // The account sheet and New folder (Home's avatar and menus, the lists' empty states).
+        var newFolderIn by remember { mutableStateOf<String?>(null) }
+        var newFolderOpen by remember { mutableStateOf(false) }
+        var accountOpen by remember { mutableStateOf(false) }
+        val sheets = remember(tabbed) {
+            PhoneSheets(
+                account = { accountOpen = true },
+                newFolder = { parent -> newFolderIn = parent; newFolderOpen = true },
+            )
+        }
+        val openAnywhere: (Route) -> Unit = { r -> if (isTabbed) tabs.show(r, fromPage = false) else openOnPhone(r) }
+        if (newFolderOpen) NewFolderSheet(onDismiss = { newFolderOpen = false }, open = openAnywhere, parentId = newFolderIn)
+        if (accountOpen) AccountSheet(onDismiss = { accountOpen = false }, open = openAnywhere)
+        CompositionLocalProvider(LocalPhoneSheets provides sheets) {
         key(window) {
             if (tabbed) {
                 TabbedFrame(width, tabs, newNote)
             } else {
-                NavigationSuiteScaffold(
-                    navigationSuiteItems = {
-                        for (t in Tab.entries) {
-                            item(selected = t == tab, onClick = { pick(t) }, icon = { FoleviIcon(t.icon, null) }, label = { Text(t.label) })
-                        }
-                    },
-                    // The bar steps away while a note is open (as on iPhone).
-                    layoutType = if ((stack.lastOrNull() as? Route)?.isDetail() == true) NavigationSuiteType.None else NavigationSuiteType.NavigationBar,
-                ) {
-                    PhoneContent(stack, phoneOpen, newNote, Modifier.fillMaxSize())
+                // The web's phone bar: two floating capsules (PhoneBar.kt). It steps away while a note, a page or
+                // Settings is open (as on iPhone).
+                val top = stack.lastOrNull() as? Route
+                val showBar = top != null && !top.isDetail() && top !is SettingsRoute && top !is VaultRoute && !PhoneChrome.selecting.value
+                PhoneContent(stack, phoneOpen, Modifier.fillMaxSize()) {
+                    AnimatedVisibility(
+                        visible = showBar,
+                        enter = slideInVertically(com.folevi.android.design.Motion.defaultSpatial()) { it } + fadeIn(com.folevi.android.design.Motion.fastEffects()),
+                        exit = slideOutVertically(com.folevi.android.design.Motion.fastSpatial()) { it } + fadeOut(com.folevi.android.design.Motion.fastEffects()),
+                    ) { PhoneBar(tab, pick, newNote) }
                 }
                 // Back at the root of Tasks, Calendar or Foli AI goes Home first, then leaves (Android's "exit through
                 // home"); NavDisplay handles Back within a tab.
@@ -245,6 +288,7 @@ fun AppShell() {
                     onBackCompleted = { tab = Tab.HOME },
                 )
             }
+        }
         }
     }
 }
@@ -267,31 +311,67 @@ private fun TabbedFrame(width: WidthClass, tabs: TabsModel, newNote: () -> Unit)
         onBackCompleted = { tabs.goBack() },
     )
     val pages = rememberSaveableStateHolder()
-    Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (width >= WidthClass.LARGE) {
-            Sidebar(section, pick = { fresh(it.root) }, onFolder = { id, name -> fresh(NotesRoute(NotesListView.FOLDER.value, name, folderId = id)) })
-        } else {
-            NavigationRail(containerColor = p.sidebar) {
-                Spacer(Modifier.height(8.dp))
-                for (t in Tab.entries) {
-                    NavigationRailItem(selected = t == section, onClick = { fresh(t.root) }, icon = { FoleviIcon(t.icon, null) }, label = { Text(t.label) })
+    // The web's tablet sidebar (TabletSidebar.kt), 320 wide: beside the page on expanded and wider windows, over it
+    // with a scrim on a medium one (an open foldable, a small tablet), where it starts hidden. Hide sidebar and Show
+    // sidebar (the strip) fold it away; the choice holds for this window. A short window (a phone turned sideways,
+    // under 480 tall) has no room for it beside the page: there it slides over the page too, and starts hidden.
+    val wide = width >= WidthClass.EXPANDED && !com.folevi.android.design.shortWindow()
+    var sidebarChoice by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val sidebarShown = sidebarChoice ?: wide
+    val showSidebar: () -> Unit = { sidebarChoice = true }
+    val hideSidebar: () -> Unit = { sidebarChoice = false }
+    // From the sidebar a page opens fresh; on a medium window the sidebar goes again once it has.
+    val fromSidebar: (Route) -> Unit = { r -> fresh(r); if (!wide) sidebarChoice = false }
+    val ai = rememberView(Views.session()).value.value?.capabilities?.ai == true
+    val bars = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start + WindowInsetsSides.Bottom)
+    Box(Modifier.fillMaxSize().background(p.sidebar)) {
+        Row(Modifier.fillMaxSize()) {
+            AnimatedVisibility(
+                visible = wide && sidebarShown,
+                enter = expandHorizontally(com.folevi.android.design.Motion.defaultSpatial(), expandFrom = Alignment.Start) + fadeIn(com.folevi.android.design.Motion.defaultEffects()),
+                exit = shrinkHorizontally(com.folevi.android.design.Motion.defaultSpatial(), shrinkTowards = Alignment.Start) + fadeOut(com.folevi.android.design.Motion.defaultEffects()),
+            ) {
+                TabletSidebar(route, fromSidebar, onHide = hideSidebar, modifier = Modifier.windowInsetsPadding(bars))
+            }
+            Column(Modifier.weight(1f).fillMaxHeight().background(MaterialTheme.colorScheme.background)) {
+                TabStrip(
+                    tabs,
+                    newNote,
+                    Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(if (sidebarShown && wide) WindowInsetsSides.Top + WindowInsetsSides.End else WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Start)),
+                    onShowSidebar = if (sidebarShown && wide) null else showSidebar,
+                    onAi = if (ai) ({ fresh(AiRoute) }) else null,
+                )
+                // The strip above and the sidebar beside it already keep clear of the status bar and the cutout: the
+                // page's own bars mustn't leave room for them again.
+                Box(
+                    Modifier.weight(1f).fillMaxSize()
+                        .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.End)),
+                ) {
+                    // Each tab keeps its own scroll positions and fields while another is on screen.
+                    pages.SaveableStateProvider("${tabs.activeId}|${route.hashCode()}") {
+                        TabPage(route, tabs.active.name, fromPage, back)
+                    }
                 }
             }
         }
-        Column(Modifier.weight(1f).fillMaxHeight()) {
-            TabStrip(tabs, newNote, Modifier.background(p.sidebar).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End)))
-            // The strip above and the rail or sidebar beside it already keep clear of the status bar and the cutout: the
-            // page's own bars mustn't leave room for them again.
-            Box(
-                Modifier.weight(1f).fillMaxSize()
-                    .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.End)),
-            ) {
-                // Each tab keeps its own scroll positions and fields while another is on screen.
-                pages.SaveableStateProvider("${tabs.activeId}|${route.hashCode()}") {
-                    TabPage(route, tabs.active.name, fromPage, back)
-                }
+        // A medium window: the sidebar slides in over the page, which dims; a tap on it, or Back, closes it.
+        if (!wide) {
+            AnimatedVisibility(visible = sidebarShown, enter = fadeIn(com.folevi.android.design.Motion.defaultEffects()), exit = fadeOut(com.folevi.android.design.Motion.defaultEffects())) {
+                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.25f)).clickable(onClickLabel = "Hide sidebar", indication = null, interactionSource = null, onClick = hideSidebar))
             }
+            AnimatedVisibility(
+                visible = sidebarShown,
+                enter = slideInHorizontally(com.folevi.android.design.Motion.defaultSpatial()) { -it },
+                exit = slideOutHorizontally(com.folevi.android.design.Motion.defaultSpatial()) { -it },
+            ) {
+                TabletSidebar(route, fromSidebar, onHide = hideSidebar, modifier = Modifier.windowInsetsPadding(bars))
+            }
+            NavigationBackHandler(
+                state = rememberNavigationEventState(currentInfo = NavigationEventInfo.None),
+                isBackEnabled = sidebarShown,
+                onBackCompleted = hideSidebar,
+            )
         }
     }
 }
@@ -302,11 +382,14 @@ private fun TabPage(route: Route, name: String, open: (Route) -> Unit, back: (()
         HomeRoute -> HomeScreen(open)
         is NotesRoute -> NotesScreen(route, open, back)
         SearchRoute -> SearchScreen(open, back)
+        FoldersRoute -> FoldersScreen(open, back)
+        NotificationsRoute -> NotificationsScreen(open, back)
         TasksRoute -> TasksHome(open)
         CalendarRoute -> CalendarHome(open)
         AiRoute -> AiHome(open)
         is AiChatRoute -> AiChatScreen(route, back)
         SettingsRoute -> SettingsScreen(open, back)
+        is SettingsPageRoute -> SettingsPageScreen(route, open, back)
         VaultRoute -> VaultScreen(back)
         SharedRoute -> SharedScreen(open, back)
         ChangesRoute -> ChangesScreen(open, back)
@@ -319,19 +402,16 @@ private fun TabPage(route: Route, name: String, open: (Route) -> Unit, back: (()
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, newNote: () -> Unit, modifier: Modifier) {
+private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, modifier: Modifier, bar: @Composable () -> Unit) {
     val strategy = rememberListDetailSceneStrategy<NavKey>()
-    val top = stack.lastOrNull()
-    val showNew = (top as? Route)?.isDetail() != true && top !is AiRoute && top !is SettingsRoute && top !is VaultRoute
-    val back: (() -> Unit)? = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null
+    // Each page reads the stack itself (backOf), so a page pushed in the frame's first moments (the end of
+    // onboarding) still gets its Back.
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         // Clear of the status bar, the cutout and the keyboard (the bar below takes care of its own space).
         contentWindowInsets = WindowInsets.safeDrawing,
-        floatingActionButton = {
-            if (showNew) SmallExtendedFloatingActionButton(text = { Text("New note") }, icon = { FoleviIcon(WebIcon.PLUS, null) }, onClick = newNote)
-        },
+        bottomBar = bar,
     ) { padding ->
         NavDisplay(
             backStack = stack,
@@ -341,62 +421,28 @@ private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, new
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             entryProvider = entryProvider {
                 entry<HomeRoute>(metadata = ListDetailSceneStrategy.listPane()) { HomeScreen(open) }
-                entry<NotesRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotesScreen(it, open) }
-                entry<SearchRoute>(metadata = ListDetailSceneStrategy.listPane()) { SearchScreen(open) }
+                entry<NotesRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotesScreen(it, open, backOf(stack)) }
+                entry<SearchRoute>(metadata = ListDetailSceneStrategy.listPane()) { SearchScreen(open, backOf(stack)) }
+                entry<FoldersRoute>(metadata = ListDetailSceneStrategy.listPane()) { FoldersScreen(open, backOf(stack)) }
+                entry<NotificationsRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotificationsScreen(open, backOf(stack)) }
                 entry<TasksRoute>(metadata = ListDetailSceneStrategy.listPane()) { TasksHome(open) }
                 entry<CalendarRoute>(metadata = ListDetailSceneStrategy.listPane()) { CalendarHome(open) }
                 entry<AiRoute>(metadata = ListDetailSceneStrategy.listPane()) { AiHome(open) }
-                entry<AiChatRoute>(metadata = ListDetailSceneStrategy.detailPane()) { AiChatScreen(it, back) }
-                entry<SettingsRoute>(metadata = ListDetailSceneStrategy.listPane()) { SettingsScreen(open, back) }
-                entry<VaultRoute>(metadata = ListDetailSceneStrategy.listPane()) { VaultScreen(back) }
-                entry<SharedRoute>(metadata = ListDetailSceneStrategy.listPane()) { SharedScreen(open, back) }
-                entry<ChangesRoute>(metadata = ListDetailSceneStrategy.listPane()) { ChangesScreen(open, back) }
-                entry<WebShowRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebShowScreen(it, back) }
-                entry<NoteRoute>(metadata = ListDetailSceneStrategy.detailPane()) { NoteScreen(it, back) }
-                entry<PageRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebPageScreen(it, back) }
+                entry<AiChatRoute>(metadata = ListDetailSceneStrategy.detailPane()) { AiChatScreen(it, backOf(stack)) }
+                entry<SettingsRoute>(metadata = ListDetailSceneStrategy.listPane()) { SettingsScreen(open, backOf(stack)) }
+                entry<SettingsPageRoute>(metadata = ListDetailSceneStrategy.listPane()) { SettingsPageScreen(it, open, backOf(stack)) }
+                entry<VaultRoute>(metadata = ListDetailSceneStrategy.listPane()) { VaultScreen(backOf(stack)) }
+                entry<SharedRoute>(metadata = ListDetailSceneStrategy.listPane()) { SharedScreen(open, backOf(stack)) }
+                entry<ChangesRoute>(metadata = ListDetailSceneStrategy.listPane()) { ChangesScreen(open, backOf(stack)) }
+                entry<WebShowRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebShowScreen(it, backOf(stack)) }
+                entry<NoteRoute>(metadata = ListDetailSceneStrategy.detailPane()) { NoteScreen(it, backOf(stack)) }
+                entry<PageRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebPageScreen(it, backOf(stack)) }
             },
         )
     }
 }
 
-/** The Googlebook and big-tablet sidebar: the tabs, then the folders (as the Mac's sidebar). */
+/** Back for a phone page: pops the stack when there's somewhere to go (read where the page draws, so it follows the stack). */
 @Composable
-private fun Sidebar(tab: Tab?, pick: (Tab) -> Unit, onFolder: (String, String) -> Unit) {
-    val tree by rememberView(Views.foldersTree())
-    PermanentDrawerSheet(Modifier.width(280.dp).fillMaxHeight(), drawerContainerColor = LocalPalette.current.sidebar) {
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 16.dp)) {
-            Text("Folevi", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 16.dp, bottom = 12.dp))
-            for (t in Tab.entries) {
-                NavigationDrawerItem(
-                    label = { Text(t.label) },
-                    icon = { FoleviIcon(t.icon, null) },
-                    selected = t == tab,
-                    onClick = { pick(t) },
-                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
-                )
-            }
-            Spacer(Modifier.height(16.dp))
-            Text("Folders", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 16.dp, bottom = 4.dp))
-            for (f in tree.value?.folders.orEmpty()) {
-                NavigationDrawerItem(
-                    label = { Text(f.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    icon = { FoleviIcon(WebIcon.FOLDER, null, tint = folderColor(f.color)) },
-                    selected = false,
-                    onClick = { onFolder(f.id, f.name) },
-                    modifier = Modifier.padding(start = (f.depth.toInt() * 16).dp),
-                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-}
-
-@Composable
-fun EmptyBox(text: String) {
-    Box(Modifier.fillMaxSize().padding(32.dp)) { Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-}
+private fun backOf(stack: NavBackStack<NavKey>): (() -> Unit)? =
+    if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null

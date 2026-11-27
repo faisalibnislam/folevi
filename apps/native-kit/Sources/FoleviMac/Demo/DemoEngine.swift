@@ -35,6 +35,8 @@ public final class DemoEngine {
     public var online = true
     public var ready = true
     public var shownNote: String?
+    /// The saved sidebar layout (`sidebarLayout.get`'s value: `{ order, more }`, null for the default).
+    public var sidebarLayout: JSONValue = .null
     /// Every editor command the frame sent (tests read it).
     public private(set) var editorLog: [String] = []
     /// Every command name the frame sent.
@@ -145,6 +147,8 @@ public final class DemoEngine {
         case "home": return try .from(homeValue)
         case "folders.tree": return try .from(FoldersTreeValue(space: space, folders: folders, tags: tags))
         case "sync.status": return try .from(syncValue)
+        case "settings.query" where args["key"]?.string == "convex" && args["args"]?["fn"]?.string == "sidebarLayout.get":
+            return .object(["data": sidebarLayout])
         case "note.meta":
             let id = args["id"]?.string ?? ""
             return try .from(meta(id))
@@ -330,6 +334,9 @@ public final class DemoEngine {
             }
         }
         switch name {
+        case "settings.run" where args["key"]?.string == "convex.mutation" && args["args"]?["fn"]?.string == "sidebarLayout.set":
+            sidebarLayout = args["args"]?["args"]?["layout"] ?? .null
+            return .object(["data": .null])
         case "note.create":
             nextId += 1
             let id = "doc_new\(nextId)"

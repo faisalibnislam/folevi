@@ -37,6 +37,8 @@ public struct WebSidebar: View {
     private let active = ControlActiveStateShim.key
     #endif
     @AppStorage("folevi.sidebar.starredOpen") var starredOpen = true
+    /// The sidebar's More section: closed until opened, then as last left on this Mac (`folevi:sidebar-more-open`).
+    @AppStorage("folevi.sidebar.more-open") var moreOpen = false
     @AppStorage("folevi.sidebar.section.folders") var foldersOpen = true
     @AppStorage("folevi.sidebar.section.tags") var tagsOpen = false
     /// On a note: the note's own tools ("document", the web's default) or the folders (`folevi:doc-sidebar-mode`).

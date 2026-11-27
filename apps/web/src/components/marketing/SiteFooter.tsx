@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { featureBySlug, featurePath } from "./content/features";
-import { SECURITY_EMAIL, SUPPORT_EMAIL } from "./site";
+import { OPERATOR, SECURITY_EMAIL, SUPPORT_EMAIL } from "./site";
 import { Wordmark, container, cx } from "./ui";
 
 // Feature pages listed in the footer (the full list is on /features).
@@ -98,7 +98,13 @@ export function SiteFooter() {
       </div>
       <div className={container}>
         <div className="flex flex-col gap-1 border-t mk-hair py-5 text-[13px] text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {year} Folevi</p>
+          <p>
+            © {year} {OPERATOR.name}. Folevi is operated by{" "}
+            <a href={OPERATOR.url} className="underline decoration-1 underline-offset-2 hover:text-(--color-heading)">
+              {OPERATOR.name}
+            </a>
+            .
+          </p>
           <p>Made for people who write things down.</p>
         </div>
       </div>

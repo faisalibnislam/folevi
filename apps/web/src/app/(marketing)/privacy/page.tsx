@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DocShell } from "@/components/marketing/DocShell";
 import { pageMetadata } from "@/components/marketing/seo";
-import { SECURITY_EMAIL } from "@/components/marketing/site";
+import { OPERATOR, OPERATOR_ADDRESS, SECURITY_EMAIL } from "@/components/marketing/site";
 import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 import { PageFrame } from "@/components/marketing/cards";
 
@@ -33,6 +33,11 @@ export default function PrivacyPage() {
         <DraftNotice updated="November 27, 2026" />
       </PageHeader>
       <DocShell toc={toc}>
+        <p>
+          Folevi is operated by <a href={OPERATOR.url}>{OPERATOR.name}</a>, {OPERATOR_ADDRESS}. {OPERATOR.name} is responsible for the
+          personal data this policy describes (in GDPR terms, the controller), and “we” and “us” here mean {OPERATOR.name}.
+        </p>
+
         <h2 id="short">The short version</h2>
         <ul>
           <li>We collect what we need to run Folevi for you: your account details and the content you put in it.</li>
@@ -192,7 +197,8 @@ export default function PrivacyPage() {
 
         <h2 id="contact">Contact</h2>
         <p>
-          Questions about privacy can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>.
+          Questions about privacy can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>, or by mail to{" "}
+          {OPERATOR.name}, {OPERATOR_ADDRESS}.
         </p>
       </DocShell>
     </PageFrame>

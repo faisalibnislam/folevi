@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, openShare, pick, showFolders, waitForSaved } from "./helpers";
+import { newPerson, openShare, pick, showFolders, waitForSaved, openMore } from "./helpers";
 
 // Live carets: two people in one note see where the other one's caret is, in their colour with their name.
 
@@ -29,6 +29,7 @@ test("two people in a note see each other's caret and name", async ({ browser })
   await waitForSaved(owner.page);
   await shareWith(owner.page, guest.email, "Sasha Guest");
 
+  await openMore(guest.page);
   await guest.page.getByRole("link", { name: "Shared with Me" }).click();
   await guest.page.getByRole("listitem").filter({ hasText: /Caret plan/ }).getByRole("link").click();
   const guestBody = guest.page.getByRole("textbox", { name: "Document body" });
@@ -53,6 +54,7 @@ test("two people in a note see each other's caret and name", async ({ browser })
   expect(await ownerBody.locator("p").last().evaluate((p) => [...p.childNodes].filter((n) => !(n instanceof HTMLElement && n.dataset.remoteCaret)).map((n) => n.textContent).join(""))).toBe("A second line and more");
 
   // When the guest leaves, their caret goes with them.
+  await openMore(guest.page);
   await guest.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Shared with Me" }).click();
   await expect(ownerBody.locator('[data-remote-caret="Sasha"]')).toHaveCount(0, { timeout: 30_000 });
 });

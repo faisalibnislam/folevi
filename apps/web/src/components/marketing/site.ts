@@ -64,3 +64,18 @@ export function absoluteUrl(path: string): string {
 export function formatDay(day: string): string {
   return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }
+
+/** The company that operates Folevi (owner, 2026-11-27): named in the footer, the terms, the privacy policy,
+ *  the support page and the Organization data for search engines. */
+export const OPERATOR = {
+  name: "Space Cherries LLC",
+  url: "https://www.spacecherries.com",
+  street: "5242 Elbetee Lane",
+  city: "Alexandria",
+  region: "VA",
+  postalCode: "22312",
+  country: "USA",
+  countryCode: "US",
+} as const;
+/** "5242 Elbetee Lane, Alexandria, VA 22312, USA" */
+export const OPERATOR_ADDRESS = `${OPERATOR.street}, ${OPERATOR.city}, ${OPERATOR.region} ${OPERATOR.postalCode}, ${OPERATOR.country}`;

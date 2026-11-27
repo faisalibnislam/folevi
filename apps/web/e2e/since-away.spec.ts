@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, openShare, pick, showFolders, waitForSaved } from "./helpers";
+import { newPerson, openShare, pick, showFolders, waitForSaved, openMore } from "./helpers";
 
 // "Since you were away": back in a note someone else changed, a slim line says who, and can show the lines.
 
@@ -33,6 +33,7 @@ test("back in a note someone changed: who changed it, show the lines, dismiss", 
   await owner.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Home" }).click();
 
   // The guest adds a line while the owner is elsewhere.
+  await openMore(guest.page);
   await guest.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Shared with Me" }).click();
   await guest.page.getByRole("listitem").filter({ hasText: /Away plan/ }).getByRole("link").click();
   const body = guest.page.getByRole("textbox", { name: "Document body" });

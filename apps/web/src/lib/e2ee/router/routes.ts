@@ -85,6 +85,8 @@ export const E2EE_ROUTES: Record<string, Route> = {
   ...each(pass, "graphViews", "list remove save"),
   // The sidebar's own folder order: folder ids only (the server has those already, as for moveFolder).
   ...each(pass, "sidebarOrder", "get set"),
+  // The sidebar's layout (which items sit under More): the app's own item ids only.
+  ...each(pass, "sidebarLayout", "get set"),
   // Spelling settings and the personal dictionary: the apps never send words from sealed notes
   // (lib/spelling/settings.ts addPersonalWord keeps those on the device).
   ...each(pass, "spelling", "get setPrefs setWord setNote"),

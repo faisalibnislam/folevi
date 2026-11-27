@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { person, PERSONAL, setup, type T } from "./helpers";
+import { person, PERSONAL, setup, teamWorkspace, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 type Seen = { url: string; body: Record<string, unknown>; headers: Headers };
@@ -146,6 +146,28 @@ describe("Foli AI on your own key", () => {
     expect(headersOf(seen[0]!)).toContain(OPENAI_KEY);
     // No model picked: the default for the provider.
     expect(seen[0]!.body.model).toBe("gpt-6.1-sol");
+  });
+
+  test("Foli AI turned off by the person or their workspace: refused with their own key too, and nothing is sent", async () => {
+    const t = setup();
+    const a = await person(t, "own-off@example.com");
+    const seen = stub(claude("Never."));
+    const own = { provider: "anthropic" as const, apiKey: ANTHROPIC_KEY };
+    // Turned off in the person's settings.
+    await t.run(async (ctx) => await ctx.db.patch(a.profileId as Id<"profiles">, { aiEnabled: false }));
+    const err = await a.as.action(api.ai.write, { scope: a.scope, task: "summarize", text: "Private notes.", ownKey: own }).catch((e: { data: Record<string, unknown> }) => e.data);
+    expect(err).toMatchObject({ code: "forbidden", message: expect.stringContaining("turned off in your settings") });
+    // Turned off for a workspace (back on for the person).
+    await t.run(async (ctx) => await ctx.db.patch(a.profileId as Id<"profiles">, { aiEnabled: true }));
+    const ws = await teamWorkspace(a);
+    await t.run(async (ctx) => {
+      const row = (await ctx.db.query("workspaces").collect()).find((w) => w._id === ws.workspaceId || (w as { publicId?: string }).publicId === ws.workspaceId)!;
+      await ctx.db.patch(row._id, { aiDisabled: true });
+    });
+    const err2 = await a.as.action(api.ai.write, { scope: ws.scope, task: "summarize", text: "Team notes.", ownKey: own }).catch((e: { data: Record<string, unknown> }) => e.data);
+    expect(err2).toMatchObject({ code: "forbidden", reason: "ai_not_included", message: expect.stringContaining("turned off in this workspace") });
+    expect(seen).toHaveLength(0);
+    expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
   });
 
   test("Gemini on the person's key, never the platform's", async () => {

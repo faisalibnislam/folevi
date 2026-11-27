@@ -313,6 +313,11 @@ export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target
     if (settings.ai.allowed === "admins" && role !== "owner" && role !== "admin") fail("forbidden", "On this server, Foli AI is only for its admins.", { reason: "ai_not_allowed" });
     await loadAiSettings(ctx);
   }
+  // Foli AI turned off for the person or the workspace: nothing is sent, own key or not.
+  for (const s of [target, ...also]) {
+    const blocked = await aiBlockedIn(ctx, profile._id, s);
+    if (blocked) fail("forbidden", blocked, { reason: "ai_not_included" });
+  }
   // The person's own key: every plan, no credits held or charged. The hourly limit still applies, because
   // our server does the work (docs/PRICING_PLAN.md, "Bring your own AI").
   if (ownKey) {
@@ -321,11 +326,6 @@ export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target
     const { account } = await aiAccountFor(ctx, profile, target);
     await consume(ctx, account.rateRule, account.rateSubject);
     return await holdOwnKey(ctx, account, target, ownKey.provider, Date.now(), feature);
-  }
-  // Nothing from a Core Personal or a Core workspace is ever sent to AI, whoever asks.
-  for (const s of [target, ...also]) {
-    const blocked = await aiBlockedIn(ctx, profile._id, s);
-    if (blocked) fail("forbidden", blocked, { reason: "ai_not_included" });
   }
   const access = await aiAccountFor(ctx, profile, target);
   if (!access.allowed) fail("forbidden", access.message ?? "Foli AI isn't available here.", { reason: "ai_not_included" });

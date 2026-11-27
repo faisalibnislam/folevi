@@ -104,6 +104,19 @@ describe("sendEmail via Resend", () => {
     expect(resendRequestBody({ from: { email: "a@b.co", name: 'F"<x>' }, to: "c@d.co", subject: "s", text: "t", html: "h", tags: { template: "k", attempt: "bad id" } })).toMatchObject({ from: "Fx <a@b.co>", tags: [{ name: "template", value: "k" }] });
   });
 
+  it("names Space Cherries LLC in the footer on Folevi Cloud, and not when told it's a Folevi Server", async () => {
+    const cloud = setup([res(200)]);
+    await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl: cloud.fetchImpl });
+    const cloudBody = JSON.parse(String(cloud.calls[0]![1].body));
+    expect(cloudBody.html).toContain("Space Cherries LLC");
+    expect(cloudBody.text).toContain("Space Cherries LLC");
+    const server = setup([res(200)]);
+    await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl: server.fetchImpl, operator: false });
+    const serverBody = JSON.parse(String(server.calls[0]![1].body));
+    expect(serverBody.html).not.toContain("Space Cherries");
+    expect(serverBody.text).not.toContain("Space Cherries");
+  });
+
   it("retries 429 (honouring Retry-After) and 5xx with the same body and idempotency key", async () => {
     const { fetchImpl, calls, sleep } = setup([res(429, { message: "slow down" }, { "retry-after": "2" }), res(503), res(200)]);
     const out = await sendEmail(input(), { env: LIVE_ENV, policy: PROD, fetchImpl, sleep });

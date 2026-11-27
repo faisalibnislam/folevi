@@ -31,6 +31,8 @@ Everything the Chrome Web Store and Microsoft Edge Add-ons ask for, ready to pas
 > Private by design. The clipper asks Folevi for one permission: adding notes. It can't read, search or change anything you've already written. It reads a page only when you clip it, and sends the clip to your Folevi account and nowhere else. You can disconnect it at any time in Folevi under Settings > Connected apps.
 >
 > You need a Folevi account to use the clipper. Folevi has a free plan: https://folevi.com
+>
+> Folevi is operated by Space Cherries LLC (https://www.spacecherries.com).
 
 **Homepage / support URL:** https://folevi.com/docs/web-clipper
 
@@ -83,7 +85,7 @@ Folevi Web Clipper reads a web page only when you clip it. What you clip (its te
 
 ## Before submitting
 
-1. Developer accounts: a Chrome Web Store developer account (one-time registration fee) and a Microsoft Partner Center account for Edge Add-ons. Use the same publisher name, Folevi.
+1. Developer accounts: a Chrome Web Store developer account (one-time registration fee) and a Microsoft Partner Center account for Edge Add-ons. Use the same publisher name, Space Cherries LLC (the company that operates Folevi; the owner, 2026-11-27), and verify the publisher with the spacecherries.com domain where the store offers it.
 2. Deploy the web app with the server changes this extension relies on (write-only grants, `create_note` with `inInbox`, extension origins accepted at `/mcp`), so the listing's homepage and the sign-in work.
 3. Add a short "Folevi Web Clipper" section to the privacy policy at folevi.com/privacy (the privacy note above is ready to adapt). Both stores check that the policy covers the extension.
 4. Run `pnpm package` and upload `release/folevi-clipper-<version>.zip`. Bump `version` in `package.json` for every new upload.

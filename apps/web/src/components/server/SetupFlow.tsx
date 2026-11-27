@@ -18,6 +18,7 @@ import { errorMessage } from "@/components/ui/Toast";
 import { Select } from "@/components/ui/Select";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink } from "@/components/auth/fields";
 import { control, controlMessage } from "@/components/admin/server/kit";
+import { ServerMadeBy } from "./MadeBy";
 import type { BackupList } from "@/components/admin/server/types";
 import { ChoiceCards } from "./ChoiceCards";
 import { ConnectApps } from "./ConnectApps";
@@ -826,6 +827,7 @@ export function SetupFlow({ token, signedIn, needsSetup, initialStep }: { token:
           />
         </ConvexClientProvider>
       )}
+      <ServerMadeBy className="mt-6" />
     </>
   );
 }
@@ -858,6 +860,7 @@ function FindSetupLink() {
         ))}
       </ul>
       <p className="mt-5 text-subheadline leading-relaxed text-muted">Open the link in this browser. Then you name the server and create your account; you choose the email and password.</p>
+      <ServerMadeBy className="mt-6" />
     </>
   );
 }

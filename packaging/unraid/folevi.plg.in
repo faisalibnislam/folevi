@@ -1,7 +1,7 @@
 <?xml version="1.0" standalone="yes"?>
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "folevi">
-<!ENTITY author    "Folevi">
+<!ENTITY author    "Space Cherries LLC">
 <!ENTITY version   "@VERSION@">
 <!ENTITY baseURL   "@UNRAID_BASE_URL@">
 <!ENTITY pluginURL "&baseURL;/folevi.plg">

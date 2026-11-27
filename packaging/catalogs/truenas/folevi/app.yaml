@@ -19,7 +19,7 @@ lib_version: 2.1.77
 lib_version_hash: REPLACE_WITH_CURRENT_LIBRARY_HASH
 maintainers:
   - email: support@folevi.com
-    name: Folevi
+    name: Space Cherries LLC
     url: https://folevi.com
 name: folevi
 run_as_context:

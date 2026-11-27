@@ -695,6 +695,8 @@ async function runKey(deps: EngineDeps, key: SettingsRunKey, a: Args): Promise<u
       return { message: `${OWN_KEY_INFO[provider].label} key removed from this device` };
     }
     case "ownAiKey.test": {
+      // Folevi Cloud and Folevi Server only: a library on this device tests keys here (localAi.testKey).
+      if (deps.app.mode !== "account") throw new BridgeError("unavailable", "In a library on this device, test the key under Your own keys.");
       const provider = oneOf(a, "provider", OWN_KEY_PROVIDERS) as OwnKeyProvider;
       const model = typeof a.model === "string" && a.model ? a.model : OWN_KEY_INFO[provider].defaultModel;
       const k = await ownKeyForRequest({ provider, model });

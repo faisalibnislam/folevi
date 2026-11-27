@@ -104,7 +104,7 @@ export const FOLEVI_ROWS: Record<FoleviRowKey, { label: string; value: string }>
   },
   files: {
     label: "Where notes are stored",
-    value: "Without an account: a folder of files (one per note, plus a small index) in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder or only this device. Folevi’s servers never see them. Or on your own Folevi Server (Beta). With a Folevi account: on your devices and Folevi’s servers.",
+    value: "Without an account: a folder of files (one per note, plus a small index) in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder or only this device (Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now). Folevi’s servers never see them. Or on your own Folevi Server (Beta). With a Folevi account: on your devices and Folevi’s servers.",
   },
   monthly: { label: "Paid plans, monthly", value: `Core ${p(PRICES.core.month)}, Pro ${p(PRICES.pro.month)} and Pro AI ${p(PRICES.pro_ai.month)} a month` },
   yearly: { label: "Paid plans, yearly", value: `Core ${p(PRICES.core.year)}, Pro ${p(PRICES.pro.year)} and Pro AI ${p(PRICES.pro_ai.year)} a year` },

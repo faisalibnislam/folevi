@@ -58,7 +58,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Do I need an account?",
-    a: "Not for the apps. Choose Keep notes on my devices and your notes are a folder of files in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Folevi’s servers never see them. You need a Folevi account for the web app, sharing and team workspaces.",
+    a: "Not for the apps. Choose Keep notes on my devices and your notes are a folder of files in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. Folevi’s servers never see them. You need a Folevi account for the web app, sharing and team workspaces.",
   },
   {
     q: "Can I host Folevi myself?",
@@ -187,7 +187,7 @@ export default function PricingPage() {
               items={[
                 <>Mac, iPhone, iPad, Android, Windows and Linux (Beta)</>,
                 <>No account, no limit on notes</>,
-                <>iCloud Drive, Dropbox, Google Drive or any folder, synced by your own cloud</>,
+                <>A folder you pick, synced by your own cloud</>,
                 <>Folevi Server (Beta) on your own computer, NAS or server</>,
                 <>Foli AI with your own OpenAI, Anthropic or Google key, or Apple Intelligence on your Mac</>,
                 <>Docs, tasks, databases, themes, Foli DNA and search</>,

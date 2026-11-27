@@ -280,7 +280,7 @@ export const FEATURES: Feature[] = [
     name: "Notes on your devices",
     summary: "Free forever, no account. Your notes are files in your own cloud.",
     title: "Free notes app with no account, on every device",
-    description: "Use Folevi on Mac, Windows, Linux, iPhone, iPad and Android with no account and every feature. Your notes are files in iCloud Drive, Dropbox, Google Drive or any folder, never on our servers.",
+    description: "Use Folevi on Mac, Windows, Linux, iPhone, iPad and Android with no account and every feature. Your notes are files in a folder you pick, never on our servers.",
     h1: "A notes app with no account, free forever",
     intro:
       "The Folevi apps for Mac, Windows, Linux (Beta), iPhone, iPad and Android are free, with every feature, and work without an account. Choose Keep notes on my devices when the app opens, pick a place for your library, and start writing. Your notes are files in that place, and Folevi’s servers never see them.",
@@ -298,7 +298,7 @@ export const FEATURES: Feature[] = [
             <p>The first time you open the app, choose one of these:</p>
             <ul>
               <li><strong>iCloud Drive</strong>: a Folevi folder that syncs to every iPhone, iPad and Mac signed in to your iCloud account.</li>
-              <li><strong>Dropbox</strong> or <strong>Google Drive</strong>: sign in once, and Folevi only uses its own folder there.</li>
+              <li><strong>Dropbox</strong> or <strong>Google Drive</strong>: sign in once, and Folevi only uses its own folder there. In the Mac, iPhone and iPad apps for now.</li>
               <li><strong>Any folder</strong>: on a computer, any folder; on iPhone and iPad, any folder the Files app offers, such as one in OneDrive.</li>
               <li><strong>This device only</strong>: your notes never leave the device. When you’re online, the app only checks Folevi for new note styles, and sends nothing about you or your notes. You can turn on sync later in Settings.</li>
             </ul>
@@ -340,8 +340,8 @@ export const FEATURES: Feature[] = [
     ],
     faq: [
       { q: "Is Folevi free without an account?", a: "Yes. Every Folevi app is free forever, with every feature, when you keep notes on your devices: Mac, Windows, Linux (Beta), iPhone, iPad and Android. No account needed." },
-      { q: "Where are my notes stored?", a: "In the place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Each note is a file, with a small index beside them. Folevi’s servers never see them." },
-      { q: "Do my notes sync between my devices?", a: "Yes, through your own cloud. Put the library in iCloud Drive, Dropbox or Google Drive and open it on each device, or sync through your own Folevi Server (Beta)." },
+      { q: "Where are my notes stored?", a: "In the place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. Each note is a file, with a small index beside them. Folevi’s servers never see them." },
+      { q: "Do my notes sync between my devices?", a: "Yes, through your own cloud. Put the library in iCloud Drive, Dropbox or Google Drive (Mac, iPhone and iPad for now) or any synced folder and open it on each device, or sync through your own Folevi Server (Beta)." },
       { q: "What doesn’t work without an account?", a: "Sharing, public pages, comments with others, workspaces, email-in, the web clipper, the API, AI credits and the web app need a Folevi account." },
       { q: "Can I switch to an account later?", a: "Yes. Sign in and upload your library. You can also export everything from an account back into a folder." },
     ],

@@ -37,7 +37,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Do I need an account?",
-    a: "Not in the apps. Choose Keep notes on my devices and your notes are files in a folder you pick, such as iCloud Drive, Dropbox or Google Drive, free forever. You can also sync through your own Folevi Server (Beta). The web app, sharing and AI credits need a Folevi account.",
+    a: "Not in the apps. Choose Keep notes on my devices and your notes are files in a folder you pick, such as iCloud Drive, Dropbox or Google Drive, free forever. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. You can also sync through your own Folevi Server (Beta). The web app, sharing and AI credits need a Folevi account.",
   },
   {
     q: "Does Folevi work offline?",

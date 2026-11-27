@@ -129,7 +129,7 @@ export function AiSection() {
     return (
       <>
         <AiSettingCard />
-        <OwnKeyCard />
+        {/* Your own AI key has its own native screen in the iPhone app (native-kit PhoneOwnKey.swift). */}
         <AiUsageCard />
         <IosSection footer={SETTINGS[0]!.body}>
           <SwitchRow label={SETTINGS[0]!.label} checked={prefs.history} onChange={(next) => set(SETTINGS[0]!, next)} />

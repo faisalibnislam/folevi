@@ -154,7 +154,7 @@ export function softwareLd(): Record<string, unknown> {
     name: "Folevi",
     url: absoluteUrl("/"),
     applicationCategory: "ProductivityApplication",
-    operatingSystem: "macOS 26, iOS 18, iPadOS 18, Web",
+    operatingSystem: "macOS 26, Windows 10, Windows 11, Linux, iOS 26, iPadOS 26, Web",
     description:
       "A digital workspace for notes, docs, tasks and databases (table, gallery and kanban views), with team workspaces and Foli AI. The Mac, Windows, Linux, iPhone and iPad apps are free forever with no account: pages are files in iCloud Drive, Dropbox, Google Drive or any folder. Folevi Cloud adds the web app, sharing and teams.",
     // The Personal plans, one offer per price, from the plan catalog (team plans cost the same per member).

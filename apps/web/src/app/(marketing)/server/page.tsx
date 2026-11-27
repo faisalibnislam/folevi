@@ -1,4 +1,4 @@
-import { Globe, Laptop, Smartphone, Tablet, type LucideIcon } from "lucide-react";
+import { Globe, Laptop, Monitor, Smartphone, Tablet, type LucideIcon } from "lucide-react";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Checks } from "@/components/marketing/Checks";
 import { BetaBadge, BetaNote } from "@/components/marketing/Beta";
@@ -33,6 +33,7 @@ const CRUMBS = [
 
 const APPS: Array<{ icon: LucideIcon; name: string }> = [
   { icon: Laptop, name: "Mac" },
+  { icon: Monitor, name: "Windows and Linux" },
   { icon: Smartphone, name: "iPhone and Android" },
   { icon: Tablet, name: "iPad" },
   { icon: Globe, name: "Any browser" },
@@ -320,9 +321,9 @@ export default async function ServerPage() {
               Everyone uses the normal <Mark kind="circle">Folevi</Mark> apps.
             </>
           }
-          lede="On the Mac, iPhone, iPad, Android or the web, choose Your own server and enter your server’s address. If you linked the server to your Folevi account, it appears there on its own."
+          lede="On the Mac, Windows, Linux, iPhone, iPad, Android or the web, choose Your own server and enter your server’s address. If you linked the server to your Folevi account, it appears there on its own."
         />
-        <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {APPS.map(({ icon: AppIcon, name }) => (
             <li key={name} className="mk-card flex items-center gap-3.5 p-4 sm:p-5">
               <span className="mk-tile flex-none">
@@ -339,8 +340,8 @@ export default async function ServerPage() {
           <ButtonLink href={APP_STORE_URL} lead="app-store">
             Get it on the App Store
           </ButtonLink>
-          <ButtonLink href="/apps" variant="secondary">
-            All the apps
+          <ButtonLink href="/downloads" variant="secondary">
+            Windows, Linux and more
           </ButtonLink>
         </div>
       </Card>

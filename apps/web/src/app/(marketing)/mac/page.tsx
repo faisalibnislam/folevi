@@ -24,6 +24,9 @@ const features: Array<{ icon: IconName; title: string }> = [
   { icon: "mail", title: "Notifications and a Dock badge" },
   { icon: "finder", title: "Drag from Finder" },
   { icon: "sparkle", title: "Quick Add from any app" },
+  { icon: "export", title: "Import everything from Apple Notes" },
+  { icon: "check", title: "Spell check and Tab prediction" },
+  { icon: "page", title: "Float a note above other windows" },
 ];
 
 export default function MacPage() {

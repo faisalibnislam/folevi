@@ -22,7 +22,7 @@ export const LINUX_CHECKSUMS_URL = "https://folevi.com/download/linux/SHA256SUMS
 export const APP_STORE_URL = "https://apps.apple.com/us/search?term=Folevi";
 /** The apps' minimum systems (apps/native-kit/Package.swift, apps/mac/project.yml). */
 export const MAC_REQUIREMENT = "macOS 26 or later";
-export const IOS_REQUIREMENT = "iOS 18 or iPadOS 18 or later";
+export const IOS_REQUIREMENT = "iOS 26 or iPadOS 26 or later";
 /** Folevi for Android, signed with Google Play’s app signing key so a later Play install updates it (PR manager, 2026-11-27). */
 export const ANDROID_DOWNLOAD_URL = "https://folevi.com/download/android/Folevi.apk";
 export const ANDROID_REQUIREMENT = "Android 13 or later";

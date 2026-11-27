@@ -33,6 +33,14 @@ export const HOME_FAQS: FaqItem[] = [
     a: `It adds Folevi Cloud: the web app, editing together in real time, public pages, workspaces for teams, email-in and the web clipper. The Free plan costs nothing. Paid plans from ${formatPrice(PRICES.core.month)} a month add more storage and Foli AI credits.`,
   },
   {
+    q: "Does Folevi check my spelling?",
+    a: "Yes, in every app and offline, in nine languages, and it predicts the next word: press Tab to take it. It underlines and suggests, and never changes a word on its own.",
+  },
+  {
+    q: "Can I host Folevi myself?",
+    a: "Yes. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it.",
+  },
+  {
     q: "Is there an app for Windows, Linux or Android?",
     a: "Yes for Windows and Linux: get them from folevi.com/downloads. Linux is in beta. The Android app is coming soon to Google Play; until then, use the web app in your phone’s browser.",
   },

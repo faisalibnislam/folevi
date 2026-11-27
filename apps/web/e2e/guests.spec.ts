@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { APP, completeOnboarding, createAccount, createWorkspace, newPerson, pick, showFolders, switcher, uniqueEmail, waitForSaved, openShare } from "./helpers";
+import { APP, completeOnboarding, createAccount, createWorkspace, newPerson, pick, showFolders, switcher, uniqueEmail, waitForSaved, openShare, openMore } from "./helpers";
 
 // Members vs guests (docs/ACCOUNT_MODEL_PLAN.md, Phase D): sharing one page with an address that has no
 // account, accepting it as a guest who sees only that page, the Guests list, and making a guest a member.
@@ -59,6 +59,7 @@ test("share a page with a new address → they sign up, accept, and see only tha
   await switcher(guest).click();
   await expect(guest.getByRole("menuitemradio", { name: "Guest Studio" })).toHaveCount(0);
   await guest.keyboard.press("Escape");
+  await openMore(guest);
   await guest.getByRole("link", { name: "Shared with Me" }).click();
   await expect(guest.getByRole("listitem").filter({ hasText: "Garden plan" })).toContainText("Guest Studio");
   await expect(guest.getByRole("listitem").filter({ hasText: "Internal budget" })).toHaveCount(0);

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { newPerson, waitForSaved, showFolders, pick, openShare } from "./helpers";
+import { newPerson, waitForSaved, showFolders, pick, openShare, openMore } from "./helpers";
 
 test("share a page with another person, comment, and publish a revocable public link", async ({ browser }) => {
   const owner = await newPerson(browser, "Owner Person");
@@ -46,6 +46,7 @@ test("share a page with another person, comment, and publish a revocable public 
   await share.getByRole("button", { name: "Close" }).click();
 
   // Guest sees it under Shared with Me, can comment but not edit.
+  await openMore(guest.page);
   await guest.page.getByRole("link", { name: "Shared with Me" }).click();
   await guest.page.getByRole("link", { name: /Project Atlas Brief/ }).click();
   await expect(guest.page.getByText("View only")).toBeVisible();

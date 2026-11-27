@@ -22,7 +22,7 @@ export const LINUX_CHECKSUMS_URL = "https://folevi.com/download/linux/SHA256SUMS
 export const APP_STORE_URL = "https://apps.apple.com/us/search?term=Folevi";
 /** The apps' minimum systems (apps/native-kit/Package.swift, apps/mac/project.yml). */
 export const MAC_REQUIREMENT = "macOS 26 or later";
-export const IOS_REQUIREMENT = "iOS 18 or iPadOS 18 or later";
+export const IOS_REQUIREMENT = "iOS 26 or iPadOS 26 or later";
 export const WINDOWS_REQUIREMENT = "Windows 11 or Windows 10 (22H2), on Arm or Intel and AMD PCs";
 export const SECURITY_EMAIL = "security@folevi.com";
 export const SUPPORT_EMAIL = "support@folevi.com";

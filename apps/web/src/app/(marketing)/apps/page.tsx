@@ -47,17 +47,21 @@ const MAC_POINTS = [
   "Drag files in from Finder",
   "Keyboard shortcuts for everything",
   "Updates itself",
+  "Import everything from Apple Notes",
 ];
 const WINDOWS_POINTS = [
   "The same workspace, in a window of its own",
   "Quick Add from any app with Ctrl+Alt+Space",
   "Keep notes on this PC, with no account",
+  "Spell check and next-word prediction, offline",
   "Made for Arm PCs and for Intel and AMD PCs",
+  "Updates itself",
 ];
 const LINUX_POINTS = [
   "The same workspace, in a window of its own",
   "Keep notes on this computer, with no account",
-  "AppImage, .deb and .rpm packages",
+  "Spell check and next-word prediction, offline",
+  "AppImage, .deb and .rpm, signed apt and rpm repositories, and the Snap Store",
   "For Intel and AMD, and for ARM",
 ];
 const IOS_POINTS = [
@@ -266,7 +270,7 @@ export default function AppsPage() {
           requirement={
             <>
               <p>{WINDOWS_REQUIREMENT}.</p>
-              <p className="mt-1">This early build isn’t signed yet, so Windows asks you to confirm it (More info, then Run anyway). It doesn’t update itself yet.</p>
+              <p className="mt-1">This early build isn’t signed yet, so Windows asks you to confirm it (More info, then Run anyway). It updates itself.</p>
             </>
           }
         />
@@ -283,7 +287,7 @@ export default function AppsPage() {
           points={LINUX_POINTS}
           beta
           actions={<LinuxDownload />}
-          requirement="This early build’s packages aren’t signed yet, and it doesn’t update itself yet."
+          requirement="The AppImage updates itself; the .deb, .rpm and Snap packages update through your package manager."
         />
 
         <AppCard

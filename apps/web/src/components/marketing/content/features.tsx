@@ -13,7 +13,7 @@ import { Kbd } from "../ui";
  * text. FAQ answers are plain sentences because they also feed the FAQPage structured data.
  */
 
-export type FeatureVisual = "ai" | "audio" | "slash" | "search" | "calendar" | "comments" | "versions" | "offline" | "tasks" | "linked" | "dna" | "folders" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security";
+export type FeatureVisual = "ai" | "audio" | "slash" | "search" | "calendar" | "comments" | "versions" | "offline" | "tasks" | "linked" | "dna" | "folders" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security" | "spelling" | "server";
 
 export type Feature = {
   slug: string;
@@ -1455,13 +1455,13 @@ export const FEATURES: Feature[] = [
   {
     slug: "import-and-export",
     name: "Import and export",
-    summary: "Markdown, HTML, PDF and ZIP export.",
-    title: "Export notes to Markdown, HTML and PDF",
-    description: "Export a Folevi page as Markdown, HTML or PDF, or a whole space as a ZIP. Import Markdown or text files, folders and ZIPs with their images.",
-    h1: "Export notes to Markdown, HTML and PDF, and import Markdown",
-    intro: "Your notes should be easy to take anywhere. Folevi exports a single page or everything you have, and imports Markdown and plain text, on every plan.",
+    summary: "Import from Notion, Evernote, Apple Notes and more; export anywhere.",
+    title: "Import from Notion, Evernote and Apple Notes, export to Markdown and PDF",
+    description: "Import from Notion, Evernote, Apple Notes (Mac), Word, HTML, CSV, Markdown and text. Export a Folevi page as Markdown, HTML or PDF, or everything as a ZIP.",
+    h1: "Bring your notes in, and take them anywhere",
+    intro: "Your notes should be easy to move. Folevi imports from Notion, Evernote, Apple Notes and the files you already have, and exports a single page or everything you have, on every plan.",
     plans: "Every plan, including Free.",
-    updated: "2026-09-30",
+    updated: "2026-11-27",
     art: "art-09",
     visual: "export",
     docs: { label: "Import and export", href: "/docs/import-and-export" },
@@ -1485,6 +1485,24 @@ export const FEATURES: Feature[] = [
         ),
       },
       {
+        id: "import-apps",
+        title: "Import from Notion, Evernote and Word",
+        body: (
+          <p>
+            In Settings → Import & export, choose the ZIP from Notion’s export (pages keep their nesting, and databases come in as tables), Evernote .enex files (each notebook becomes a folder), Word .docx files, .html pages or .csv spreadsheets. Up to 400 pages go in one import, and Folevi lists anything it couldn’t bring across.
+          </p>
+        ),
+      },
+      {
+        id: "apple-notes",
+        title: "Import everything from Apple Notes",
+        body: (
+          <p>
+            In the Mac app, Import from Apple Notes in Settings brings every note across with its folders (empty ones too), tags, attachments and original dates. macOS asks once for permission to read Notes. It’s in the Mac app only.
+          </p>
+        ),
+      },
+      {
         id: "import",
         title: "Import Markdown and text",
         body: (
@@ -1502,10 +1520,127 @@ export const FEATURES: Feature[] = [
     faq: [
       { q: "Can I export all my notes at once?", a: "Yes. Settings → Import & export downloads everything in your Personal as a ZIP of Markdown files with their attachments. Owners and admins can export a whole workspace." },
       { q: "Which formats can I export a page to?", a: "Markdown, HTML and PDF." },
-      { q: "Which files can I import?", a: "Markdown and text files (.md, .markdown, .txt), a ZIP of them, or a folder. Images they point to by a relative path come along." },
+      { q: "Which files can I import?", a: "A Notion export ZIP, Evernote .enex files, Word .docx, .html, .csv, and Markdown and text files (.md, .markdown, .txt), a ZIP of them, or a folder. Images they point to by a relative path come along." },
+      { q: "Can I import from Apple Notes?", a: "Yes, in the Mac app. Import from Apple Notes in Settings brings every note with its folders, tags, attachments and original dates." },
       { q: "Is export available on the Free plan?", a: "Yes. Export is included on every plan." },
     ],
     related: ["version-history", "offline-notes", "security-and-privacy"],
+  },
+  {
+    // Folevi's own checker in a worker, the same in every app (docs/SPELLING_PLAN.md); Float this note: components/app/FloatNote.tsx.
+    slug: "spell-check",
+    name: "Spell check and prediction",
+    summary: "Spell check in nine languages and the next word on Tab.",
+    title: "Spell check and next-word prediction in your notes",
+    description: "Folevi checks your spelling in nine languages as you write, offline, and predicts the next word: press Tab to take it. In every Folevi app, on every plan.",
+    h1: "Spell check and Tab prediction",
+    intro: "Folevi has its own spell checker, the same on the web and in every app. It underlines what looks wrong, suggests a fix, and offers the next word in gray: press Tab to take it. It works offline and never changes a word for you.",
+    plans: "Every plan, including Free, and the apps with no account.",
+    updated: "2026-11-27",
+    art: "art-04",
+    visual: "spelling",
+    docs: { label: "Writing settings", href: "/docs/writing-settings" },
+    sections: [
+      {
+        id: "spelling",
+        title: "Spelling, in nine languages",
+        body: (
+          <>
+            <p>
+              A misspelled word gets a red wavy underline. Click it, or right-click (long-press on a phone), to see up to five suggestions, then Add to dictionary or Ignore. On iPhone, iPad and Android the suggestions also sit above the keyboard. Folevi never corrects a word on its own.
+            </p>
+            <p>
+              Each line is checked in its own language, so a note can mix them: English (American or British), Spanish, French, German, Portuguese, Indonesian, Hindi, Bengali and Arabic. Short lines and headings with no telling words are checked in your English and the note’s language, so a correct word is never marked wrong because of a guess.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: "prediction",
+        title: "The next word, on Tab",
+        body: (
+          <p>
+            As you type, the word Folevi expects next appears in gray after the caret. Press <Kbd>Tab</Kbd> to take it, and again for the one after; <Kbd>Esc</Kbd> sends it away. Predictions come from a small model on your device that learns from your own notes, and Chinese gets prediction too. When Foli AI is on, a pause can bring a longer suggestion from Foli AI. It never does this in an end-to-end encrypted note. When nothing is showing, Tab indents as it always has.
+          </p>
+        ),
+      },
+      {
+        id: "settings",
+        title: "Your dictionary, everywhere",
+        body: (
+          <p>
+            Words you add to your dictionary follow your account to every device. In Settings → Writing, turn spell check and prediction on or off separately, choose American or British English, and edit your dictionary and ignored words. A single note can have spell check turned off.
+          </p>
+        ),
+      },
+      {
+        id: "float",
+        title: "Float a note while you write elsewhere",
+        body: (
+          <p>
+            Float this note opens a note in a small window that stays on top of your other windows, so a checklist or a draft stays in sight while you work in another app. Choose it from a tab or a note’s right-click menu in the Mac and Windows apps, or in Chrome and Edge on the web. The window shows the note’s own colour from edge to edge.
+          </p>
+        ),
+      },
+    ],
+    faq: [
+      { q: "Which languages does spell check support?", a: "English (American or British), Spanish, French, German, Portuguese, Indonesian, Hindi, Bengali and Arabic. Chinese gets next-word prediction. Each line is checked in its own language." },
+      { q: "Does spell check work offline?", a: "Yes. The checker and its dictionaries run on your device, so it works offline and your words aren’t sent anywhere to be checked." },
+      { q: "How does next-word prediction work?", a: "A small model on your device learns from your notes and shows the next word in gray. Press Tab to take it. Longer suggestions come from Foli AI only when Foli AI is on, and never in encrypted notes." },
+      { q: "Can I turn spell check or prediction off?", a: "Yes. Each has its own switch in Settings → Writing, and you can turn spell check off for a single note." },
+    ],
+    related: ["blocks", "ai-notes", "offline-notes"],
+  },
+  {
+    // The server edition and every app's Your own server sign-in (docs/SELF_HOSTING_PLAN.md, handoff/state/server.md).
+    slug: "self-hosting",
+    name: "Your own server",
+    summary: "Run Folevi on your own NAS or server. Beta.",
+    title: "Self-hosted notes: run Folevi on your own server",
+    description: "Folevi Server (Beta) runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it by address, QR code or on your home network.",
+    h1: "Folevi on your own server",
+    intro: "Folevi Server puts the whole workspace on a NAS or a Linux server you run, so your notes never leave it. Everyone keeps using the normal Folevi apps: they sign in to your server instead of Folevi Cloud. Folevi Server is in beta.",
+    plans: "Folevi Server is in beta; pricing comes with its first release.",
+    updated: "2026-11-27",
+    art: "art-11",
+    visual: "server",
+    docs: { label: "Sign in to your own server", href: "/docs/your-own-server" },
+    sections: [
+      {
+        id: "apps",
+        title: "The apps you already use",
+        body: (
+          <p>
+            The web app and the apps for Mac, Windows, Linux, iPhone, iPad and Android all have Your own server on their sign-in screen. Enter the server’s address, scan the QR code on its admin page, or pick it from the list of servers on your home network. The app works as it does with Folevi Cloud, offline editing included.
+          </p>
+        ),
+      },
+      {
+        id: "where",
+        title: "Where it runs",
+        body: (
+          <p>
+            Folevi Server is made for Synology, QNAP, ASUSTOR, TerraMaster, UGREEN and Unraid, and for Linux servers through .deb and .rpm packages, a one-line install command or a container image, on Intel and AMD or ARM. The packages appear on the <Link href="/server">Folevi Server page</Link> with the first beta.
+          </p>
+        ),
+      },
+      {
+        id: "away",
+        title: "Reach it away from home",
+        body: (
+          <p>
+            Link your server to your Folevi account and it gets its own address through Folevi Connect, so your apps reach it from anywhere without opening a port on your router. Your account remembers the server even if its address changes.
+          </p>
+        ),
+      },
+    ],
+    faq: [
+      { q: "Can I self-host Folevi?", a: "Yes. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it." },
+      { q: "Which apps work with my own server?", a: "The web app and the Folevi apps for Mac, Windows, Linux, iPhone, iPad and Android. Choose Your own server on the sign-in screen." },
+      { q: "Where can I download Folevi Server?", a: "On the Folevi Server page, once the first beta is out. Packages are planned for Synology, QNAP, ASUSTOR, TerraMaster, UGREEN, Unraid and Linux servers." },
+      { q: "Do I need to open a port on my router?", a: "No. A server linked to your Folevi account gets an address through Folevi Connect that your apps can reach from anywhere." },
+    ],
+    related: ["security-and-privacy", "notes-on-your-devices", "offline-notes"],
   },
   {
     slug: "security-and-privacy",

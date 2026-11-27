@@ -52,7 +52,7 @@ const PLATFORMS: Platform[] = [
     id: "linux",
     title: "Linux",
     beta: true,
-    note: "This early build’s packages aren’t signed yet, and it doesn’t update itself yet.",
+    note: "The AppImage updates itself; the .deb and .rpm update through your package manager.",
     items: [
       { name: "AppImage", detail: "Most distributions, Intel and AMD", href: LINUX_DOWNLOADS.appimage.x64, action: "Download" },
       { name: "AppImage", detail: "Most distributions, ARM", href: LINUX_DOWNLOADS.appimage.arm64, action: "Download" },

@@ -32,7 +32,7 @@ export default function TermsPage() {
   return (
     <PageFrame>
       <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
-        <DraftNotice updated="November 18, 2026" />
+        <DraftNotice updated="November 27, 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
@@ -166,7 +166,7 @@ export default function TermsPage() {
           On plans that include it, Foli AI, Folevi’s AI assistant, can answer questions about your notes and help you write. Every plan
           except Core includes it, with a number of AI credits each month; in a free workspace, members use their own
           personal credits, and in a paid workspace, each member gets the workspace plan’s credits. Core has no AI. A
-          personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it available to everyone. It uses Google’s Gemini API, as described in our{" "}
+          personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it available to everyone. It uses AI models from Google, OpenAI and Anthropic, as described in our{" "}
           <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off in settings. AI can be wrong: check what it
           produces before relying on it. You’re responsible for how you use its output, and you keep the same rights to it as
           to the rest of your content.

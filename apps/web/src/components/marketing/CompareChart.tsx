@@ -45,7 +45,7 @@ const ROWS: Row[] = [
   },
   {
     label: "AI assistant",
-    folevi: { mark: "yes", text: "Foli AI, on-device or your own key" },
+    folevi: { mark: "yes", text: "Foli AI: Gemini, OpenAI, Claude or your own key" },
     them: { notion: { mark: "some", text: "Included on Business" }, obsidian: { mark: "no", text: "None built in" } },
   },
   {

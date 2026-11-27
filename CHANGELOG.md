@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.8.80: Small update
+
+Released 2026-11-27 09:48:23+06:00 (build 110, tag v1.8.80)
+
+The sidebar gets a More section and Customize sidebar, on the web and in the Mac app.
+
+### Added
+
+- A More section in the sidebar holds Shared with Me, Changes and Templates until you need them.
+- Customize sidebar: choose which items stay on the sidebar and which sit under More, reorder them, and reset to default. Right-click an item to move it.
+
+### Improved
+
+- iPhone Home shows two lines of tags.
+
 ## Version 1.8.79: Small update
 
 Released 2026-11-26 19:33:04+06:00 (build 109, tag v1.8.79)

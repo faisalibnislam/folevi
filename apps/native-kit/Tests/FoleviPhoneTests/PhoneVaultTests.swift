@@ -21,5 +21,13 @@ struct PhoneVaultTests {
         #expect(PhoneVaultFlow.lines([500, 40], width: 370, gap: 8) == [[0], [1]])
         #expect(PhoneVaultFlow.lines([], width: 370, gap: 8) == [])
     }
+
+    @Test func homeTagsStopAfterTwoLines() {
+        // Seven 110 pt chips in 362 (gap 8): lines of three, three and one; Home keeps the first two.
+        let widths: [CGFloat] = Array(repeating: 110, count: 7)
+        #expect(PhoneVaultFlow.lines(widths, width: 362, gap: 8).count == 3)
+        #expect(PhoneVaultFlow.lines(widths, width: 362, gap: 8, maxLines: 2) == [[0, 1, 2], [3, 4, 5]])
+        #expect(PhoneVaultFlow.lines([40, 40], width: 362, gap: 8, maxLines: 2) == [[0, 1]])
+    }
 }
 #endif

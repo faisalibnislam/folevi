@@ -1,6 +1,21 @@
 {
   "releases": [
     {
+      "version": "1.8.80",
+      "build": 110,
+      "released": "2026-11-27T09:48:23+06:00",
+      "type": "patch",
+      "summary": "The sidebar gets a More section and Customize sidebar, on the web and in the Mac app.",
+      "added": [
+        "A More section in the sidebar holds Shared with Me, Changes and Templates until you need them.",
+        "Customize sidebar: choose which items stay on the sidebar and which sit under More, reorder them, and reset to default. Right-click an item to move it."
+      ],
+      "improved": [
+        "iPhone Home shows two lines of tags."
+      ],
+      "tag": "v1.8.80"
+    },
+    {
       "version": "1.8.79",
       "build": 109,
       "released": "2026-11-26T19:33:04+06:00",

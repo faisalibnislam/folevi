@@ -23,6 +23,11 @@ export const APP_STORE_URL = "https://apps.apple.com/us/search?term=Folevi";
 /** The apps' minimum systems (apps/native-kit/Package.swift, apps/mac/project.yml). */
 export const MAC_REQUIREMENT = "macOS 26 or later";
 export const IOS_REQUIREMENT = "iOS 18 or iPadOS 18 or later";
+/** Folevi for Android, signed with Google Play’s app signing key so a later Play install updates it (PR manager, 2026-11-27). */
+export const ANDROID_DOWNLOAD_URL = "https://folevi.com/download/android/Folevi.apk";
+export const ANDROID_REQUIREMENT = "Android 13 or later";
+/** It doesn’t update itself while there is no public Play listing, and Android asks once to allow installs from the browser. */
+export const ANDROID_INSTALL_NOTE = "The first time, Android asks you to allow installs from your browser. It doesn’t update itself yet, so get new versions here.";
 export const WINDOWS_REQUIREMENT = "Windows 11 or Windows 10 (22H2), on Arm or Intel and AMD PCs";
 export const SECURITY_EMAIL = "security@folevi.com";
 export const SUPPORT_EMAIL = "support@folevi.com";

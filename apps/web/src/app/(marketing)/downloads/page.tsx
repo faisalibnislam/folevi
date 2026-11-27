@@ -4,6 +4,9 @@ import { DownloadsBar } from "@/components/marketing/DownloadsBar";
 import { PlatformMark, type PlatformMarkName } from "@/components/marketing/PlatformMark";
 import { pageMetadata } from "@/components/marketing/seo";
 import {
+  ANDROID_DOWNLOAD_URL,
+  ANDROID_INSTALL_NOTE,
+  ANDROID_REQUIREMENT,
   APP_STORE_URL,
   IOS_REQUIREMENT,
   LINUX_CHECKSUMS_URL,
@@ -85,8 +88,8 @@ function platforms(manifest: ServerManifest | null): Platform[] {
     id: "android",
     mark: "android",
     title: "Android",
-    note: "Until then, the web app works in your phone’s browser.",
-    items: [{ name: "Folevi for Android", detail: "Phones and tablets, coming soon to Google Play", action: "Coming soon" }],
+    note: `${ANDROID_REQUIREMENT}. ${ANDROID_INSTALL_NOTE}`,
+    items: [{ name: "Folevi for Android", detail: "Phones and tablets (.apk, about 124 MB)", href: ANDROID_DOWNLOAD_URL, action: "Download" }],
   },
   {
     id: "web",

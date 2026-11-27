@@ -8,7 +8,7 @@ import { YourFiles } from "@/components/marketing/home/YourFiles";
 import { FaqSection } from "@/components/marketing/parts";
 import { SyncPiece } from "@/components/marketing/pieces";
 import { JsonLd, pageMetadata, softwareLd, type FaqItem } from "@/components/marketing/seo";
-import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL, WINDOWS_REQUIREMENT } from "@/components/marketing/site";
+import { ANDROID_DOWNLOAD_URL, ANDROID_INSTALL_NOTE, ANDROID_REQUIREMENT, APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL, WINDOWS_REQUIREMENT } from "@/components/marketing/site";
 import { WindowsDownload } from "@/components/marketing/WindowsDownload";
 import { LinuxDownload } from "@/components/marketing/LinuxDownload";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
@@ -311,22 +311,20 @@ export default function AppsPage() {
           eyebrow="For Android"
           title={
             <>
-              Folevi for Android is <Mark>coming soon.</Mark>
+              Folevi on your <Mark>Android.</Mark>
             </>
           }
-          lede="The same docs, tasks and databases on your Android phone and tablet. It’s in testing now and comes to Google Play soon."
+          lede="The same docs, tasks and databases on your Android phone and tablet. Download it from folevi.com while it’s on its way to Google Play."
           points={ANDROID_POINTS}
           actions={
             <>
-              <span className="inline-flex items-center rounded-control border mk-hair px-4 py-2 text-[15px] font-medium text-muted">
-                Coming soon to Google Play
-              </span>
+              <ButtonLink href={ANDROID_DOWNLOAD_URL}>Download for Android</ButtonLink>
               <ButtonLink href={WEB_APP_URL} variant="secondary">
                 Open the web app
               </ButtonLink>
             </>
           }
-          requirement="Until then, the web app works in your phone’s browser."
+          requirement={`${ANDROID_REQUIREMENT}. ${ANDROID_INSTALL_NOTE}`}
         />
         <Card tint aria-labelledby="server-title">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end lg:gap-16">

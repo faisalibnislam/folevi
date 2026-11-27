@@ -18,7 +18,7 @@ export const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "Where are my notes stored?",
-    a: "In a folder you pick: iCloud Drive, Dropbox, Google Drive, any other folder, or just your device. Each note is its own file, and Folevi’s servers never see them.",
+    a: "In a folder you pick: iCloud Drive, Dropbox, Google Drive, any other folder, or just your device. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. Each note is its own file, and Folevi’s servers never see them.",
   },
   {
     q: "How do my notes sync between my devices?",

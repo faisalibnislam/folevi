@@ -82,7 +82,7 @@ export function PricingSection() {
               <span className="text-[14px] text-muted">forever</span>
             </p>
             <p className="mt-3 max-w-[60ch] text-[15px] leading-snug text-muted">
-              Mac, Windows, Linux, iPhone and iPad. Unlimited notes in iCloud Drive, Dropbox, Google Drive or any folder. They work offline, and Foli AI runs on your Mac.
+              Mac, Windows, Linux, iPhone and iPad. Unlimited notes in a folder you pick. They work offline, and Foli AI runs on your Mac.
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">

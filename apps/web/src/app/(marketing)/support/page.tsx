@@ -33,7 +33,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Which devices does Folevi work on?",
-    a: "Mac (a free download from folevi.com/mac), iPhone and iPad (free on the App Store), Android, Windows and Linux (Beta), and any modern browser through the web app. Every app is free, with every feature. Find them all at folevi.com/downloads.",
+    a: "Mac (a free download from folevi.com/mac), Windows and Linux (free downloads from folevi.com/downloads; Linux is in beta), iPhone and iPad (free on the App Store), Android (a free download from folevi.com/downloads), and any modern browser through the web app. Every app is free, with every feature.",
   },
   {
     q: "Do I need an account?",

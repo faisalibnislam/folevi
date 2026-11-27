@@ -18,7 +18,7 @@ const metadata: Metadata = {
   metadataBase: new URL(marketingUrl),
   title: { default: "Folevi: a free digital workspace for every device", template: "%s · Folevi" },
   description:
-    "Folevi is a digital workspace for notes, docs, tasks and databases, free on the web, Mac, iPhone, iPad, Android, Windows and Linux.",
+    "Folevi is a digital workspace for notes, docs, tasks and databases, free on the web, Mac, Windows, Linux, iPhone, iPad and Android.",
   applicationName: "Folevi",
   manifest: "/manifest.webmanifest",
   // The app icon (packages/design-tokens/scripts/app-icon.mjs).

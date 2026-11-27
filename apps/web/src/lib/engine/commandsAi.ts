@@ -9,6 +9,7 @@ import type { EngineDeps } from "./context";
 import { spaceArg, type CommandDef } from "./commands";
 import { nativeToast } from "./toasts";
 import { toEngineError } from "./live";
+import { ownKeyArgs } from "@/lib/ai/ownKey";
 import { BridgeError, bool, id, oneOf, only, text } from "./validate";
 import type { ChatSendResult, CommandName } from "./protocol";
 
@@ -16,6 +17,9 @@ import type { ChatSendResult, CommandName } from "./protocol";
 function background(p: Promise<unknown>): void {
   void p.catch((e) => nativeToast(toEngineError(e).message, { tone: "error" }));
 }
+
+/** The person's own AI key for a Folevi Cloud request, when they turned one on (lib/ai/ownKey.ts). */
+const ownKeyFor = async (deps: EngineDeps) => (deps.app.mode === "account" ? await ownKeyArgs() : {});
 
 type ConversationData = { conversation: { scope: { kind: string; workspaceId?: string } }; messages: { id: string; actions: unknown[] | null }[] } | null;
 
@@ -42,7 +46,8 @@ export const AI_COMMANDS = {
         return { conversationId, messageId: null };
       }
       const agent = deps.app.mode === "account" && (mode === "agent" || (mode === "auto" && wantsAgent(q)));
-      background(agent ? deps.client.action(api.aiAgent.send, base) : deps.client.action(api.aiChat.send, { ...base, ...(bool(args, "web", false) ? { web: true } : {}) }));
+      const own = await ownKeyFor(deps);
+      background(agent ? deps.client.action(api.aiAgent.send, { ...base, ...own }) : deps.client.action(api.aiChat.send, { ...base, ...own, ...(bool(args, "web", false) ? { web: true } : {}) }));
       return { conversationId, messageId: null };
     },
   },
@@ -59,7 +64,7 @@ export const AI_COMMANDS = {
     async run(deps, args): Promise<ChatSendResult> {
       only(args, ["conversationId", "web"]);
       const conversationId = id(args, "conversationId");
-      background(deps.client.action(api.aiChat.regenerate, { conversationId, ...(bool(args, "web", false) ? { web: true } : {}) }));
+      background(deps.client.action(api.aiChat.regenerate, { conversationId, ...(await ownKeyFor(deps)), ...(bool(args, "web", false) ? { web: true } : {}) }));
       return { conversationId, messageId: null };
     },
   },
@@ -71,7 +76,8 @@ export const AI_COMMANDS = {
       const messageId = id(args, "messageId");
       const q = (text(args, "text", { max: 4000 }) as string).trim();
       const agent = deps.app.mode === "account" && wantsAgent(q);
-      background(agent ? deps.client.action(api.aiAgent.edit, { conversationId, messageId, text: q }) : deps.client.action(api.aiChat.edit, { conversationId, messageId, text: q, ...(bool(args, "web", false) ? { web: true } : {}) }));
+      const own = await ownKeyFor(deps);
+      background(agent ? deps.client.action(api.aiAgent.edit, { conversationId, messageId, text: q, ...own }) : deps.client.action(api.aiChat.edit, { conversationId, messageId, text: q, ...own, ...(bool(args, "web", false) ? { web: true } : {}) }));
       return { conversationId, messageId: null };
     },
   },

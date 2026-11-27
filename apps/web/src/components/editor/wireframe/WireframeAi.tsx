@@ -4,8 +4,8 @@
 // selected screen, or refine it. The server (convex/wireframeAi.ts) returns screens already checked; the
 // canvas checks them again, places them and applies them as one change (⌘Z undoes it). AI credits are
 // charged like any Foli AI request.
+import { useAiAction } from "@/components/ai/useAiAction";
 import { useState } from "react";
-import { useAction } from "convex/react";
 import { ArrowUp, X } from "lucide-react";
 import { WIREFRAME_FRAMES, WIREFRAME_FRAME_LABEL, type WireframeData, type WireframeFrame } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -41,9 +41,9 @@ export function WireframeAi({
   const aiWhere = useAiWhere();
   const { scope } = useAppState();
   const documentId = useNoteAi()?.home?.id;
-  const draw = useAction(api.wireframeAi.draw);
-  const vary = useAction(api.wireframeAi.vary);
-  const refine = useAction(api.wireframeAi.refine);
+  const draw = useAiAction(api.wireframeAi.draw);
+  const vary = useAiAction(api.wireframeAi.vary);
+  const refine = useAiAction(api.wireframeAi.refine);
   const [mode, setMode] = useState<AiMode>(screen ? initial : "draw");
   const [frame, setFrame] = useState<WireframeFrame>("phone");
   const [count, setCount] = useState(3);

@@ -62,10 +62,12 @@ export type UsageBreakdown = {
   total: number;
   /** Credits used this period that aren't in the day chart (charged before days were recorded). */
   untrackedDays: number;
+  /** Requests this period that ran on the person's own AI key: no credits ("Your key" on the usage card). */
+  ownKeyRequests: number;
 };
 
 /** A period row's credits by feature and by day, every day of the period so far listed. */
-export function usageBreakdown(row: Pick<Doc<"aiCreditPeriods">, "features" | "days"> | null, period: { start: number; end: number }, now: number, used = 0): UsageBreakdown {
+export function usageBreakdown(row: Pick<Doc<"aiCreditPeriods">, "features" | "days" | "ownKeyRequests"> | null, period: { start: number; end: number }, now: number, used = 0): UsageBreakdown {
   const byFeature = { ...(row?.features ?? {}) };
   const byDay = row?.days ?? {};
   // Credits charged before features were recorded still count, so the rows add up to what was used.
@@ -80,5 +82,5 @@ export function usageBreakdown(row: Pick<Doc<"aiCreditPeriods">, "features" | "d
     if (day >= last) break;
   }
   const inDays = days.reduce((n, d) => n + d.credits, 0);
-  return { features, days, total: features.reduce((n, f) => n + f.credits, 0), untrackedDays: Math.max(0, used - inDays) };
+  return { features, days, total: features.reduce((n, f) => n + f.credits, 0), untrackedDays: Math.max(0, used - inDays), ownKeyRequests: row?.ownKeyRequests ?? 0 };
 }

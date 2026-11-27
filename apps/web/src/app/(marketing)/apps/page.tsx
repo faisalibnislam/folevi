@@ -8,7 +8,7 @@ import { YourFiles } from "@/components/marketing/home/YourFiles";
 import { FaqSection } from "@/components/marketing/parts";
 import { SyncPiece } from "@/components/marketing/pieces";
 import { JsonLd, pageMetadata, softwareLd, type FaqItem } from "@/components/marketing/seo";
-import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL, WINDOWS_REQUIREMENT } from "@/components/marketing/site";
+import { ANDROID_DOWNLOAD_URL, ANDROID_INSTALL_NOTE, ANDROID_REQUIREMENT, APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL, WINDOWS_REQUIREMENT } from "@/components/marketing/site";
 import { WindowsDownload } from "@/components/marketing/WindowsDownload";
 import { LinuxDownload } from "@/components/marketing/LinuxDownload";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
@@ -17,7 +17,7 @@ import { PRICES, formatPrice } from "@/lib/plans";
 export const metadata = pageMetadata({
   title: "Folevi apps: a free notes workspace for Mac, iPhone, iPad",
   description:
-    "Folevi for Mac, iPhone and iPad: docs, tasks and databases in one workspace. Free forever, no account, works offline. Your pages stay in a folder you pick.",
+    "Folevi for Mac, Windows, Linux, iPhone and iPad: docs, tasks and databases in one workspace. Free forever, no account, works offline. Your pages stay in a folder you pick.",
   path: "/apps",
 });
 
@@ -31,7 +31,7 @@ const MODES: Array<{ label: string; local: boolean | string; cloud: boolean | st
   { label: "Price", local: "Free forever", cloud: `Free plan, or from ${formatPrice(PRICES.core.month)} a month` },
   { label: "Account", local: "None", cloud: "A Folevi account" },
   { label: "Where notes live", local: "Files in a folder you pick", cloud: "Folevi Cloud, synced to every device" },
-  { label: "Mac, iPhone and iPad apps", local: true, cloud: true },
+  { label: "Mac, Windows, Linux, iPhone and iPad apps", local: true, cloud: true },
   { label: "Works offline", local: true, cloud: true },
   { label: "Docs, tasks, databases, themes, Foli DNA", local: true, cloud: true },
   { label: "Foli AI", local: "Your own OpenAI, Anthropic or Google key, or Apple Intelligence on your Mac", cloud: "Foli AI credits on every device" },
@@ -47,17 +47,21 @@ const MAC_POINTS = [
   "Drag files in from Finder",
   "Keyboard shortcuts for everything",
   "Updates itself",
+  "Import everything from Apple Notes",
 ];
 const WINDOWS_POINTS = [
   "The same workspace, in a window of its own",
   "Quick Add from any app with Ctrl+Alt+Space",
   "Keep notes on this PC, with no account",
+  "Spell check and next-word prediction, offline",
   "Made for Arm PCs and for Intel and AMD PCs",
+  "Updates itself",
 ];
 const LINUX_POINTS = [
   "The same workspace, in a window of its own",
   "Keep notes on this computer, with no account",
-  "AppImage, .deb and .rpm packages",
+  "Spell check and next-word prediction, offline",
+  "AppImage, .deb and .rpm, signed apt and rpm repositories, and the Snap Store",
   "For Intel and AMD, and for ARM",
 ];
 const IOS_POINTS = [
@@ -78,7 +82,7 @@ const ANDROID_POINTS = [
 const FAQS: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: "Yes. Choose Keep notes on my devices when the app opens and the whole workspace (docs, tasks, databases and themes) is free forever on your Mac, iPhone and iPad, and on Android, Windows and Linux (Beta): no account, no trial and no limit on notes.",
+    a: "Yes. Choose Keep notes on my devices when the app opens and the whole workspace (docs, tasks, databases and themes) is free forever on your Mac, Windows, Linux (Beta), iPhone, iPad and Android: no account, no trial and no limit on notes.",
   },
   {
     q: "Can I sign in to my Folevi account in the apps?",
@@ -267,7 +271,7 @@ export default function AppsPage() {
           requirement={
             <>
               <p>{WINDOWS_REQUIREMENT}.</p>
-              <p className="mt-1">This early build isn’t signed yet, so Windows asks you to confirm it (More info, then Run anyway). It doesn’t update itself yet.</p>
+              <p className="mt-1">This early build isn’t signed yet, so Windows asks you to confirm it (More info, then Run anyway). It updates itself.</p>
             </>
           }
         />
@@ -284,7 +288,7 @@ export default function AppsPage() {
           points={LINUX_POINTS}
           beta
           actions={<LinuxDownload />}
-          requirement="This early build’s packages aren’t signed yet, and it doesn’t update itself yet."
+          requirement="The AppImage updates itself; the .deb, .rpm and Snap packages update through your package manager."
         />
 
         <AppCard
@@ -312,22 +316,20 @@ export default function AppsPage() {
           eyebrow="For Android"
           title={
             <>
-              Folevi for Android is <Mark>coming soon.</Mark>
+              Folevi on your <Mark>Android.</Mark>
             </>
           }
-          lede="The same docs, tasks and databases on your Android phone and tablet. It’s in testing now and comes to Google Play soon."
+          lede="The same docs, tasks and databases on your Android phone and tablet. Download it from folevi.com while it’s on its way to Google Play."
           points={ANDROID_POINTS}
           actions={
             <>
-              <span className="inline-flex items-center rounded-control border mk-hair px-4 py-2 text-[15px] font-medium text-muted">
-                Coming soon to Google Play
-              </span>
+              <ButtonLink href={ANDROID_DOWNLOAD_URL}>Download for Android</ButtonLink>
               <ButtonLink href={WEB_APP_URL} variant="secondary">
                 Open the web app
               </ButtonLink>
             </>
           }
-          requirement="Until then, the web app works in your phone’s browser."
+          requirement={`${ANDROID_REQUIREMENT}. ${ANDROID_INSTALL_NOTE}`}
         />
         <Card tint aria-labelledby="server-title">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end lg:gap-16">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAiAction } from "@/components/ai/useAiAction";
 import { AI_FOCUS_EVENT } from "./events";
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useAction, useMutation } from "convex/react";
@@ -98,16 +99,16 @@ export function ChatThread({
   const { scope, profile } = useAppState();
   const { navigate } = useAppRouter();
   const data = useQuery(api.aiChat.get, conversationId ? { conversationId } : "skip");
-  const sendAction = useAction(api.aiChat.send);
-  const regenerateAction = useAction(api.aiChat.regenerate);
-  const editAction = useAction(api.aiChat.edit);
+  const sendAction = useAiAction(api.aiChat.send);
+  const regenerateAction = useAiAction(api.aiChat.regenerate);
+  const editAction = useAiAction(api.aiChat.edit);
   const stop = useMutation(api.aiChat.stop);
   const setContextMutation = useMutation(api.aiChat.setContext);
   const applyActions = useMutation(api.aiActions.apply);
   const setOutcome = useMutation(api.aiChat.setActionsOutcome);
-  const agentSend = useAction(api.aiAgent.send);
-  const agentRegenerate = useAction(api.aiAgent.regenerate);
-  const agentEdit = useAction(api.aiAgent.edit);
+  const agentSend = useAiAction(api.aiAgent.send);
+  const agentRegenerate = useAiAction(api.aiAgent.regenerate);
+  const agentEdit = useAiAction(api.aiAgent.edit);
   const approveRun = useAction(api.aiAgent.approve);
   const undoRun = useAction(api.aiAgent.undo);
   const discardRun = useMutation(api.aiAgent.discard);

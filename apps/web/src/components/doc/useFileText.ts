@@ -5,8 +5,9 @@
 // already in the note are read the first time an editor opens it. On a device with no recogniser of its own (a
 // browser), Foli AI can read the images: only when asked ("Make text in images searchable" in the note's
 // menu), or for images added here when the person turned on "Read images with Foli AI" in Settings > Foli AI.
+import { useAiAction } from "@/components/ai/useAiAction";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAction, useConvex } from "convex/react";
+import { useConvex } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { parseWhiteboard, textFingerprint, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -41,7 +42,7 @@ export function useFileText({ documentId, engine, canEdit, aiOn }: { documentId:
   const client = useConvex();
   const { profile } = useAppState();
   const toast = useToast();
-  const readImage = useAction(api.fileText.readImage);
+  const readImage = useAiAction(api.fileText.readImage);
   const prefs: Prefs = { deviceText: true, readImages: false, ...((profile as { aiPrefs?: Partial<Prefs> }).aiPrefs ?? {}) };
   const blocks = useDocumentBlocks(engine, documentId);
   const known = useQuery(api.fileText.forDocument, canEdit ? { documentId } : "skip");

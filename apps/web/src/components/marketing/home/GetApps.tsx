@@ -6,7 +6,7 @@ import { DeviceShowcase } from "./DeviceShowcase";
 import { Mark } from "../fun";
 
 /*
- * The apps, right under the hero: the Mac, iPhone, iPad, Android, Windows and Linux apps (free forever, with every
+ * The apps, right under the hero: the Mac, Windows, Linux, iPhone, iPad and Android apps (free forever, with every
  * feature and no account) and the web app (with an account). The Mac picture is drawn from the site's own note pieces, not a screenshot, so it follows the
  * theme like everything else on the page (the iPad and iPhone: product/TouchDevices.tsx).
  */
@@ -78,12 +78,12 @@ export function HeroApps() {
         <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
           <div>
             <h2 id="apps-title" className="mk-h2">
-              On every device you use.
+              On your Mac, Windows, Linux, iPhone, iPad and Android.
               <br />
               <Mark kind="circle">Free,</Mark> with no account.
             </h2>
             <p className="mk-lede mt-4 max-w-[54ch]">
-              The whole workspace, with every feature, on Mac, iPhone, iPad, Android, Windows and Linux (Beta). The apps open in a moment and work offline. Choose Keep notes on my devices and start writing without signing up. There’s no trial and no limit.
+              The whole workspace, with every feature, on Mac, Windows, Linux (Beta), iPhone, iPad and Android. The apps open in a moment and work offline. Choose Keep notes on my devices and start writing without signing up. There’s no trial and no limit.
             </p>
             <ul className="mt-5 flex flex-wrap gap-2">
               {PROMISES.map((p) => (
@@ -108,6 +108,9 @@ export function HeroApps() {
           </ButtonLink>
           <ButtonLink href={WEB_APP_URL} variant="secondary" size="lg">
             Open the web app
+          </ButtonLink>
+          <ButtonLink href="/downloads" variant="secondary" size="lg">
+            Windows and Linux
           </ButtonLink>
         </div>
         <p className="mt-4 text-[13px] text-muted">

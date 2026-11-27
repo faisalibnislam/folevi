@@ -4,6 +4,9 @@ import { DownloadsBar } from "@/components/marketing/DownloadsBar";
 import { PlatformMark, type PlatformMarkName } from "@/components/marketing/PlatformMark";
 import { pageMetadata } from "@/components/marketing/seo";
 import {
+  ANDROID_DOWNLOAD_URL,
+  ANDROID_INSTALL_NOTE,
+  ANDROID_REQUIREMENT,
   APP_STORE_URL,
   IOS_REQUIREMENT,
   LINUX_CHECKSUMS_URL,
@@ -63,7 +66,7 @@ function platforms(manifest: ServerManifest | null): Platform[] {
     mark: "linux",
     title: "Linux",
     beta: true,
-    note: "This early build’s packages aren’t signed yet, and it doesn’t update itself yet.",
+    note: "The AppImage updates itself; the .deb and .rpm update through your package manager.",
     items: [
       { name: "AppImage", detail: "Most distributions, Intel and AMD", href: LINUX_DOWNLOADS.appimage.x64, action: "Download" },
       { name: "AppImage", detail: "Most distributions, ARM", href: LINUX_DOWNLOADS.appimage.arm64, action: "Download" },
@@ -85,8 +88,8 @@ function platforms(manifest: ServerManifest | null): Platform[] {
     id: "android",
     mark: "android",
     title: "Android",
-    note: "Until then, the web app works in your phone’s browser.",
-    items: [{ name: "Folevi for Android", detail: "Phones and tablets, coming soon to Google Play", action: "Coming soon" }],
+    note: `${ANDROID_REQUIREMENT}. ${ANDROID_INSTALL_NOTE}`,
+    items: [{ name: "Folevi for Android", detail: "Phones and tablets (.apk, about 124 MB)", href: ANDROID_DOWNLOAD_URL, action: "Download" }],
   },
   {
     id: "web",

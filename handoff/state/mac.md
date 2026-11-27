@@ -8,12 +8,14 @@ Keep this short and true: rewrite it when things change, and put history in `han
 - "Your own server" sign-in is in (PR 105); the owner has not yet tried the sign-in sheet in the app itself.
 - Import from Apple Notes (PR 139): notes, folders, tags, every attachment and original dates; not in a release yet, and not yet tried on a real Notes library.
 - Settings > Writing (spell check, prediction, US/UK English, the personal dictionary) is a native section (`apps/native-kit/Sources/FoleviMac/Views/Settings/WritingSettings.swift`), saved through Settings' Convex allowlist; not in a release yet.
+- The sidebar's More section and Customize sidebar are native (`apps/native-kit/Sources/FoleviMac/Model/SidebarLayout.swift`, `SidebarLayoutStore.swift`, `Views/SidebarCustomize.swift`, `WebSidebar+Mac.swift`), reading and saving the web's layout (`convex/sidebarLayout.ts`, through Settings' Convex allowlist); not in a release yet. Tested headless only.
 - The Mac unit tests (XCTest) and `apps/native-kit` `swift test` were not run for the 1.6.78 release; the Debug build and the universal Release build with its signing checks were.
 
 ## Next steps
 
 - The owner tries Float this note on the Mac (several panels, pin off and on, over a full-screen app).
 - Try Import from Apple Notes with a Notes account or macOS user made only for testing (with the owner's OK): big library, big attachments, "denied", attachments saving into Folevi's temporary folder, checklist ticks.
+- The owner tries More and Customize sidebar in the app: a drag in Customize sidebar, right-click Move to More, VoiceOver on the More row and the checkboxes, and a change made on the web showing up here.
 - The Mac App Store build does not exist (Developer ID only).
 
 Detail from before 2026-11-26 is in `handoff/archive/` (search it for this area's name); nothing there is kept up to date.

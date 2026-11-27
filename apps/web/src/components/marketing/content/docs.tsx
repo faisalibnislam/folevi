@@ -140,7 +140,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "apps-and-local-notes",
     title: "The apps and notes on your devices",
     nav: "Apps and no-account notes",
-    description: "The Folevi apps for Mac, iPhone, iPad, Android, Windows and Linux: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
+    description: "The Folevi apps for Mac, Windows, Linux, iPhone, iPad and Android: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
     published: "2026-11-06",
     updated: "2026-11-27",
     body: () => (
@@ -151,6 +151,8 @@ export const DOC_ARTICLES: DocArticle[] = [
           head={["App", "Where to get it"]}
           rows={[
             ["Mac", <>A free download from <Link href="/mac">folevi.com/mac</Link>. Open it and drag Folevi to Applications; it updates itself. {MAC_REQUIREMENT}.</>],
+            ["Windows", <>A free download from <Link href="/downloads#windows">folevi.com/downloads</Link>, for Intel and AMD or Arm PCs; it updates itself.</>],
+            ["Linux", <>A free download from <Link href="/downloads#linux">folevi.com/downloads</Link>: AppImage, .deb or .rpm, for Intel and AMD or ARM. Linux is in beta.</>],
             ["iPhone and iPad", <>Free on the <a href={APP_STORE_URL}>App Store</a>. {IOS_REQUIREMENT}.</>],
             ["Android, Windows and Linux (Beta)", <>Free, from the <Link href="/downloads">downloads page</Link>.</>],
             ["Web", <>In any modern browser: <a href={WEB_APP_URL}>open the web app</a>. Needs a Folevi account.</>],
@@ -187,6 +189,70 @@ export const DOC_ARTICLES: DocArticle[] = [
           <li><strong>To an account</strong>: sign in from the app and upload your library. Your notes then sync through Folevi like any account’s.</li>
           <li><strong>Back to your devices</strong>: export everything from your account into a folder you pick.</li>
         </ul>
+      </>
+    ),
+  },
+  {
+    slug: "writing-settings",
+    title: "Spell check, prediction and writing settings",
+    nav: "Spell check and prediction",
+    description: "How Folevi checks spelling in nine languages, predicts the next word on Tab, and where to change it in Settings → Writing.",
+    published: "2026-11-27",
+    updated: "2026-11-27",
+    body: () => (
+      <>
+        <p>
+          Folevi has its own spell checker, the same on the web and in every app. It runs on your device, works offline and never changes a word for you. See <Link href="/features/spell-check">Spell check and prediction</Link> for an overview.
+        </p>
+        <h2 id="spelling">Spell check</h2>
+        <ul>
+          <li>A word that looks misspelled gets a red wavy underline.</li>
+          <li>Click it, or right-click (long-press on a phone), for up to five suggestions, then <strong>Add to dictionary</strong> or <strong>Ignore</strong>. On iPhone, iPad and Android the suggestions also appear above the keyboard.</li>
+          <li>Each line is checked in its own language: English (American or British), Spanish, French, German, Portuguese, Indonesian, Hindi, Bengali or Arabic. A heading or short line with no telling words is checked in your English and the note’s language.</li>
+        </ul>
+        <h2 id="prediction">Next-word prediction</h2>
+        <p>
+          The word Folevi expects next appears in gray after the caret. Press <strong>Tab</strong> to take it and the next one appears, so Tab, Tab, Tab writes on. <strong>Esc</strong> sends it away. When nothing is showing, Tab indents and moves between table cells as before.
+        </p>
+        <p>
+          Predictions come from a small model on your device that learns from your own notes. Chinese gets prediction, not spell check. When Foli AI is on, a pause can bring a longer suggestion from Foli AI, never in an end-to-end encrypted note.
+        </p>
+        <h2 id="settings">Settings → Writing</h2>
+        <ul>
+          <li><strong>Spell check</strong> and <strong>Next-word prediction</strong>: separate switches, both on to start.</li>
+          <li><strong>English</strong>: American or British.</li>
+          <li><strong>Dictionary</strong> and <strong>Ignored words</strong>: see and remove the words you added. Your dictionary follows your account to every device.</li>
+        </ul>
+        <p>Spell check can also be turned off for a single note.</p>
+      </>
+    ),
+  },
+  {
+    slug: "your-own-server",
+    title: "Sign in to your own server",
+    nav: "Your own server",
+    description: "Connect the Folevi apps to a Folevi Server (Beta) you run on a NAS or Linux server: by address, QR code or on your home network.",
+    published: "2026-11-27",
+    updated: "2026-11-27",
+    body: () => (
+      <>
+        <p>
+          Folevi Server, in beta, runs Folevi on your own NAS or Linux server. The normal Folevi apps connect to it: the web app, and the apps for Mac, Windows, Linux, iPhone, iPad and Android. To set up a server, see the <Link href="/server">Folevi Server page</Link>.
+        </p>
+        <h2 id="sign-in">Sign in</h2>
+        <p>On the sign-in screen, choose <strong>Your own server</strong>, then one of:</p>
+        <ul>
+          <li><strong>Enter an address</strong>: the server’s address, as its admin page shows it.</li>
+          <li><strong>Scan a QR code</strong>: the code on the server’s admin page, with your phone’s camera.</li>
+          <li><strong>On this network</strong>: Folevi lists the servers it finds on your home network.</li>
+        </ul>
+        <p>Then sign in, or create your account on that server. The app works as it does with Folevi Cloud, offline editing included.</p>
+        <h2 id="away">Away from home</h2>
+        <p>
+          A server linked to a Folevi account gets its own address through Folevi Connect, so your apps reach it from anywhere without opening a port on your router. Linked servers appear in your apps on their own, and your account keeps working if the server’s address changes.
+        </p>
+        <h2 id="versions">App versions</h2>
+        <p>A server works with Folevi apps from version 1.6.0 on. If an app is older, update it first.</p>
       </>
     ),
   },
@@ -309,7 +375,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     body: () => (
       <>
         <p>
-          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; the Mac, iPhone and iPad apps keep them on the device. You can keep writing with no connection at all. (This is how an account syncs. A library kept on your devices with no account syncs through your own cloud instead: see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)
+          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; the Mac, Windows, Linux, iPhone and iPad apps keep them on the device. You can keep writing with no connection at all. (This is how an account syncs. A library kept on your devices with no account syncs through your own cloud instead: see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)
         </p>
         <h2 id="offline">What works offline</h2>
         <p>With no connection you can:</p>
@@ -427,10 +493,10 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "import-and-export",
     title: "Import and export",
     nav: "Import and export",
-    description: "Import from Notion, Evernote, Word, HTML, CSV, Markdown and text into Folevi, and export any page as Markdown, HTML or PDF, or everything as a ZIP.",
+    description: "Import from Notion, Evernote, Apple Notes, Word, HTML, CSV, Markdown and text into Folevi, and export any page as Markdown, HTML or PDF, or everything as a ZIP.",
     legacyAnchor: "import-export",
     published: "2026-09-25",
-    updated: "2026-11-18",
+    updated: "2026-11-27",
     body: () => (
       <>
         <h2 id="import">Import</h2>
@@ -442,6 +508,9 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
           <li>
             <strong>Evernote:</strong> <code>.enex</code> files. Each notebook becomes a folder, and images and to-dos come with the notes.
+          </li>
+          <li>
+            <strong>Apple Notes (Mac app):</strong> choose Import from Apple Notes in the Mac app’s Settings. Every note comes across with its folders, tags, attachments and original dates. macOS asks once for permission to read Notes.
           </li>
           <li>
             <strong>Word:</strong> <code>.docx</code> files, with headings, lists, tables and images.
@@ -479,11 +548,11 @@ export const DOC_ARTICLES: DocArticle[] = [
     nav: "Foli AI and credits",
     description: "Foli AI, Folevi’s AI assistant: Ask Foli AI, writing and editing with ⌘J, titles, Catch me up, flowcharts, flashcards, AI credits per plan and turning AI off.",
     published: "2026-09-30",
-    updated: "2026-11-18",
+    updated: "2026-11-27",
     body: () => (
       <>
         <p>
-          Foli AI answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on Google’s AI models. It’s part of every plan except Core. In a library kept on your devices with no account, Foli AI on the Mac runs on Apple Intelligence or on your own OpenAI, Anthropic or Google key instead, and uses no credits (see <Link href="/docs/apps-and-local-notes#ai">the apps</Link>).
+          Foli AI answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on AI models from Google, OpenAI and Anthropic; Folevi picks the model for each kind of request. It’s part of every plan except Core. In a library kept on your devices with no account, Foli AI on the Mac runs on Apple Intelligence or on your own OpenAI, Anthropic or Google key instead, and uses no credits (see <Link href="/docs/apps-and-local-notes#ai">the apps</Link>).
         </p>
         <h2 id="use">Where to find it</h2>
         <ul>

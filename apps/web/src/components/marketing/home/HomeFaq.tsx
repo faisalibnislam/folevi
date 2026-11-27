@@ -10,7 +10,7 @@ export const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "Is Folevi really free?",
-    a: `Yes. Every Folevi app is free forever, with every feature: Mac, iPhone, iPad, Android, Windows, Linux (Beta) and the web. Keep notes on your devices with no account, no trial, no card and no limit on notes, or run your own Folevi Server for free. You pay only for Folevi Cloud, from ${formatPrice(PRICES.core.month)} a month, and it has a free plan too.`,
+    a: `Yes. Every Folevi app is free forever, with every feature: Mac, Windows, Linux (Beta), iPhone, iPad and Android, and the web. Keep notes on your devices with no account, no trial, no card and no limit on notes, or run your own Folevi Server for free. You pay only for Folevi Cloud, from ${formatPrice(PRICES.core.month)} a month, and it has a free plan too.`,
   },
   {
     q: "Do I need an account?",
@@ -33,8 +33,16 @@ export const HOME_FAQS: FaqItem[] = [
     a: `It adds Folevi Cloud: the web app, editing together in real time, public pages, workspaces for teams, email-in and the web clipper. The Free plan costs nothing. Paid plans from ${formatPrice(PRICES.core.month)} a month add more storage and Foli AI credits.`,
   },
   {
+    q: "Does Folevi check my spelling?",
+    a: "Yes, in every app and offline, in nine languages, and it predicts the next word: press Tab to take it. It underlines and suggests, and never changes a word on its own.",
+  },
+  {
+    q: "Can I host Folevi myself?",
+    a: "Yes, for free. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it.",
+  },
+  {
     q: "Is there an app for Windows, Linux or Android?",
-    a: "Yes. Folevi is on Android, Windows and Linux (Beta) as well as Mac, iPhone and iPad, free and with every feature. Find them all on the downloads page.",
+    a: "Yes, all three, free and with every feature: get them from folevi.com/downloads. Linux is in beta.",
   },
 ];
 

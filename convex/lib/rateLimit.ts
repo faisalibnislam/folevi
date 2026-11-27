@@ -51,6 +51,8 @@ export const DEFAULT_RATE_RULES = {
   aiAgentApply: { limit: 60, windowMs: 60 * 60_000 },
   /** Deep research jobs per person (each also holds and pays credits). */
   aiResearch: { limit: 10, windowMs: 60 * 60_000 },
+  // A person saving their own AI keys, sealed, for their other devices (e2ee/accountRecords.ts).
+  e2eeAccountRecords: { limit: 60, windowMs: 60 * 60_000 },
   /** Notes read for the knowledge graph per account (a Personal or a workspace); platform-paid. */
   aiGraph: { limit: 300, windowMs: 60 * 60_000 },
   /** Foli AI routines started by hand ("Run now"), per person (each run also holds and pays credits). */

@@ -14,6 +14,8 @@ const columns: Array<{ title: string; links: Array<{ label: string; href: string
       { label: "Template gallery", href: "/template-gallery" },
       { label: "Apps", href: "/apps" },
       { label: "Mac app", href: "/mac" },
+      { label: "Windows app", href: "/windows" },
+      { label: "Linux app", href: "/linux" },
       { label: "Folevi Server", href: "/server" },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },
@@ -59,7 +61,7 @@ export function SiteFooter() {
         <div>
           <Wordmark markSize={24} />
           <p className="mt-4 max-w-[34ch] text-[15px] leading-relaxed text-muted">
-            A digital workspace for notes, docs, tasks and databases, free on the web, Mac, iPhone, iPad, Android, Windows and Linux.
+            A digital workspace for notes, docs, tasks and databases, free on the web, Mac, Windows, Linux, iPhone, iPad and Android.
           </p>
           <p className="mt-5 text-[14px] text-muted">
             Support{" "}

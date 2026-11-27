@@ -41,7 +41,7 @@ export default function TermsPage() {
           terms are an agreement between you and {OPERATOR.name}.
         </p>
         <p>
-          By creating an account or using Folevi (the website, the web app, and the Mac, iPhone and iPad apps), you agree to these terms and
+          By creating an account or using Folevi (the website, the web app, and the Mac, Windows, Linux, iPhone and iPad apps), you agree to these terms and
           to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organization, you confirm you’re
           allowed to accept these terms on its behalf.
         </p>
@@ -170,7 +170,7 @@ export default function TermsPage() {
           Free, Pro and Pro AI include a number of AI credits each month, and Core includes none, so on Core it works with
           credit packs; in a free workspace, members use their own personal credits, and in a paid workspace, each member
           gets the workspace plan’s credits. A workspace’s owner or admins can turn Foli AI off for the workspace, and while
-          it’s off, nothing in it is sent to an AI model. A personal plan never changes a workspace’s AI settings. It’s subject to fair-use limits that keep it available to everyone. It uses Google’s Gemini API, as described in our{" "}
+          it’s off, nothing in it is sent to an AI model. A personal plan never changes a workspace’s AI settings. It’s subject to fair-use limits that keep it available to everyone. It uses AI models from Google, OpenAI and Anthropic, as described in our{" "}
           <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off in settings. AI can be wrong: check what it
           produces before relying on it. You’re responsible for how you use its output, and you keep the same rights to it as
           to the rest of your content.

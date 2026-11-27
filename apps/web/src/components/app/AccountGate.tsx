@@ -1,5 +1,6 @@
 "use client";
 
+import { startOwnKeySync } from "@/lib/ai/ownKey";
 import { useConvexAuth, useMutation } from "convex/react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/convex/api";
@@ -381,7 +382,10 @@ function KeySessionStarter({ profileId, email }: { profileId: string; email?: st
       profileId,
       email,
       newDeviceId: () => loadDeviceId(profileId),
-    }).catch(() => undefined);
+    })
+      // The person's own AI keys follow them to every device once encryption is unlocked (lib/ai/ownKeySync.ts).
+      .then(() => startOwnKeySync())
+      .catch(() => undefined);
   }, [profileId, email]);
   return null;
 }

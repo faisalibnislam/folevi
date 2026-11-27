@@ -10,7 +10,7 @@ import { IOS_REQUIREMENT, MAC_REQUIREMENT } from "@/components/marketing/site";
  *
  * - Folevi's side comes only from this repository: prices and limits from the plan catalog
  *   (convex/lib/plans.ts), features from the feature pages and docs (content/features.tsx, content/docs.tsx)
- *   and docs/PRODUCT.md. Platforms are stated plainly: the Mac, iPhone, iPad, Android, Windows and Linux (Beta)
+ *   and docs/PRODUCT.md. Platforms are stated plainly: the Mac, Windows, Linux (Beta), iPhone, iPad and Android
  *   apps (free with every feature and no account, in "Keep notes on my devices") and the web app (with a Folevi
  *   account). Prices changed on 2026-11-27 (docs/PRICING_PLAN.md).
  * - The other product's side comes only from that company's own public pages. Every competitor fact names
@@ -114,11 +114,11 @@ export const FOLEVI_ROWS: Record<FoleviRowKey, { label: string; value: string }>
     value: `In a library on your devices, Foli AI is free with your own OpenAI, Anthropic or Google key, called straight from your device, or with Apple Intelligence on the Mac. With Folevi Cloud, it’s metered in credits a month: Free ${MONTHLY_CREDITS.free}, Pro ${MONTHLY_CREDITS.pro}, Pro AI ${MONTHLY_CREDITS.pro_ai}, Core none included. Packs on every plan: ${credits(CREDIT_PACKS.credits_500.credits)} for ${p(CREDIT_PACKS.credits_500.priceCents)} or ${credits(CREDIT_PACKS.credits_1000.credits)} for ${p(CREDIT_PACKS.credits_1000.priceCents)}. Turn it off on any plan.`,
   },
   offline: { label: "Offline", value: "Yes. The apps work fully offline. In the browser, every edit is saved on the device first and syncs when you reconnect." },
-  platforms: { label: "Apps", value: `Mac (${MAC_REQUIREMENT}), iPhone and iPad (${IOS_REQUIREMENT}), Android, Windows and Linux (Beta), all free with every feature, and the web app in any modern browser, with a Folevi account.` },
+  platforms: { label: "Apps", value: `Mac (${MAC_REQUIREMENT}), Windows, Linux (Beta), iPhone and iPad (${IOS_REQUIREMENT}) and Android, all free with every feature, and the web app in any modern browser, with a Folevi account. Every app can also sign in to a Folevi Server you run (in beta).` },
   collaboration: { label: "Working together", value: "Workspaces with roles, guests, comments and mentions. If two people change the same block at once, Folevi shows a conflict to resolve." },
   publish: { label: "Public sharing", value: "Public links with an optional password and expiry date, revocable at any time" },
   export: { label: "Export", value: "A page as Markdown, HTML or PDF (through print). Everything as a ZIP of Markdown files." },
-  import: { label: "Import", value: "Markdown and text files, folders and ZIPs, with their images" },
+  import: { label: "Import", value: "Notion exports, Evernote .enex, Apple Notes (in the Mac app), Word, HTML, CSV, and Markdown and text files, folders and ZIPs with their images" },
   storage: { label: "Storage", value: `${gb(STORAGE_BYTES.free)} on Free, ${gb(STORAGE_BYTES.core)} on Core, ${gb(STORAGE_BYTES.pro)} on Pro and ${gb(STORAGE_BYTES.pro_ai)} on Pro AI. Files up to 50 MB.` },
   encryption: {
     label: "Encryption",
@@ -180,7 +180,7 @@ const apps = {
     title: "Free forever, with no account",
     body: (
       <p>
-        Every Folevi app is free with every feature, on Mac, iPhone, iPad, Android, Windows and Linux (Beta). Open one and choose <strong>Keep notes on my devices</strong>. There is no sign-up and no limit on notes, and it works fully offline. Sharing, public pages, comments with others, workspaces, the web app and AI credits need a Folevi account, and you can add one later. See the{" "}
+        Every Folevi app is free with every feature, on Mac, Windows, Linux (Beta), iPhone, iPad and Android. Open one and choose <strong>Keep notes on my devices</strong>. There is no sign-up and no limit on notes, and it works fully offline. Sharing, public pages, comments with others, workspaces, the web app and AI credits need a Folevi account, and you can add one later. See the{" "}
         <Link href="/pricing">pricing</Link>.
       </p>
     ),
@@ -292,6 +292,7 @@ export const COMPETITORS: Competitor[] = [
     faq: [
       { q: "Can Folevi replace Notion?", a: "For docs, team wikis, tasks, simple databases and shared workspaces, yes. If you rely on Notion’s databases, automations or integrations, Folevi doesn’t have those." },
       { q: "Can I use Folevi without an account?", a: "Yes. In any Folevi app, choose Keep notes on my devices. It’s free forever, and your notes are files in a place you pick, such as iCloud Drive. Notion needs an account." },
+      { q: "Can I host Folevi myself?", a: "Yes, for free. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it." },
       { q: "Does Folevi work offline?", a: "Yes. The apps work fully offline. In the browser, every edit is saved on the device first and syncs when you reconnect." },
       { q: "Can I import my Notion pages?", a: "Yes, as Markdown. Export from Notion as Markdown, then import the ZIP in Settings → Import & export. Databases export as CSV, which Folevi doesn’t import." },
       { q: "Does Folevi have mobile apps?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}) on the App Store, and for Android. They’re free, with every feature.` },
@@ -379,6 +380,7 @@ export const COMPETITORS: Competitor[] = [
     faq: [
       { q: "Is Folevi an Obsidian alternative?", a: "It is if you want linked notes, tasks and databases that are files you own, in free apps for every platform that are ready when you open them, with no plugins to set up. If you want plain Markdown files and community plugins, Obsidian does that and Folevi doesn’t." },
       { q: "Do I need an account to use Folevi?", a: "No. In any Folevi app, choose Keep notes on my devices. It’s free forever, like Obsidian, and your notes stay in a folder you pick." },
+      { q: "Can I host Folevi myself?", a: "Yes, for free. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it." },
       { q: "Can I import my Obsidian vault?", a: "Yes. Choose the vault folder, or a ZIP of it, in Settings → Import & export. Wiki links come in as plain text." },
       { q: "Does Folevi have backlinks?", a: "Yes. Type [[ to link a page. The linked page lists every page that links to it, with a line of text around each link." },
       { q: "Does Folevi have mobile apps?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}) on the App Store, and for Android. They’re free, with every feature.` },

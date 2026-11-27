@@ -34,8 +34,18 @@ const subprocessors = [
   },
   {
     name: "Google (Gemini API)",
-    role: "Foli AI (AI assistant)",
-    data: "Only when you use Foli AI: your request and the notes it needs to answer (the open note, or notes found by search that you can already read). Never sent while Foli AI is off.",
+    role: "Foli AI (AI assistant), search across your notes and speech to text",
+    data: "Only when you use Foli AI or search: your request and the notes it needs to answer (the open note, or notes found by search that you can already read), and recordings you ask to have written out. Never sent while Foli AI is off.",
+  },
+  {
+    name: "OpenAI (OpenAI API)",
+    role: "Foli AI (AI assistant), for the features we route to it",
+    data: "Only when you use one of those features: your request and the notes it needs to answer (the open note, or notes found by search that you can already read). Never sent while Foli AI is off. Not used to train OpenAI’s models.",
+  },
+  {
+    name: "Anthropic (Claude API)",
+    role: "Foli AI (AI assistant), for the features we route to it",
+    data: "Only when you use one of those features: your request and the notes it needs to answer (the open note, or notes found by search that you can already read). Never sent while Foli AI is off. Not used to train Anthropic’s models.",
   },
   {
     name: "Polar",
@@ -197,7 +207,7 @@ export default function SecurityPage() {
             id="e2ee"
             title={<KeepHyphens text="End-to-end encryption" />}
             lead="Yours to turn on in Settings → Privacy, on every plan."
-            items={[<>Your notes are encrypted on your devices before they’re sent, so Folevi can’t read them</>, <>Pick which features may still read your notes, or choose Fully encrypted</>, <>Mark any folder or note as Always fully encrypted</>, <>In the Mac, iPhone and iPad apps with no account, our servers never see your notes at all</>]}
+            items={[<>Your notes are encrypted on your devices before they’re sent, so Folevi can’t read them</>, <>Pick which features may still read your notes, or choose Fully encrypted</>, <>Mark any folder or note as Always fully encrypted</>, <>In the Mac, Windows, Linux, iPhone and iPad apps with no account, our servers never see your notes at all</>]}
             className="relative"
           >
             <div aria-hidden="true" className="pointer-events-none absolute right-8 top-8 max-xl:hidden">

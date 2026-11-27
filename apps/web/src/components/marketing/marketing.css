@@ -760,6 +760,13 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   transition: background-color var(--motion-page, 320ms) var(--mk-ease);
 }
 .mk-tint .mk-lede, .mk-tint .text-muted { color: color-mix(in oklab, var(--art-ink, var(--color-ink-muted)) 72%, var(--art-paper, #fff)); }
+/* In dark mode the paper card takes the theme's dark pair, as the note does (.mk-note): without it the card stayed
+   light while the page's headings turned near-white, so the header headline vanished. */
+:root[data-theme="dark"] .mk-box.mk-tint {
+  background: var(--art-paper-dark, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--art-ink-dark, #fff) 12%, transparent), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6);
+}
+:root[data-theme="dark"] .mk-tint .mk-lede, :root[data-theme="dark"] .mk-tint .text-muted { color: color-mix(in oklab, var(--art-ink-dark, var(--color-ink-muted)) 72%, var(--art-paper-dark, #000)); }
 
 :root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
 @media (min-width: 640px) { .mk-box { border-radius: var(--radius-container); } }
@@ -1271,7 +1278,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
     0 84%, var(--tear) 67%, 0 50%, var(--tear) 33%, 0 16%
   );
 }
-:root[data-theme="dark"] .mk-eyebrow, .mk-dark .mk-eyebrow { background: color-mix(in oklab, var(--mk-violet) 30%, transparent); }
+:root[data-theme="dark"] .mk-eyebrow, .mk-dark .mk-eyebrow { color: color-mix(in oklab, var(--mk-violet) 35%, #fff); background: color-mix(in oklab, var(--mk-violet) 30%, transparent); }
 .mk-eyebrow:nth-of-type(even) { rotate: 1.4deg; }
 
 /* Doodles: violet strokes that draw themselves once seen. */

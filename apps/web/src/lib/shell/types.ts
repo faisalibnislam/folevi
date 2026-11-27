@@ -114,6 +114,12 @@ export interface ShellSecrets {
   has(name: SecretName): Promise<boolean>;
   set(name: SecretName, value: string): Promise<void>;
   delete(name: SecretName): Promise<void>;
+  /**
+   * A stored AI key, for a Folevi Cloud request that runs on the person's own key (lib/ai/ownKey.ts): the
+   * server uses it for that one request (convex/lib/ai/ownKey.ts). Only `ai.*` names; null when none is
+   * stored. Hosts without it leave it out, and the page keeps its own copy instead.
+   */
+  reveal?(name: SecretName): Promise<string | null>;
 }
 
 /**

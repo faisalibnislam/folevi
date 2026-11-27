@@ -1,8 +1,9 @@
 "use client";
 
+import { useAiAction } from "@/components/ai/useAiAction";
 import type { Editor } from "@tiptap/react";
 import type { Node as PMNode } from "@tiptap/pm/model";
-import { useAction, useConvex } from "convex/react";
+import { useConvex } from "convex/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -112,7 +113,7 @@ type Phase = { kind: "busy" } | { kind: "error"; problem: AiProblem } | { kind: 
  */
 function FindTodosDialog({ editor, documentId, target, items, replace, onClose }: { editor: Editor; documentId: string; onClose: () => void } & FindTodosOpen) {
   const { scope, today, timeZone, engine } = useAppState();
-  const find = useAction(api.aiTodos.find);
+  const find = useAiAction(api.aiTodos.find);
   const convex = useConvex();
   const toast = useToast();
   const [phase, setPhase] = useState<Phase>({ kind: "busy" });

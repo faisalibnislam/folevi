@@ -310,7 +310,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="how">How a request becomes credits</h2>
         <p>
-          Foli AI runs on Google’s AI models, which Google charges for by the token. A token is a short piece of a word, and Google charges for the tokens sent to the model and the tokens it writes back. After each request, Folevi reads the token counts Google reports, prices them at Google’s rates and rounds up to whole cents. A request that costs a third of a cent uses 1 credit. One that costs 2.1 cents uses 3.
+          Foli AI runs on AI models from Google, OpenAI and Anthropic, and each provider charges by the token. A token is a short piece of a word, and the provider charges for the tokens sent to the model and the tokens it writes back. After each request, Folevi reads the token counts the provider reports, prices them at that provider’s rates and rounds up to whole cents. A request that costs a third of a cent uses 1 credit. One that costs 2.1 cents uses 3.
         </p>
         <p>
           Every request uses at least 1 credit. Short jobs, such as suggesting a title, fixing spelling or rewriting up to about 1,500 characters, go to a smaller, cheaper model, so they usually cost 1.

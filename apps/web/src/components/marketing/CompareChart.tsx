@@ -45,7 +45,7 @@ const ROWS: Row[] = [
   },
   {
     label: "AI assistant",
-    folevi: { mark: "yes", text: "Foli AI, on-device or your own key" },
+    folevi: { mark: "yes", text: "Foli AI: Gemini, OpenAI, Claude or your own key" },
     them: { notion: { mark: "some", text: "Included on Business" }, obsidian: { mark: "no", text: "None built in" } },
   },
   {
@@ -55,7 +55,7 @@ const ROWS: Row[] = [
   },
   {
     label: "Apps",
-    folevi: { mark: "yes", text: "Mac, iPhone, iPad and web" },
+    folevi: { mark: "yes", text: "Mac, Windows, Linux, iPhone, iPad and web" },
     them: { notion: { mark: "yes", text: "Web, Mac, Windows, iOS, Android" }, obsidian: { mark: "yes", text: "Mac, Windows, Linux, iOS, Android" } },
   },
   {

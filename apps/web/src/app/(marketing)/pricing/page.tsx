@@ -32,7 +32,7 @@ const credits = (n: number) => n.toLocaleString("en-US");
 
 export const metadata = pageMetadata({
   title: `Pricing: Folevi is free, Folevi Cloud from ${formatPrice(PRICES.core.month)}/month`,
-  description: `Every Folevi app is free on Mac, iPhone, iPad, Android, Windows, Linux and the web. Sync with your own cloud or server and use your own AI key for free. Folevi Cloud starts free, with paid plans from ${formatPrice(PRICES.core.month)} a month.`,
+  description: `Every Folevi app is free on Mac, Windows, Linux, iPhone, iPad, Android and the web. Sync with your own cloud or server and use your own AI key for free. Folevi Cloud starts free, with paid plans from ${formatPrice(PRICES.core.month)} a month.`,
   path: "/pricing",
 });
 
@@ -50,7 +50,7 @@ const saving = (tier: "core" | "pro" | "pro_ai") =>
 const faqs: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: `Yes, all of them, with every feature: Mac, iPhone, iPad, Android, Windows, Linux (Beta) and the web app. Keep your notes on your devices with no account and no limit on notes. The Mac app needs ${MAC_REQUIREMENT}; the iPhone and iPad app needs ${IOS_REQUIREMENT}.`,
+    a: `Yes, all of them, with every feature: Mac, Windows, Linux (Beta), iPhone, iPad, Android and the web app. Keep your notes on your devices with no account and no limit on notes. The Mac app needs ${MAC_REQUIREMENT}; the iPhone and iPad app needs ${IOS_REQUIREMENT}.`,
   },
   {
     q: "What do I pay for?",
@@ -132,6 +132,10 @@ const faqs: FaqItem[] = [
     q: "What happens to my notes if I downgrade?",
     a: "They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal as a ZIP (owners and admins can export a whole workspace), at any time.",
   },
+  {
+    q: "Can I use my account in the apps?",
+    a: "Yes. Every plan works in the web app and in every Folevi app, on as many devices as you like.",
+  },
 ];
 
 export default function PricingPage() {
@@ -155,7 +159,7 @@ export default function PricingPage() {
           Folevi is <Mark kind="circle">free</Mark>.
         </h1>
         <p className="mk-lede mt-6 max-w-[60ch]">
-          Every Folevi app is free on Mac, iPhone, iPad, Android, Windows, Linux and the web, with every feature. Keep
+          Every Folevi app is free on Mac, Windows, Linux, iPhone, iPad, Android and the web, with every feature. Keep
           your notes on your devices, sync them through iCloud Drive or Dropbox, or run your own Folevi Server. Pay only
           if you want Folevi Cloud to store and sync them for you.
         </p>

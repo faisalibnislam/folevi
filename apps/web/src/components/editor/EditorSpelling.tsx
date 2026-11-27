@@ -4,8 +4,8 @@
 // asked for longer next words here. Foli AI is asked only with an account, with Foli AI on for the person, and
 // never for an encrypted note (its text never leaves the device). Also draws the bubble under a clicked
 // misspelt word (SpellingBubble.tsx).
+import { useAiAction } from "@/components/ai/useAiAction";
 import { useEffect, useRef } from "react";
-import { useAction } from "convex/react";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { api } from "@/lib/convex/api";
@@ -21,7 +21,7 @@ export function EditorSpelling({ editor, documentId, editable }: { editor: Tipta
   const aiOn = useAiEnabled();
   const account = useBackendMode() !== "local";
   const scope = useMaybeAppState()?.scope ?? null;
-  const complete = useAction(api.aiComplete.complete);
+  const complete = useAiAction(api.aiComplete.complete);
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
 

@@ -11,6 +11,7 @@
 // made from a note is made in that note's scope. What's returned is the block's own data (screens laid side
 // by side from 0, 0), already through the server's strict check; the client checks it again, places it and
 // applies it as one undo step. Prompts, screens and replies are never logged or stored.
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -32,15 +33,15 @@ import {
   variationCount,
   varyRequest,
 } from "./lib/wireframeAi";
-import { gemini, metered, providedArgs } from "./ai";
+import { gemini, metered, providedArgs, beginRequest } from "./ai";
 import { vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
 
 const vFrame = v.union(v.literal("phone"), v.literal("tablet"), v.literal("browser"), v.literal("plain"));
 /** Where a request is made from: the scope, and the note the block is in (the request is made in its scope). */
 const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) };
 
-async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
-  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) });
+async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext; ownKey?: OwnKey }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
+  const { holdId } = await beginRequest(ctx, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) }, args.ownKey);
   return holdId;
 }
 
@@ -60,7 +61,11 @@ const plan = (req: PromptRequest): PlannedCall[] => [{ fast: false, inputChars: 
 
 /** A new screen (or a short flow) from a description. */
 export const draw = action({
-  args: { ...placeArgs, instruction: v.string(), frame: v.optional(vFrame) },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    ...placeArgs, instruction: v.string(), frame: v.optional(vFrame),
+  },
   handler: async (ctx, args): Promise<WireframeData> => {
     await requireIdentity(ctx);
     const instruction = cleanInstruction(args.instruction);
@@ -74,7 +79,11 @@ export const draw = action({
 
 /** Two or three variations of one screen (`screen` is the screen and its parts as wireframe JSON). */
 export const vary = action({
-  args: { ...placeArgs, screen: v.string(), count: v.optional(v.number()), instruction: v.optional(v.string()) },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    ...placeArgs, screen: v.string(), count: v.optional(v.number()), instruction: v.optional(v.string()),
+  },
   handler: async (ctx, args): Promise<WireframeData> => {
     await requireIdentity(ctx);
     const current = screenForPrompt(args.screen);
@@ -88,7 +97,11 @@ export const vary = action({
 
 /** One screen changed as asked; everything not mentioned stays as it was. */
 export const refine = action({
-  args: { ...placeArgs, screen: v.string(), instruction: v.string() },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    ...placeArgs, screen: v.string(), instruction: v.string(),
+  },
   handler: async (ctx, args): Promise<WireframeData> => {
     await requireIdentity(ctx);
     const instruction = cleanInstruction(args.instruction);

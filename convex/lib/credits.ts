@@ -28,6 +28,7 @@ import type { RateRuleName } from "./rateLimit";
 import type { Scope } from "./scope";
 import { capabilitiesOf, priceOf, type TokenPrice } from "./ai/capabilities";
 import { recordFeatureUse, type AiFeature } from "./ai/usage";
+import type { AiProviderId } from "./ai/config";
 import { recordRefusal, refusalIn, type RefusalKind } from "./ai/safety";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -383,6 +384,24 @@ export async function holdCredits(ctx: MutationCtx, account: CreditAccount, scop
   });
 }
 
+/**
+ * A hold for a request on the person's own AI key (lib/ai/ownKey.ts): no credits set aside, and none
+ * charged when it settles. It marks the provider so `metered` refuses to run it without the key.
+ */
+export async function holdOwnKey(ctx: MutationCtx, account: CreditAccount, scope: Scope, provider: AiProviderId, now = Date.now(), feature?: AiFeature): Promise<Id<"aiCreditHolds">> {
+  return await ctx.db.insert("aiCreditHolds", {
+    profileId: account.profileId,
+    workspaceId: account.workspaceId,
+    scope: scope.kind,
+    scopeWorkspaceId: scope.kind === "workspace" ? scope.workspaceId : undefined,
+    credits: 0,
+    ...(feature ? { feature } : {}),
+    ownKey: provider,
+    createdAt: now,
+    expiresAt: now + HOLD_MS,
+  });
+}
+
 /** Takes `credits` from an account: monthly credits first, then packs oldest-expiring first. */
 export async function deductCredits(ctx: MutationCtx, account: CreditAccount, credits: number, now = Date.now()): Promise<{ fromMonthly: number; fromPacks: number; overrun: number }> {
   let left = Math.max(0, Math.round(credits));
@@ -406,6 +425,13 @@ export async function deductCredits(ctx: MutationCtx, account: CreditAccount, cr
   else await ctx.db.insert("aiCreditPeriods", { profileId: account.profileId, workspaceId: account.workspaceId, periodKey: account.period.key, periodStart: account.period.start, periodEnd: account.period.end, used: fromMonthly, ...(overrun ? { overrun } : {}), updatedAt: now });
   if (overrun) console.warn(JSON.stringify({ event: "ai.credit_overrun", credits: overrun }));
   return { fromMonthly, fromPacks, overrun };
+}
+
+/** Counts one own-key request in the account's period row (for the usage card's "Your key"). */
+async function recordOwnKeyUse(ctx: MutationCtx, account: CreditAccount, now: number): Promise<void> {
+  const row = await periodRow(ctx, account, account.period.key);
+  if (row) await ctx.db.patch(row._id, { ownKeyRequests: (row.ownKeyRequests ?? 0) + 1, updatedAt: now });
+  else await ctx.db.insert("aiCreditPeriods", { profileId: account.profileId, workspaceId: account.workspaceId, periodKey: account.period.key, periodStart: account.period.start, periodEnd: account.period.end, used: 0, ownKeyRequests: 1, updatedAt: now });
 }
 
 /** Counts a request against the scope it was made in (per person per day; no content). */
@@ -451,6 +477,16 @@ export async function settleHold(ctx: MutationCtx, holdId: Id<"aiCreditHolds">, 
   // A refusal is counted (never its text) and, when short, not charged (docs/AI_GUARDRAILS.md).
   const refusal = refusalIn(calls);
   if (refusal) await recordRefusal(ctx, hold.profileId, refusal.kind, hold.feature, now);
+  // The person's own key: never charged. Counted as "Your key" on the usage card, with its tokens.
+  if (hold.ownKey) {
+    if (!calls.length) return { credits: 0, overrun: 0 };
+    const account = await accountByKey(ctx, hold.profileId, hold.workspaceId, now);
+    await recordOwnKeyUse(ctx, account, now);
+    const tokensIn = calls.reduce((n, c) => n + c.promptTokens, 0);
+    const tokensOut = calls.reduce((n, c) => n + c.outputTokens + c.thoughtsTokens, 0);
+    await recordAiUsage(ctx, hold.profileId, { kind: hold.scope, workspaceId: hold.scopeWorkspaceId }, { credits: 0, tokensIn, tokensOut }, now);
+    return { credits: 0, overrun: 0 };
+  }
   const credits = creditsFor(billableCalls(calls));
   if (!credits) return { credits: 0, overrun: 0 };
   const account = await accountByKey(ctx, hold.profileId, hold.workspaceId, now);

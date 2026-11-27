@@ -3,6 +3,7 @@
 // when Foli AI is on for the person (begin checks it again, with the plan, the scope and the hourly limit),
 // and never for an end-to-end encrypted note: the client doesn't ask there, and begin's gate refuses a sealed
 // note sent without its device-provided context, which this action never takes.
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -10,7 +11,7 @@ import { requireIdentity } from "./lib/auth";
 import { fail } from "./lib/errors";
 import type { PlannedCall } from "./lib/credits";
 import { vScopeArg } from "./lib/scope";
-import { gemini, metered } from "./ai";
+import { gemini, metered, beginRequest } from "./ai";
 
 /** Text before the caret sent, at most (the end of it). */
 export const COMPLETE_BEFORE = 1500;
@@ -42,6 +43,8 @@ export function cleanCompletion(raw: string, before: string): string {
 
 export const complete = action({
   args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
     scope: vScopeArg,
     documentId: v.string(),
     before: v.string(),
@@ -55,7 +58,7 @@ export const complete = action({
     if (before.trim().length < 3) fail("invalid_argument", "Write a little first.");
     const prompt = `${args.language ? `Language: ${args.language.slice(0, 20)}\n` : ""}<before>${before}</before><after>${after}</after>`;
     const plan: PlannedCall[] = [{ fast: true, inputChars: COMPLETE_SYSTEM.length + prompt.length, maxOutputTokens: 48 }];
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing" });
+    const { holdId } = await beginRequest(ctx, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing" }, args.ownKey);
     return await metered(ctx, holdId, async (meter) => {
       const raw = await gemini({ system: COMPLETE_SYSTEM, prompt, fast: true, temperature: 0.2, maxOutputTokens: 48 }, meter);
       return { text: cleanCompletion(raw, before) };

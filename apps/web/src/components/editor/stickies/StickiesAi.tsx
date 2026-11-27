@@ -4,7 +4,7 @@
 // photo of paper notes, turn notes into to-dos, and write the board up in the note. Each action is one
 // request with AI credits like any Foli AI help; the board changes only through `onApply` (one undo step),
 // the note only through `onInsert*`. Shown only while Foli AI is on (StickiesView checks useAiEnabled).
-import { useAction } from "convex/react";
+import { useAiAction } from "@/components/ai/useAiAction";
 import { useRef, useState } from "react";
 import { Camera, FileText, ImageUp, LayoutGrid, Lightbulb, ListTodo, ScrollText } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -58,14 +58,14 @@ export function StickiesAi({
 }) {
   const aiWhere = useAiWhere();
   const { scope } = useAppState();
-  const cluster = useAction(api.stickiesAi.cluster);
-  const summarize = useAction(api.stickiesAi.summarize);
-  const ideas = useAction(api.stickiesAi.ideas);
-  const photo = useAction(api.stickiesAi.photo);
+  const cluster = useAiAction(api.stickiesAi.cluster);
+  const summarize = useAiAction(api.stickiesAi.summarize);
+  const ideas = useAiAction(api.stickiesAi.ideas);
+  const photo = useAiAction(api.stickiesAi.photo);
   // Reading a photo needs a model that sees images: not in local mode (WP11).
   const photoOn = useAiFeature("stickiesPhoto");
-  const tasks = useAction(api.stickiesAi.tasks);
-  const writeUp = useAction(api.stickiesAi.writeUp);
+  const tasks = useAiAction(api.stickiesAi.tasks);
+  const writeUp = useAiAction(api.stickiesAi.writeUp);
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<AiProblem | null>(null);
   const [summary, setSummary] = useState<string | null>(null);

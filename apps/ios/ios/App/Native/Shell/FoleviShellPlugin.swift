@@ -17,7 +17,7 @@ final class FoleviShellPlugin: BridgePlugin {
         "placesAddServer", "placesLocalServers",
         "libSetup", "libInfo", "libList", "libRead", "libWrite", "libRemove", "libConflictVersions", "libResolveConflicts", "libStartDownload",
         "libWatch", "libUnwatch", "libRescan", "journalAppend", "journalRead", "journalTruncate", "libUnlock", "libSetPassphrase", "libChangePassphrase", "libMove",
-        "secretsHas", "secretsSet", "secretsDelete",
+        "secretsHas", "secretsSet", "secretsDelete", "secretsReveal",
         "authSignIn", "authSignOut", "authFetch", "authConvexToken",
         "aiCapabilities", "aiGenerate", "aiCancel", "aiTestKey",
         "lockGet", "lockSet", "notifySchedule", "notifyCancel", "filesSave", "httpPreview", "httpCalendar",
@@ -458,6 +458,9 @@ final class FoleviShellPlugin: BridgePlugin {
     // MARK: secrets
 
     @objc func secretsHas(_ call: BridgeCall) { guarded(call) { call.resolve(["value": ShellSecrets.has(call.getString("name") ?? "")]) } }
+
+    /// A Foli AI key for one Folevi Cloud request on the person's own key (ShellSecrets.names only).
+    @objc func secretsReveal(_ call: BridgeCall) { guarded(call) { call.resolve(["value": ShellSecrets.get(call.getString("name") ?? "") ?? NSNull()]) } }
 
     @objc func secretsSet(_ call: BridgeCall) {
         guarded(call) {

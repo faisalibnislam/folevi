@@ -33,6 +33,7 @@ import { vAgentOp, vRunNote, vRunStatus } from "./lib/ai/tools/ops";
 import { vReportSource, vResearchStep } from "./lib/ai/research";
 import { vMemoryKind } from "./lib/ai/memory";
 import { vAiFeature } from "./lib/ai/usage";
+import { vAiProvider } from "./lib/ai/config";
 import { vReactionKind } from "./lib/reactions";
 import {
   vAccountKeyStatement,
@@ -851,6 +852,8 @@ export default defineSchema({
     /** Credits charged this period (monthly and extra) by feature, and by UTC day (lib/ai/usage.ts). */
     features: v.optional(v.record(v.string(), v.number())),
     days: v.optional(v.record(v.string(), v.number())),
+    /** Requests this period that ran on the person's own AI key (no credits), for the usage card's "Your key". */
+    ownKeyRequests: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_account_period", ["profileId", "workspaceId", "periodKey"]),
 
@@ -889,6 +892,11 @@ export default defineSchema({
     credits: v.number(),
     /** What the request is for (lib/ai/usage.ts), counted when it settles. */
     feature: v.optional(vAiFeature),
+    /**
+     * The provider of the person's own key, when the request runs on it (lib/ai/ownKey.ts): no credits held
+     * or charged. Never the key itself.
+     */
+    ownKey: v.optional(vAiProvider),
     createdAt: v.number(),
     expiresAt: v.number(),
   })

@@ -10,6 +10,7 @@
 // The rows (`fileTexts`) live in the note's scope with their own search index; search.ts reads them for
 // people who can read the note only, and they go with the file, the whiteboard's block or the note
 // (maintenance.ts), and come with the account's export (exports.ts).
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, internalQuery, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
@@ -23,7 +24,7 @@ import { insertScoped, scopeOfRow, type Scope } from "./lib/scope";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { capabilities, loadAiSettings } from "./lib/ai/provider";
 import { attachmentTokens } from "./lib/ai/attachments";
-import { gemini, metered, providedArgs } from "./ai";
+import { gemini, metered, providedArgs, beginRequest } from "./ai";
 import { failE2ee } from "./lib/e2ee/state";
 import { checkProvidedSizes, vProvidedContext } from "./lib/e2ee/ai";
 
@@ -227,6 +228,8 @@ export const saveFromFoli = internalMutation({
  */
 export const readImage = action({
   args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
     documentId: v.string(),
     fileId: v.string(),
     blockId: v.string(),
@@ -254,7 +257,7 @@ export const readImage = action({
       const prompt = "Copy the text in this image.";
       const plan = [{ fast: true, inputChars: OCR_SYSTEM.length + prompt.length + attachmentTokens("image", file.bytes.byteLength) * 4, maxOutputTokens: 4096 }];
       // The gate (lib/e2ee/ai.ts): Foli AI not off in the space, the note not locked, consent as the switch says.
-      const { holdId } = await ctx.runMutation(internal.ai.begin, { feature: "attachments", scope: args.provided.scope, documentId: args.documentId, noteOnly: true, plan, ...providedArgs(args.provided) });
+      const { holdId } = await beginRequest(ctx, { feature: "attachments", scope: args.provided.scope, documentId: args.documentId, noteOnly: true, plan, ...providedArgs(args.provided) }, args.ownKey);
       const data = Buffer.from(file.bytes).toString("base64");
       const text = await metered(ctx, holdId, async (meter) =>
         await gemini({ system: OCR_SYSTEM, prompt, attachments: [{ inlineData: { mimeType: file.mime, data } }], noMemory: true, fast: true, temperature: 0, maxOutputTokens: 4096 }, meter),
@@ -270,7 +273,7 @@ export const readImage = action({
     const data = Buffer.from(await blob.arrayBuffer()).toString("base64");
     const prompt = "Copy the text in this image.";
     const plan = [{ fast: true, inputChars: OCR_SYSTEM.length + prompt.length + attachmentTokens("image", image.size) * 4, maxOutputTokens: 4096 }];
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { feature: "attachments", scope: { kind: "personal" }, documentId: args.documentId, noteOnly: true, plan });
+    const { holdId } = await beginRequest(ctx, { feature: "attachments", scope: { kind: "personal" }, documentId: args.documentId, noteOnly: true, plan }, args.ownKey);
     const text = await metered(ctx, holdId, async (meter) =>
       await gemini({ system: OCR_SYSTEM, prompt, attachments: [{ inlineData: { mimeType: image.mimeType, data } }], noMemory: true, fast: true, temperature: 0, maxOutputTokens: 4096 }, meter),
     );

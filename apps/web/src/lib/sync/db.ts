@@ -1,5 +1,6 @@
 "use client";
 
+import { clearPageOwnKeys } from "@/lib/ai/ownKey";
 import { openDB, wrap, type DBSchema, type IDBPDatabase, type OpenDBCallbacks } from "idb";
 import { clearCatchUps } from "@/lib/ai/catchUpStore";
 import { ulid, type SyncState, type WireBlock } from "@folevi/editor-schema";
@@ -268,6 +269,8 @@ export async function clearAllLocalData(opts: { keep?: (name: string) => boolean
   // never touches it. Only an explicit `library: true` (removing the library itself) clears it.
   const keep = (name: string) => (!opts.library && name.startsWith("folevi-local-")) || Boolean(opts.keep?.(name));
   clearCatchUps();
+  // The person's own AI keys this browser kept (lib/ai/ownKey.ts). An app's keychain keeps its copy.
+  await clearPageOwnKeys();
   try {
     localStorage.removeItem("folevi:last-account");
     // Changes still queued when the copy goes (lib/sync/engine.ts keeps them as `folevi:sync-journal:<account>:<tab>`):

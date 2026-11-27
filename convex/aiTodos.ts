@@ -6,6 +6,7 @@
 //
 // Credits: one call, held up front and settled from what it really cost (ai.begin, ai.metered), as writing
 // help. Same gates as every AI request; nothing from a Core scope is sent.
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, internalQuery, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
@@ -19,7 +20,7 @@ import { ReaderLabels } from "./lib/linkLabels";
 import { vScopeArg } from "./lib/scope";
 import type { PlannedCall } from "./lib/credits";
 import { FIND_TODOS_MAX_OUTPUT, findTodosInputChars, findTodosRequest, parseActionItems } from "./lib/ai/actionItems";
-import { gemini, metered, providedArgs, requestNote } from "./ai";
+import { gemini, metered, providedArgs, requestNote, beginRequest } from "./ai";
 import { vProvidedContext } from "./lib/e2ee/ai";
 import { isSealed } from "./lib/e2ee/state";
 
@@ -109,14 +110,18 @@ export interface ProposedTodo {
  * note: the person picks which to add, and the editor adds them.
  */
 export const find = action({
-  args: { scope: vScopeArg, documentId: v.string(), text: v.optional(v.string()), provided: v.optional(vProvidedContext) },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    scope: vScopeArg, documentId: v.string(), text: v.optional(v.string()), provided: v.optional(vProvidedContext),
+  },
   handler: async (ctx, args): Promise<{ items: ProposedTodo[]; people: { profileId: string; displayName: string; isYou: boolean }[] }> => {
     await requireIdentity(ctx);
     const text = (args.text ?? "").slice(0, MAX_TEXT);
     const withNote = !text.trim();
     const plan: PlannedCall[] = [{ fast: false, inputChars: findTodosInputChars(withNote ? NOTE_CHARS : text.length), maxOutputTokens: FIND_TODOS_MAX_OUTPUT }];
     // The note's own scope decides (and pays), as for all writing help on a note.
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing", ...providedArgs(args.provided) });
+    const { holdId } = await beginRequest(ctx, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing", ...providedArgs(args.provided) }, args.ownKey);
     return await metered(ctx, holdId, async (meter) => {
       const found = await ctx.runQuery(internal.aiTodos.source, { documentId: args.documentId, withNote: withNote && !args.provided });
       const people = found.people;

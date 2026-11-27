@@ -12,6 +12,7 @@
 // through the same gates and credits as the rest of Foli AI (ai.begin: AI on, not in a Core scope, the hourly
 // limit, a hold on the estimate; ai.metered settles what Gemini counted), in the note's scope when there's a
 // note. Prompts, tables and replies are never logged or stored.
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -34,14 +35,14 @@ import {
   type AiTable,
 } from "./lib/tableAi";
 import type { PromptRequest } from "@folevi/ai-prompts";
-import { gemini, metered, providedArgs } from "./ai";
+import { gemini, metered, providedArgs, beginRequest } from "./ai";
 import { vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
 
 const vTable = v.object({ rows: v.array(v.array(v.string())), headerRow: v.boolean(), totalsRow: v.optional(v.boolean()) });
-const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()), table: vTable, provided: v.optional(vProvidedContext) };
+const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()), table: vTable, provided: v.optional(vProvidedContext), ownKey: v.optional(vOwnKey) };
 
-async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
-  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) });
+async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext; ownKey?: OwnKey }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
+  const { holdId } = await beginRequest(ctx, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) }, args.ownKey);
   return holdId;
 }
 

@@ -8,6 +8,7 @@
 //
 // Credits: the note's segments are counted first and the calls held up front (at most MAX_TRANSLATE_CHUNKS
 // of them); `metered` settles what they really cost. Same gates as every AI request (ai.begin).
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, internalQuery } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
@@ -37,7 +38,7 @@ import {
   type BlockTranslation,
 } from "./lib/ai/translate";
 import { copyAccess, snapshot } from "./documents";
-import { gemini, metered, providedArgs } from "./ai";
+import { gemini, metered, providedArgs, beginRequest } from "./ai";
 import { vProvidedContext } from "./lib/e2ee/ai";
 import { failE2ee, isSealed } from "./lib/e2ee/state";
 import { vWireBlock } from "./lib/validators";
@@ -131,6 +132,8 @@ async function inParallel<T>(items: readonly T[], limit: number, work: (item: T)
  */
 export const translateNote = action({
   args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
     scope: vScopeArg,
     documentId: v.string(),
     language: v.string(),
@@ -157,7 +160,7 @@ export const translateNote = action({
     if (chars > MAX_TRANSLATE_CHARS || chunks.length > MAX_TRANSLATE_CHUNKS) fail("limit_exceeded", "This note is too long to translate in one go. Split it into shorter notes first.");
     // Every chunk's call is held up front.
     const plan: PlannedCall[] = chunks.map((c) => ({ fast: false, inputChars: TRANSLATE_SYSTEM.length + 400 + c.reduce((n, s) => n + s.text.length + 16, 0), maxOutputTokens: TRANSLATE_MAX_OUTPUT }));
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing", ...providedArgs(args.provided) });
+    const { holdId } = await beginRequest(ctx, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing", ...providedArgs(args.provided) }, args.ownKey);
     return await metered(ctx, holdId, async (meter) => {
       const done = new Map<string, InlineNode[]>();
       await inParallel(chunks, PARALLEL, async (chunk) => {

@@ -393,6 +393,39 @@ As built (flowchart v2, 2026-10-21; docs/FLOWCHART_V2_PLAN.md, Intelligence).
 AI on or off (existing), conversation history, memory, proactive suggestions, attachment reading, web research,
 digests. Each setting is enforced on the server.
 
+### Your own AI key (`convex/lib/ai/ownKey.ts`, `apps/web/src/lib/ai/ownKey.ts`, 2026-11-27)
+
+Foli AI runs on the person's own Anthropic, OpenAI or Google Gemini key on every plan, Core and Free included, with
+no credits (docs/PRICING_PLAN.md, "Bring your own AI"). Settings, Foli AI, "Your own AI key" has the provider, the
+key, the model (each provider's default is marked), Test key, and a switch to use it. The web has `OwnKeyCard.tsx`;
+the Mac and iPhone draw native cards (`SettingsOwnKey.swift`, `PhoneOwnKey.swift`) from the engine's `ownAiKey`
+settings query and `ownAiKey.*` runs.
+
+Where the key lives: in an app with `secrets.reveal` (the Mac app and the iPhone shell), the Keychain entries local
+mode already uses (`ai.anthropic`, `ai.openai`, `ai.google`). Anywhere else (a browser, Windows, Linux, Android) the
+page's IndexedDB, sealed with a non-extractable AES-GCM key; it is wiped on sign-out. Keys are per device for now:
+syncing them end-to-end encrypted needs the account's E2EE key material, which only accounts with encryption on have
+(follow-up). Which provider is on and the model are in localStorage.
+
+On Folevi Cloud and Folevi Server the client adds `ownKey: { provider, apiKey, model }` to the AI action's arguments
+(`useAiAction` on the web, `commandsAi.ts` in the engine). The server uses it for that request only:
+
+- `beginRequest` (convex/ai.ts) passes `ai.begin` the provider and model, never the key. The hold is an own-key hold
+  (`aiCreditHolds.ownKey`): no credits held, the plan's AI block skipped, the hourly limit still consumed.
+- The key waits in the action's memory, by hold id, until `metered()` takes it and puts it on the meter's route
+  (not enumerable, so never stored, settled or logged). `loadHoldRoute` refuses an own-key hold without the key,
+  and a key on a hold with credits.
+- `settleHold` charges nothing for an own-key hold; it counts the request in `aiCreditPeriods.ownKeyRequests`, which
+  the usage card shows as "Your key", and in `aiUsage` with its tokens.
+- A refused key comes back as "Anthropic refused your key. Check it in Settings, Foli AI, Your own AI key."
+  `ai.testOwnKey` makes one short call for Test key.
+- Folevi Server: own keys work even when the server's own AI is off; the owner's "admins only" setting still applies.
+
+Not on own keys yet (they use credits): scheduled digests and routines (no device behind them), deep research
+(it runs as a scheduled job, and a scheduled job's arguments are stored), audio transcription (always Gemini), and
+search embeddings (platform-paid). Local libraries call the provider straight from the app (WP11, `ShellAi`) on
+the Mac, iPhone, Windows and Linux; a browser library and Android have no Foli AI there.
+
 ### Credits and limits
 
 Every model call goes through `metered()` and is charged to the right account (`aiAccountFor`). Embeddings and graph

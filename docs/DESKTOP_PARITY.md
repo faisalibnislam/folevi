@@ -41,7 +41,7 @@ Yes = built, Partial = built with less, No = missing.
 | Local library folder | Yes | Yes | Yes | |
 | Dropbox / Google Drive library | Yes | Partial | Partial | `cloud.rs` (PR 121), built and tested; not offered until the owner sets `FOLEVI_DROPBOX_APP_KEY` and `FOLEVI_GOOGLE_DESKTOP_CLIENT_ID` (docs/DESKTOP_APP.md) |
 | Encryption keys | Yes (Keychain, Touch ID) | Yes | Partial | Credential Manager / Secret Service; Windows Hello before encrypted notes open (PR 118); Linux has nothing to ask with |
-| Foli AI | Yes | Partial | Partial | Own keys only; no on-device model |
+| Foli AI | Yes | Partial | Partial | Own keys only in a local library; no on-device model. Your own AI key for Folevi Cloud (2026-11-27): the web Settings card in all three; the key is in the Keychain on the Mac, but in the page's sealed IndexedDB on Windows and Linux until `secrets.rs` gets `secretsReveal` (Credential Manager, Secret Service) |
 | Places (several accounts) | Yes | Yes | Yes | |
 | Your own server sign-in | Yes | Yes | Yes | `server.rs` (PR 116). http servers on the home network other than localhost: Windows needs the relay in PR 117; Linux not checked yet |
 | Finding servers on the home network | Yes | Yes | Yes | mdns-sd, `_folevi._tcp` |

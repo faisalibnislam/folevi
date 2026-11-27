@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction } from "convex/react";
+import { useAiAction } from "@/components/ai/useAiAction";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { FileText, RotateCcw, X } from "lucide-react";
@@ -31,7 +31,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   const { scope, scopeKey, today, profile } = useAppState();
   // The account's own key for this place: a brief is never read back under another account (lib/ai/catchUpStore.ts).
   const key = catchUpKey(profile.id, scopeKey);
-  const brief = useAction(api.ai.brief);
+  const brief = useAiAction(api.ai.brief);
   const stream = useAiStream();
   // The brief kept for this visit is read before the first frame, so Home doesn't draw the short row and then swap
   // it for the brief, pushing everything under it down (the iPhone remounts Home on every visit).

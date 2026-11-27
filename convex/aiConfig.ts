@@ -41,6 +41,7 @@ import {
 import { capabilitiesOf } from "./lib/ai/capabilities";
 import { aiAvailable, embeddingsAvailable, loadAiSettings, serverRoute } from "./lib/ai/provider";
 import { isServerEdition } from "./lib/edition";
+import { ownKeyModels, ownKeyRoute, type OwnKey } from "./lib/ai/ownKey";
 
 const ADMIN: PlatformRole[] = ["super_admin", "ops_admin"];
 /** Keys are secrets: only the super admin saves or removes them. */
@@ -228,7 +229,7 @@ type SettingsQuery = { runQuery: (ref: never, args: never) => Promise<unknown> }
 
 const vRouteFeature = v.union(vRoutedFeature, v.literal("transcription"), v.literal("embeddings"));
 
-type RouteRead = { route: AiRoute; sealed: string | null };
+type RouteRead = { route: AiRoute; sealed: string | null; ownKey?: AiProviderId | null };
 
 async function routeWithSealedKey(ctx: QueryCtx, feature: AiRoute["feature"]): Promise<RouteRead> {
   if (isServerEdition()) {
@@ -251,7 +252,10 @@ export const routeForHold = internalQuery({
   args: { holdId: v.id("aiCreditHolds") },
   handler: async (ctx, args): Promise<RouteRead> => {
     const hold = await ctx.db.get(args.holdId);
-    return await routeWithSealedKey(ctx, routedFeatureOf(hold?.feature));
+    const feature = routedFeatureOf(hold?.feature);
+    // An own-key hold needs no saved key: the request brings the person's own.
+    if (hold?.ownKey) return { route: { feature, provider: hold.ownKey, models: ownKeyModels(hold.ownKey) }, sealed: null, ownKey: hold.ownKey };
+    return await routeWithSealedKey(ctx, feature);
   },
 });
 
@@ -276,14 +280,19 @@ export async function loadRoute(ctx: Pick<ActionCtx, "runQuery">, feature: AiRou
   return await opened(read);
 }
 
-/** The route for a credit hold, key opened. */
-export async function loadHoldRoute(ctx: Pick<ActionCtx, "runQuery">, holdId: Id<"aiCreditHolds">): Promise<AiRoute> {
-  if (isServerEdition()) {
-    await loadAiSettings(ctx as unknown as SettingsQuery);
-    const read: RouteRead = await ctx.runQuery(internal.aiConfig.routeForHold, { holdId });
-    return serverRoute(read.route.feature, true);
-  }
+/**
+ * The route for a credit hold, key opened. With `ownKey` (the person's own key, lib/ai/ownKey.ts): their
+ * provider and key, which must match the hold (an own-key hold never runs on Folevi's key, and a hold with
+ * credits never runs on someone's own key).
+ */
+export async function loadHoldRoute(ctx: Pick<ActionCtx, "runQuery">, holdId: Id<"aiCreditHolds">, ownKey?: OwnKey): Promise<AiRoute> {
+  if (isServerEdition()) await loadAiSettings(ctx as unknown as SettingsQuery);
   const read: RouteRead = await ctx.runQuery(internal.aiConfig.routeForHold, { holdId });
+  if (read.ownKey || ownKey) {
+    if (!ownKey || read.ownKey !== ownKey.provider) fail("invalid_argument", "This request's AI key didn't come with it. Try again.");
+    return ownKeyRoute(read.route.feature, ownKey);
+  }
+  if (isServerEdition()) return serverRoute(read.route.feature, true);
   return await opened(read);
 }
 

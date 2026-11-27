@@ -230,14 +230,14 @@ export const testPurchase = mutation({
 async function buyableAccount(ctx: Parameters<typeof resolveScope>[0], profile: Doc<"profiles">, scope: { kind: "personal" } | { kind: "workspace"; workspaceId: string }): Promise<CreditAccount> {
   if (scope.kind === "personal") {
     const account = await personalAccount(ctx, profile._id);
-    if (!account.canBuy) fail("invalid_argument", account.trialing ? "Credit packs are for Pro and Pro AI. Choose a plan first." : "Credit packs are for Pro and Pro AI.");
+    if (!account.canBuy) fail("invalid_argument", account.trialing ? "Credit packs open once your trial ends. Choose a plan first." : "Credit packs aren't available on this account.");
     return account;
   }
   const resolved = (await resolveScope(ctx, profile, scope)).scope;
   if (resolved.kind !== "workspace") fail("not_found", "Workspace not found.");
   const seat = await seatAccount(ctx, profile._id, resolved.workspaceId);
-  if (!seat) fail("invalid_argument", "AI in this workspace uses your personal credits (or isn't included). Buy credits for your Personal instead.");
-  if (!seat.canBuy) fail("invalid_argument", "Credit packs are for Pro and Pro AI.");
+  if (!seat) fail("invalid_argument", "AI in this workspace uses your personal credits. Buy credits for your Personal instead.");
+  if (!seat.canBuy) fail("invalid_argument", "AI in this workspace uses your personal credits. Buy credits for your Personal instead.");
   return seat;
 }
 

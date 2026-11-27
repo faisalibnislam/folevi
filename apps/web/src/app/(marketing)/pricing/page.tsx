@@ -156,7 +156,7 @@ export default function PricingPage() {
         </div>
         <Eyebrow>Pricing</Eyebrow>
         <h1 className="mk-display mt-5 max-w-[15ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
-          Folevi is <Mark kind="circle">free</Mark>.
+          Folevi is <Mark kind="circle">free.</Mark>
         </h1>
         <p className="mk-lede mt-6 max-w-[60ch]">
           Every Folevi app is free on Mac, Windows, Linux, iPhone, iPad, Android and the web, with every feature. Keep

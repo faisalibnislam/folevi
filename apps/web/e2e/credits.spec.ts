@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 import { APP, createWorkspace, newPerson, switchTo } from "./helpers";
 
-// AI credits and Core, without calling Gemini: Core hides every AI entry point (in Personal and in a Core
-// workspace), the AI panels say when credits run low, a refused request says what helps, and a test credit
+// AI credits and the Foli AI switch, without calling Gemini: turning Foli AI off hides every AI entry point (in
+// Personal and in a workspace; Core no longer does), the AI panels say when credits run low, a refused request says what helps, and a test credit
 // pack adds credits. Locally payments aren't connected, so plans and packs are test purchases.
 
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -56,48 +56,61 @@ async function expectNoAi(page: Page) {
   await expect(page.getByRole("button", { name: "Generate with Foli AI" })).toHaveCount(0);
 }
 
-test("Core hides every AI entry point in Personal, and the AI setting says it isn't included", async ({ browser }) => {
+test("Core keeps Foli AI; turning Foli AI off hides every AI entry point in Personal", async ({ browser }) => {
   const { page, context } = await newPerson(browser, "Core Writer");
   // The trial includes AI.
   await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI" })).toBeVisible();
   await page.goto(`${APP}/documents`);
   await expect(launcher(page)).toBeVisible({ timeout: 30_000 });
 
+  // Core has no monthly credits, but no plan blocks Foli AI (packs and the person's own key work on it).
   await page.goto(`${APP}/settings/billing`);
   await page.getByRole("group", { name: "Billing period" }).getByRole("button", { name: "Monthly" }).click();
   await page.getByRole("region", { name: "Core plan", exact: true }).getByRole("button", { name: "Choose Core (test)" }).click();
   await expect(page.getByRole("status").filter({ hasText: "You're on Core (test purchase)." })).toBeVisible();
-  await expect(launcher(page)).toHaveCount(0);
+  await page.goto(`${APP}/documents`);
+  await expect(launcher(page)).toBeVisible({ timeout: 30_000 });
 
-  await expectNoAi(page);
-
-  // Settings → Account: the switch is off and can't be turned on, with the reason.
+  // Settings → Account: the person turns Foli AI off, and every entry point goes.
   await page.goto(`${APP}/settings/account`);
   const toggle = page.getByRole("switch", { name: "Foli AI", exact: true });
-  await expect(toggle).toBeDisabled({ timeout: 30_000 });
+  await expect(toggle).toBeEnabled({ timeout: 30_000 });
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByText(/nothing is sent while it's off/)).toBeVisible();
+  await toggle.click();
+  await expect(page.getByRole("status").filter({ hasText: "Foli AI turned off" })).toBeVisible();
   await expect(toggle).toHaveAttribute("aria-checked", "false");
-  await expect(page.getByText("Not included in Core.")).toBeVisible();
-  await expect(page.getByText(/nothing is sent to an AI model/)).toBeVisible();
+
+  await expectNoAi(page);
   await context.close();
 });
 
-test("a Core workspace has no AI for anyone in it; Personal keeps its own plan", async ({ browser }) => {
+test("a workspace with Foli AI turned off has no AI for anyone in it; Personal keeps its own", async ({ browser }) => {
   const { page, context } = await newPerson(browser, "Core Owner");
   await createWorkspace(page, "Core Studio");
   await page.goto(`${APP}/documents`);
   await expect(launcher(page)).toBeVisible({ timeout: 30_000 });
 
+  // On Core the workspace keeps Foli AI (no plan blocks it).
   await page.goto(`${APP}/settings/workspace-billing`);
   const core = page.getByRole("region", { name: "Core plan", exact: true });
   await expect(core).toBeVisible({ timeout: 30_000 });
   await core.getByRole("button", { name: "Upgrade to Core (test)" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Core Studio is on Core (test purchase)." })).toBeVisible();
-  await expect(page.getByText("Core doesn't include AI, so nothing in this workspace is sent to an AI model.")).toBeVisible();
-  await expect(launcher(page)).toHaveCount(0);
+  await page.goto(`${APP}/documents`);
+  await expect(launcher(page)).toBeVisible({ timeout: 30_000 });
+
+  // The owner turns it off in the workspace's Privacy settings.
+  await page.goto(`${APP}/settings/workspace-privacy`);
+  const toggle = page.getByRole("switch", { name: "Foli AI", exact: true });
+  await expect(toggle).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
+  await toggle.click();
+  await expect(page.getByRole("status").filter({ hasText: "Foli AI turned off for this workspace" })).toBeVisible();
+  await expect(page.getByText("Foli AI is off here. Nothing in this workspace is sent to an AI model, for anyone.")).toBeVisible();
 
   await expectNoAi(page);
 
-  // Personal is on the Pro AI trial, so AI is back there.
+  // Personal is on the Pro AI trial with Foli AI on, so AI is back there.
   await switchTo(page, "Personal");
   await page.goto(`${APP}/documents`);
   await expect(launcher(page)).toBeVisible({ timeout: 30_000 });
@@ -138,7 +151,7 @@ test("buying a test credit pack adds extra credits, used after the monthly ones"
   await expect(page.getByRole("status").filter({ hasText: "You're on Pro (test purchase)." })).toBeVisible();
   const personal = page.getByRole("listitem", { name: "AI credits: Personal" });
   await expect(personal).toContainText("Personal · Pro");
-  await expect(personal.getByText(/^180 AI credits left/)).toBeVisible();
+  await expect(personal.getByText(/^150 AI credits left/)).toBeVisible();
 
   // Monthly credits used up: the AI panel says so, and on Pro more can be bought.
   exhaustCredits(email);
@@ -156,16 +169,16 @@ test("buying a test credit pack adds extra credits, used after the monthly ones"
   // Buy 500 (a test purchase): they're available at once and listed in the billing history.
   await personal.getByRole("button", { name: "Buy credits" }).click();
   const dialog = page.getByRole("dialog", { name: "Buy AI credits" });
-  await expect(dialog.getByText("$7.99, one time")).toBeVisible();
-  await expect(dialog.getByText("$14.99, one time")).toBeVisible();
-  await dialog.getByRole("button", { name: "Buy 500 AI credits for $7.99 (test)" }).click();
+  await expect(dialog.getByText("$8, one time")).toBeVisible();
+  await expect(dialog.getByText("$15, one time")).toBeVisible();
+  await dialog.getByRole("button", { name: "Buy 500 AI credits for $8 (test)" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Added 500 AI credits to Personal (test purchase)." })).toBeVisible();
   await expect(dialog).toHaveCount(0);
   await expect(personal.getByText(/^500 AI credits left/)).toBeVisible();
   await expect(personal).toContainText(/500 extra credits, the first expiring on /);
   await expect(page.getByRole("region", { name: "Your plan", exact: true }).getByText(/Plus 500 extra credits/)).toBeVisible();
   await expect(page.getByRole("cell", { name: "500 AI credits" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "$7.99 USD" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "$8 USD" })).toBeVisible();
 
   // With extra credits to fall back on, the panel no longer warns.
   await page.keyboard.press("Meta+j");

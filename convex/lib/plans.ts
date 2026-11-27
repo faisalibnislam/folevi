@@ -114,7 +114,7 @@ const tierEntitlements = (tier: PlanTier, _scope: PlanScope): PlanEntitlements =
   ...BASE,
   storageBytes: STORAGE_BYTES[tier],
   storageRule: tier === "free" ? "shared_free" : "per_person",
-  // Free Personal works on 2 devices at once; every other plan (and every workspace plan) has no limit.
+  // No plan limits devices (the Free limit was removed 2026-11-27, docs/PRICING_PLAN.md).
   devices: null,
   aiAssistant: tierHasAi(tier),
   monthlyCredits: MONTHLY_CREDITS[tier],

@@ -19,7 +19,6 @@ import {
   personalPlanId,
   workspaceEntitlementsOf,
   yearlySavingPercent,
-  keptTermsAfter,
 } from "../../convex/lib/plans";
 import { authSession, identity, person, PERSONAL, setup, type T } from "./helpers";
 import { POLAR_SECRET, delivery, fakePolar, order, postEvent, product, subscription, withPolar, withoutPolar } from "./polar";
@@ -572,106 +571,5 @@ describe("device limits", () => {
     await admin.as.mutation(api.adminBilling.setDeviceLimit, { profileId: user.profileId, devices: null, reason: REASON });
     // Back to the plan's: Free has no limit.
     expect((await user.as.query(api.billing.mine, {})).entitlements.devices).toBeNull();
-  });
-});
-
-
-describe("subscribers from before the 2026-11-27 prices (keptTerms)", () => {
-  const OLD_PRO = { tier: "pro", storageBytes: 10 * GB, monthlyCredits: 180 } as const;
-  const OLD_PRO_AI = { tier: "pro_ai", storageBytes: 50 * GB, monthlyCredits: 550 } as const;
-
-  test("kept terms survive renewals on the same tier, and are dropped for good on a tier change or a new purchase after a plan ended", () => {
-    expect(keptTermsAfter(OLD_PRO, "pro", true)).toEqual(OLD_PRO);
-    // Pro to Pro AI drops them, so coming back to Pro later gets the new amounts.
-    expect(keptTermsAfter(OLD_PRO, "pro_ai", true)).toBeUndefined();
-    // Buying Pro again after it lapsed is a new purchase at the new amounts.
-    expect(keptTermsAfter(OLD_PRO, "pro", false)).toBeUndefined();
-    expect(keptTermsAfter(undefined, "pro", true)).toBeUndefined();
-  });
-
-  test("the same tier keeps the larger of the old and new storage and credits; another tier gets the new amounts", () => {
-    const now = Date.now();
-    // Same tier: the old, larger amounts.
-    expect(personalEntitlementsOf({ plan: "pro", status: "active", keptTerms: OLD_PRO }, now)).toMatchObject({ planId: "personal_pro_monthly", monthlyCredits: 180, storageBytes: 10 * GB });
-    expect(personalEntitlementsOf({ plan: "pro_ai", interval: "year", status: "active", keptTerms: OLD_PRO_AI }, now)).toMatchObject({ planId: "personal_pro_ai_yearly", monthlyCredits: 550, storageBytes: 50 * GB });
-    expect(personalEntitlementsOf({ plan: "core", status: "active", keptTerms: { tier: "core", storageBytes: 10 * GB, monthlyCredits: 0 } }, now)).toMatchObject({ monthlyCredits: 0, storageBytes: 10 * GB });
-    // Kept amounts below the new ones never lower them.
-    expect(personalEntitlementsOf({ plan: "pro", status: "active", keptTerms: { tier: "pro", storageBytes: 1 * GB, monthlyCredits: 20 } }, now)).toMatchObject({ monthlyCredits: 150, storageBytes: 10 * GB });
-    // Another tier: the new tier's amounts.
-    expect(personalEntitlementsOf({ plan: "pro_ai", status: "active", keptTerms: OLD_PRO }, now)).toMatchObject({ monthlyCredits: 450, storageBytes: 25 * GB });
-    expect(personalEntitlementsOf({ plan: "core", status: "active", keptTerms: OLD_PRO }, now)).toMatchObject({ monthlyCredits: 0, storageBytes: 5 * GB });
-    // A lapsed plan falls back to Free's amounts.
-    expect(personalEntitlementsOf({ plan: "pro", status: "active", currentPeriodEnd: now - 1, keptTerms: OLD_PRO }, now)).toMatchObject({ plan: "free", monthlyCredits: 30, storageBytes: 500 * MB });
-    // An admin storage override still wins.
-    expect(personalEntitlementsOf({ plan: "pro", status: "active", keptTerms: OLD_PRO, storageOverrideBytes: 200 * GB }, now).storageBytes).toBe(200 * GB);
-    // Workspaces follow the same rule.
-    expect(workspaceEntitlementsOf({ tier: "pro_ai", status: "active", keptTerms: OLD_PRO_AI }, {}, now)).toMatchObject({ planId: "workspace_pro_ai_monthly", monthlyCredits: 550, storageBytes: 50 * GB });
-    expect(workspaceEntitlementsOf({ tier: "pro", status: "active", keptTerms: OLD_PRO_AI }, {}, now)).toMatchObject({ planId: "workspace_pro_monthly", monthlyCredits: 150, storageBytes: 10 * GB });
-    expect(workspaceEntitlementsOf({ tier: "pro", status: "active", currentPeriodEnd: now - 1, keptTerms: OLD_PRO }, {}, now)).toMatchObject({ planId: "workspace_free", monthlyCredits: 0, storageBytes: 500 * MB });
-  });
-
-  test("migrations.keepOldTerms: paid subscriptions that started before the cutoff get the old terms, including canceled ones still paid through; running it again changes nothing", async () => {
-    const t = setup();
-    const cutoff = Date.now() - DAY_MS;
-    const before = cutoff - 30 * DAY_MS;
-    const after = cutoff + 1000;
-    const proOld = await person(t, "kept-pro@example.com");
-    const proAiOld = await person(t, "kept-pro-ai@example.com");
-    const coreOld = await person(t, "kept-core@example.com");
-    const proNew = await person(t, "kept-new@example.com");
-    const canceled = await person(t, "kept-canceled@example.com");
-    const paidThrough = await person(t, "kept-paid-through@example.com");
-    const free = await person(t, "kept-free@example.com");
-    const owner = await person(t, "kept-ws@example.com");
-    await proOld.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
-    await proAiOld.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "year" });
-    await coreOld.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
-    await proNew.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
-    await canceled.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
-    await paidThrough.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
-    const { id: ws } = await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Kept" });
-    await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: ws, planId: "workspace_pro_ai_monthly" });
-    const wsSub = async () =>
-      await t.run(async (ctx) => {
-        const w = (await ctx.db.query("workspaces").withIndex("by_public_id", (q) => q.eq("publicId", ws)).unique())!;
-        return (await ctx.db.query("subscriptions").collect()).find((s) => s.workspaceId === w._id)!;
-      });
-    for (const p of [proOld, proAiOld, coreOld, canceled, paidThrough, free]) {
-      const sub = await subOf(t, p);
-      await t.run(async (ctx) => ctx.db.patch(sub!._id, { paidSince: before }));
-    }
-    const proNewSub = await subOf(t, proNew);
-    await t.run(async (ctx) => ctx.db.patch(proNewSub!._id, { paidSince: after }));
-    const canceledSub = await subOf(t, canceled);
-    // Ended: canceled and past its period. Still paid through: canceled, period ends tomorrow.
-    await t.run(async (ctx) => ctx.db.patch(canceledSub!._id, { status: "canceled", currentPeriodEnd: Date.now() - DAY_MS }));
-    const paidThroughSub = await subOf(t, paidThrough);
-    await t.run(async (ctx) => ctx.db.patch(paidThroughSub!._id, { status: "canceled", currentPeriodEnd: Date.now() + DAY_MS }));
-    const ws0 = await wsSub();
-    await t.run(async (ctx) => ctx.db.patch(ws0._id, { paidSince: before }));
-
-    expect(await t.mutation(internal.migrations.keepOldTerms, { paidBefore: cutoff })).toEqual({ updated: 5, done: true });
-    expect((await subOf(t, paidThrough))!.keptTerms).toEqual({ tier: "pro", storageBytes: 10 * GB, monthlyCredits: 180 });
-    expect((await subOf(t, proOld))!.keptTerms).toEqual({ tier: "pro", storageBytes: 10 * GB, monthlyCredits: 180 });
-    expect((await subOf(t, proAiOld))!.keptTerms).toEqual({ tier: "pro_ai", storageBytes: 50 * GB, monthlyCredits: 550 });
-    expect((await subOf(t, coreOld))!.keptTerms).toEqual({ tier: "core", storageBytes: 10 * GB, monthlyCredits: 0 });
-    expect((await wsSub()).keptTerms).toEqual({ tier: "pro_ai", storageBytes: 50 * GB, monthlyCredits: 550 });
-    for (const p of [proNew, canceled, free]) expect((await subOf(t, p))!.keptTerms).toBeUndefined();
-    // Idempotent: rows that already have terms are skipped.
-    expect(await t.mutation(internal.migrations.keepOldTerms, { paidBefore: cutoff })).toEqual({ updated: 0, done: true });
-
-    // The kept terms are what people get.
-    expect((await proOld.as.query(api.billing.mine, {})).entitlements).toMatchObject({ plan: "pro", monthlyCredits: 180, storageBytes: 10 * GB });
-    expect((await proOld.as.query(api.billing.mine, {})).credits).toMatchObject({ allowance: 180 });
-    expect((await proAiOld.as.query(api.billing.mine, {})).entitlements).toMatchObject({ plan: "pro_ai", monthlyCredits: 550, storageBytes: 50 * GB });
-    expect((await coreOld.as.query(api.billing.mine, {})).entitlements).toMatchObject({ plan: "core", monthlyCredits: 0, storageBytes: 10 * GB });
-    expect((await proNew.as.query(api.billing.mine, {})).entitlements).toMatchObject({ plan: "pro", monthlyCredits: 150, storageBytes: 10 * GB });
-    expect(await owner.as.query(api.billing.credits, { scope: { kind: "workspace", workspaceId: ws } })).toMatchObject({ account: "seat", allowance: 550 });
-    expect((await owner.as.query(api.workspaces.mine, {})).find((w) => w.id === ws)).toMatchObject({ storageQuotaBytes: 50 * GB });
-    // Changing tier gets the new tier's amounts.
-    await proOld.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "month" });
-    expect((await proOld.as.query(api.billing.mine, {})).entitlements).toMatchObject({ plan: "pro_ai", monthlyCredits: 450, storageBytes: 25 * GB });
-    await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: ws, planId: "workspace_pro_monthly" });
-    expect(await owner.as.query(api.billing.credits, { scope: { kind: "workspace", workspaceId: ws } })).toMatchObject({ allowance: 150 });
   });
 });

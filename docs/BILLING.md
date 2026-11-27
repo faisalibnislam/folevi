@@ -38,20 +38,13 @@ and Pro AI only at $7.99 and $14.99, and Free limited to 2 devices with AI only 
   request in that person's Personal, for everyone (including pages shared from it). `workspaces.aiDisabled`
   (set by owners and admins with `workspaces.setAiDisabled`, Settings → Workspace → Privacy) does the same for a
   workspace. Both are checked in `aiBlockedIn` (`convex/lib/credits.ts`).
-- Earlier subscribers keep their storage and credits. `subscriptions.keptTerms` holds the old amounts; while
-  the subscription stays on that tier, entitlements use the larger of the old and new amounts
-  (`withKeptTerms` in `convex/lib/plans.ts`). A tier change gets the new tier's amounts. The backfill is
-  `migrations:keepOldTerms` with `paidBefore` set to the deploy time of the new prices; run it right after
-  that deploy.
 - Polar: change the price on the EXISTING products (same product ids) rather than creating new ones. Webhooks
-  find the plan from the product id recorded in Billing setup (`productFor` in `convex/billing.ts`), so a
-  new product would leave old subscriptions unmatched. Admin → Billing setup then shows every product as
-  matching. Polar keeps existing subscriptions on the price they started with until each one is updated to
-  the new price, which is how earlier subscribers move to the lower price.
+  find the plan from the product id recorded in Billing setup (`productFor` in `convex/billing.ts`). Folevi had no
+  paying users when these prices were set (2026-11-27), so nobody had to be moved or kept on old terms.
 - **Members** have no plan limit. (An admin-set `memberLimit` on each workspace row still exists as an abuse
   control; new workspaces get 50. Raise it in the admin console when a team needs more.)
-- **Devices:** Free Personal allows 2 signed-in devices; every other plan has no limit
-  (`convex/lib/devices.ts`). Workspace plans never change a person's device limit.
+- **Devices:** no plan has a device limit (Free had 2 until 2026-11-27). An admin can still set one for a person
+  (`deviceLimitOverride`, `convex/lib/devices.ts`). Workspace plans never change a person's device limit.
 
 ### Storage
 

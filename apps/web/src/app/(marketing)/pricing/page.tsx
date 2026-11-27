@@ -105,10 +105,6 @@ const faqs: FaqItem[] = [
     a: "Your notes and files stay put and you can keep writing. New uploads pause until you free up room or move to a plan with more storage. Nothing is deleted.",
   },
   {
-    q: "I subscribed before these prices. What changes?",
-    a: "Your plan keeps the storage and AI credits it had for as long as you stay on it, and you pay the new price from your next renewal. If you change plans, you get the new plan’s storage and credits.",
-  },
-  {
     q: "How are team plans billed?",
     a: "Per member. On a paid team plan the owner, admins and members each take a seat, and each gets the plan’s storage and AI credits in that workspace. A free workspace bills nobody, and its members use their own personal AI credits there.",
   },

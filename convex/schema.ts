@@ -694,11 +694,6 @@ export default defineSchema({
     /** Polar's event time (ms) of the last subscription event applied; older events are ignored. */
     polarEventAt: v.optional(v.number()),
     storageOverrideBytes: v.optional(v.number()),
-    /**
-     * Subscribers from before the 2026-11-27 prices: the storage and credits they keep while on this tier
-     * (lib/plans.ts keptTerms; written by migrations.keepOldTerms).
-     */
-    keptTerms: v.optional(v.object({ tier: vPersonalTier, storageBytes: v.number(), monthlyCredits: v.number() })),
     /** Admin-set device limit (a number, or unlimited); unset = the plan's. */
     deviceLimitOverride: v.optional(v.union(v.number(), v.literal("unlimited"))),
     /** When the current paid plan started (for conversion and churn analytics). */

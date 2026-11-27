@@ -75,8 +75,8 @@ and makes it available on Free too.
 
 ### Existing subscribers
 
-Folevi has no paying users yet (owner, 2026-11-27), so nobody needs to keep old terms and the backfill is
-not run. The `keptTerms` support stays in the code in case it is ever needed.
+Folevi has no paying users yet (owner, 2026-11-27), so there is nothing to carry over: everyone gets the new
+plans.
 
 ### Trial
 

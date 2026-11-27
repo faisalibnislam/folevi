@@ -29,7 +29,7 @@ import {
 import { freePool, personalEntitlements, storageUsage } from "./lib/entitlements";
 import { addCredits, aiAccountFor, creditBalance, creditSummary, periodRow, personalAccount, refundPackCredits, seatAccount, type CreditAccount } from "./lib/credits";
 import { usageBreakdown } from "./lib/ai/usage";
-import { CREDIT_PACKS, PLAN_CATALOG, isPaidPlan, keptTermsAfter, personalPlanId, type PersonalTier } from "./lib/plans";
+import { CREDIT_PACKS, PLAN_CATALOG, isPaidPlan, personalPlanId, type PersonalTier } from "./lib/plans";
 import { listUserSessions } from "./lib/authStore";
 import { scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
 import {
@@ -215,7 +215,6 @@ export const testPurchase = mutation({
       currentPeriodEnd: periodEndFrom(now, args.interval),
       cancelAtPeriodEnd: false,
       paidSince: sub.plan === args.plan && sub.paidSince ? sub.paidSince : now,
-      keptTerms: keptTermsAfter(sub.keptTerms, args.plan, onPaidPlan(sub) && sub.status !== "canceled"),
       canceledAt: undefined,
       // Choosing a plan ends a running trial: they get what they chose from now on.
       trialEndsAt: sub.trialEndsAt && sub.trialEndsAt > now ? now : sub.trialEndsAt,
@@ -316,7 +315,7 @@ export const settleExpiredPlans = internalMutation({
             await ctx.db.patch(s._id, { currentPeriodStart: now, currentPeriodEnd: periodEndFrom(now, s.interval), updatedAt: now });
             continue;
           }
-          await ctx.db.patch(s._id, { plan: "free", interval: undefined, keptTerms: undefined, status: "canceled", canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
+          await ctx.db.patch(s._id, { plan: "free", interval: undefined, status: "canceled", canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
           changed++;
         }
       }
@@ -563,7 +562,6 @@ async function applySubscriptionEvent(ctx: MutationCtx, type: string, at: number
     polarSubscriptionId: str(o.id) ?? row.polarSubscriptionId,
     polarProductId: str(o.product_id),
     paidSince: wasPaid && row.paidSince ? row.paidSince : status === "active" ? now : row.paidSince,
-    keptTerms: keptTermsAfter(row.keptTerms, tier, wasPaid),
     canceledAt: status === "canceled" ? (row.canceledAt ?? now) : undefined,
     // Paying ends a running trial: they get what they chose from now on.
     trialEndsAt: status === "active" && row.trialEndsAt && row.trialEndsAt > now ? now : row.trialEndsAt,

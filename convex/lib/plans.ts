@@ -11,9 +11,8 @@
 // Storage (lib/entitlements.ts):
 // - Free: 500 MB in total, shared by the owner's Personal (while it's on Free) and every free workspace they
 //   own. Every upload in those workspaces, by anyone, counts against the owner's 500 MB.
-// - Core / Pro / Pro AI: 5 GB / 10 GB / 25 GB per person (2026-11-27 prices; earlier subscribers keep their
-//   old amounts on the same tier, keptTerms). In a paid workspace each member's own uploads count against
-//   their own quota there; a guest's uploads count against the page owner's.
+// - Core / Pro / Pro AI: 5 GB / 10 GB / 25 GB per person (2026-11-27 prices). In a paid workspace each member's
+//   own uploads count against their own quota there; a guest's uploads count against the page owner's.
 //
 // AI credits (lib/credits.ts): 1 credit = $0.01 of model cost. Monthly credits per person (Free 30, Core 0,
 // Pro 150, Pro AI 450), plus one-time packs on every plan that last 12 months and are used after the monthly
@@ -383,37 +382,6 @@ export interface SubscriptionLike {
   storageOverrideBytes?: number;
   /** An admin-set device limit that replaces the plan's. */
   deviceLimitOverride?: number | "unlimited";
-  /** The storage and credits this subscription had before the 2026-11-27 prices (see keptTermsFor). */
-  keptTerms?: KeptTerms;
-}
-
-/**
- * Subscribers from before the 2026-11-27 prices keep the storage and credits they had while they stay on the
- * same tier (docs/PRICING_PLAN.md, "Existing subscribers"). A change of tier gets the new tier's amounts.
- */
-export interface KeptTerms {
-  tier: PlanTier;
-  storageBytes: number;
-  monthlyCredits: number;
-}
-
-/** The pre-2026-11-27 amounts, for the backfill that writes keptTerms (convex/migrations.ts keepOldTerms). */
-export const OLD_TERMS: Record<Exclude<PlanTier, "free">, { storageBytes: number; monthlyCredits: number }> = {
-  core: { storageBytes: 10 * GB, monthlyCredits: 0 },
-  pro: { storageBytes: 10 * GB, monthlyCredits: 180 },
-  pro_ai: { storageBytes: 50 * GB, monthlyCredits: 550 },
-};
-
-/**
- * What a subscription's keptTerms become when its plan is written: kept only while it stays paid on the same
- * tier. Moving to another tier, or buying again after a plan ended, gets the new amounts for good.
- */
-export const keptTermsAfter = (kept: KeptTerms | undefined, newTier: PlanTier, wasLive: boolean): KeptTerms | undefined => (wasLive && kept?.tier === newTier ? kept : undefined);
-
-/** A paid tier's storage and credits, raised to the kept terms when they apply to that tier. */
-export function withKeptTerms(tier: PlanTier, kept: KeptTerms | undefined, e: { storageBytes: number; monthlyCredits: number }) {
-  if (!kept || kept.tier !== tier || tier === "free") return e;
-  return { storageBytes: Math.max(e.storageBytes, kept.storageBytes), monthlyCredits: Math.max(e.monthlyCredits, kept.monthlyCredits) };
 }
 
 /** What a person's own (Personal) plan gives them. */
@@ -491,7 +459,6 @@ export function personalEntitlementsOf(sub: SubscriptionLike | null, now: number
   const trialing = Boolean(sub?.trialEndsAt && sub.trialEndsAt > now && !isPaidPlan(paidPlanId));
   const planId: PersonalPlanId = trialing ? personalPlanId(TRIAL_TIER, "month") : paidPlanId;
   const e = PLAN_CATALOG[planId].entitlements;
-  const kept = trialing ? e : withKeptTerms(PLAN_CATALOG[planId].tier, sub?.keptTerms, e);
   return {
     scope: "personal",
     planId,
@@ -504,9 +471,9 @@ export function personalEntitlementsOf(sub: SubscriptionLike | null, now: number
     ai: e.aiAssistant,
     aiSource: trialing ? "trial" : e.aiAssistant ? "plan" : null,
     aiFairUse: e.aiFairUse,
-    monthlyCredits: trialing ? TRIAL_CREDITS : kept.monthlyCredits,
+    monthlyCredits: trialing ? TRIAL_CREDITS : e.monthlyCredits,
     creditPacks: e.creditPacks,
-    storageBytes: sub?.storageOverrideBytes ?? kept.storageBytes,
+    storageBytes: sub?.storageOverrideBytes ?? e.storageBytes,
     storageRule: e.storageRule,
     devices: sub?.deviceLimitOverride === "unlimited" ? null : (sub?.deviceLimitOverride ?? e.devices),
   };
@@ -522,7 +489,6 @@ export interface WorkspaceSubscriptionLike {
   interval?: BillingInterval;
   status: "active" | "past_due" | "canceled";
   currentPeriodEnd?: number;
-  keptTerms?: KeptTerms;
 }
 
 /** What a workspace's plan gives everyone working in it. */
@@ -564,11 +530,11 @@ export function workspaceEntitlementsOf(sub: WorkspaceSubscriptionLike | null, o
     return { ...top, monthlyCredits: SERVER_MONTHLY_CREDITS, creditPacks: false, members: null, guests: null, storageBytes: overrides.storageBytes ?? SERVER_STORAGE_BYTES };
   }
   const planId: WorkspacePlanId = inForce ? storedId : "workspace_free";
-  return workspaceEntitlementsOfPlan(planId, overrides, sub?.keptTerms);
+  return workspaceEntitlementsOfPlan(planId, overrides);
 }
 
-function workspaceEntitlementsOfPlan(planId: WorkspacePlanId, overrides: { storageBytes?: number }, keptTerms?: KeptTerms): WorkspaceEntitlements {
-  const e = { ...PLAN_CATALOG[planId].entitlements, ...withKeptTerms(PLAN_CATALOG[planId].tier, keptTerms, PLAN_CATALOG[planId].entitlements) };
+function workspaceEntitlementsOfPlan(planId: WorkspacePlanId, overrides: { storageBytes?: number }): WorkspaceEntitlements {
+  const e = PLAN_CATALOG[planId].entitlements;
   const paid = isPaidPlan(planId);
   return {
     scope: "workspace",

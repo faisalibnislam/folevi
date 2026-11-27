@@ -10,7 +10,6 @@ import { studyKindOf, syncStudyCard } from "./lib/study";
 import { hasTaskTitle, randomNoteEmoji, randomNoteCover } from "@folevi/editor-schema";
 import { currentFolderColor, isFolderColor, randomFolderColor } from "./lib/folderColors";
 import { startTrial } from "./lib/billing";
-import { OLD_TERMS, PLAN_CATALOG } from "./lib/plans";
 import { hasValidScope, personalScope, SCOPED_TABLES, sameScope, scopeOfRow, workspaceScope, type ScopedTable } from "./lib/scope";
 import { isSealed } from "./lib/e2ee/state";
 import { nextSeq } from "./lib/seq";
@@ -689,33 +688,5 @@ export const narrowDocumentText = internalMutation({
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.narrowDocumentText, { cursor: page.continueCursor });
     return { cleared, done: page.isDone };
-  },
-});
-
-/**
- * Subscribers from before the 2026-11-27 prices keep the storage and credits they had while they stay on the
- * same tier (docs/PRICING_PLAN.md, "Existing subscribers"; lib/plans.ts keptTerms). Writes `keptTerms` on every
- * paid subscription that started before `paidBefore` (ms; the time the new prices were deployed), so
- * subscriptions bought at the new prices are left alone. Idempotent: rows with keptTerms are skipped.
- *
- *   npx convex run --deployment <prod> migrations:keepOldTerms '{"paidBefore": <deploy time in ms>}'
- */
-export const keepOldTerms = internalMutation({
-  args: { paidBefore: v.number(), cursor: v.optional(v.union(v.string(), v.null())) },
-  handler: async (ctx, args) => {
-    const page = await ctx.db.query("subscriptions").paginate({ numItems: 100, cursor: args.cursor ?? null });
-    let updated = 0;
-    for (const sub of page.page) {
-      // Canceled rows keep their terms only while still paid through the period.
-      if (sub.keptTerms || (sub.status === "canceled" && !(sub.currentPeriodEnd && sub.currentPeriodEnd > Date.now()))) continue;
-      const tier = sub.ownerType === "workspace" ? (sub.planId ? PLAN_CATALOG[sub.planId].tier : "free") : (sub.plan ?? "free");
-      if (tier === "free") continue;
-      // Bought at the new prices (or a row with no paid start made after the change): new amounts.
-      if ((sub.paidSince ?? sub._creationTime) >= args.paidBefore) continue;
-      await ctx.db.patch(sub._id, { keptTerms: { tier, ...OLD_TERMS[tier] } });
-      updated++;
-    }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.keepOldTerms, { paidBefore: args.paidBefore, cursor: page.continueCursor });
-    return { updated, done: page.isDone };
   },
 });

@@ -147,6 +147,8 @@ export interface AiRoute {
   models: ModelSet;
   /** The key, when one was saved in the admin panel; otherwise the adapter reads the environment variable. */
   apiKey?: string;
+  /** The person's own key (lib/ai/ownKey.ts): no credits, and its refusals name their provider. */
+  own?: boolean;
 }
 
 /** A feature's route without its key. Transcription and embeddings always go to Gemini. */

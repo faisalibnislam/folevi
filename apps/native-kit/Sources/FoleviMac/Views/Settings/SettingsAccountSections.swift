@@ -169,6 +169,7 @@ struct AccountAiSettings: View {
         let core = ai.map { !$0.included } ?? false
         VStack(alignment: .leading, spacing: 20) {
             AiSettingCard(model: model)
+            OwnAiKeyCard(model: model)
             SettingsCard("Conversations") {
                 SettingsPrefRow(label: "Keep conversations", body_: "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.", isOn: ai?.history ?? true, disabled: core) { await set(.history, $0, "Conversations are kept", "New conversations aren't kept") }
             }

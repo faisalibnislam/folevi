@@ -7,6 +7,7 @@
 // Folevi Server (FOLEVI_EDITION=server) has no routes: its one provider comes from the server's settings
 // (the second half of this file), an OpenAI-compatible service (lib/ai/openaiCompatible.ts) or Gemini.
 import type { CallUsage } from "../credits";
+import { ConvexError } from "convex/values";
 import { fail } from "../errors";
 import { connectToken, connectUrl, isServerEdition } from "../edition";
 import { capabilitiesOf, type ModelCapabilities } from "./capabilities";
@@ -16,6 +17,8 @@ import { openaiAdapter } from "./openai";
 import { openAiProvider } from "./openaiCompatible";
 import { anthropicAdapter } from "./anthropic";
 import { withMemory } from "./memory";
+import { KEY_REFUSED, NOT_SET_UP } from "./common";
+import { ownKeyRefused } from "./ownKey";
 import { internal } from "../../_generated/api";
 import type { QueryCtx } from "../../_generated/server";
 import { readServerSettings, serverAiSettingsOf } from "../serverSettings";
@@ -204,9 +207,24 @@ const active: AiProvider = {
     // What a model can't take is refused here with the same words whichever provider it is.
     if (req.searchGrounding && !caps.searchGrounding) fail("maintenance", "The AI model in use can't search the web.");
     const target: CallTarget = { model, slot, ...(route.apiKey ? { apiKey: route.apiKey } : {}), ...(route.provider === "gemini" && slot !== "fast" ? { lighter: route.models.fast } : {}) };
-    return ADAPTERS[route.provider].generate(withMemory(req, meter), meter, onDelta, target);
+    const call = ADAPTERS[route.provider].generate(withMemory(req, meter), meter, onDelta, target);
+    return route.own ? ownKeyErrors(call, route.provider) : call;
   },
 };
+
+/**
+ * The person's own key: a refusal of the key names their provider and where to fix it, instead of the
+ * words about the server's key (lib/ai/ownKey.ts). Other errors pass through. Never includes the key.
+ */
+async function ownKeyErrors<T>(call: Promise<T>, provider: AiRoute["provider"]): Promise<T> {
+  try {
+    return await call;
+  } catch (e) {
+    const message = e instanceof ConvexError ? (e.data as { message?: string } | undefined)?.message : undefined;
+    if (message === KEY_REFUSED || message === NOT_SET_UP) fail("maintenance", ownKeyRefused(provider), { reason: "own_key_refused" });
+    throw e;
+  }
+}
 
 // ---------------------------------------------------------------------------------------------------
 // Folevi Server: the provider comes from the server's settings (docs/self-hosting/CONTRACT.md §8 `ai`)
@@ -278,7 +296,8 @@ export function useServerAiSettings(s: ServerAiSettings | null): void {
   serverAi = s;
   setServerGemini(s?.mode === "gemini" && s.gemini ? { apiKey: s.gemini.apiKey, model: s.gemini.model, fastModel: s.gemini.model, embeddingModel: s.gemini.embeddingModel } : { apiKey: undefined });
   const p = serverProviderFor(s);
-  serverActive = { ...p, generate: (req, meter, onDelta) => p.generate(withMemory(req, meter), meter, onDelta) };
+  // A person's own key (lib/ai/ownKey.ts) goes to their provider, whatever the server's settings say.
+  serverActive = { ...p, generate: (req, meter, onDelta) => (meterRoute(meter)?.own ? active.generate(req, meter, onDelta) : p.generate(withMemory(req, meter), meter, onDelta)) };
 }
 
 type SettingsReader = { db: unknown } | { runQuery: (ref: never, args: never) => Promise<unknown> };
@@ -340,7 +359,8 @@ export function provider(): AiProvider {
  */
 export function capabilities(slot: "fast" | "main" | "heavy" | boolean = false, route?: AiRoute | null): ModelCapabilities & { model: string } {
   const p = provider();
-  const set = p.models(route);
+  // The person's own key: their models, whatever the server's provider is.
+  const set = route?.own ? route.models : p.models(route);
   const model = set[slot === true ? "fast" : slot === false ? "main" : slot];
-  return { ...(p.capabilities?.(model) ?? capabilitiesOf(model)), model };
+  return { ...((route?.own ? undefined : p.capabilities?.(model)) ?? capabilitiesOf(model)), model };
 }

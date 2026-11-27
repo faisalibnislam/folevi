@@ -402,6 +402,12 @@
     delete: function (name) {
       return call("FoleviSecrets", "delete", { name: String(name) }).then(function () {});
     },
+    // Read back only for a Folevi Cloud request on the person's own AI key (web lib/ai/ownKey.ts).
+    reveal: function (name) {
+      return call("FoleviSecrets", "reveal", { name: String(name) }).then(function (r) {
+        return r && typeof r.value === "string" ? r.value : null;
+      });
+    },
   };
 
   var auth = {

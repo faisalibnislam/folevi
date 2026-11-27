@@ -524,6 +524,8 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     // people's spaces.
     () => ctx.db.query("e2eeNoteKeys").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("e2eeRecords").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // Their own records sealed with their master key (their own AI keys).
+    () => ctx.db.query("e2eeAccountRecords").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their webhooks: where they listen, what's waiting, the log, then the endpoints.
     () => ctx.db.query("webhookPlaces").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("webhookDeliveries").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),

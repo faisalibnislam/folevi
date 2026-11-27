@@ -142,6 +142,16 @@ impl SecretStore {
         String::from_utf8(plain).ok()
     }
 
+    /// A Foli AI key for the page, for one Folevi Cloud request on the person's own key (web lib/ai/ownKey.ts; the
+    /// server uses it for that request only). Only the page's own names (`is_page_secret`): never the session
+    /// tokens, the library's key or the encryption keys.
+    pub fn reveal(&self, name: &str) -> Option<String> {
+        if !is_page_secret(name) {
+            return None;
+        }
+        self.get(name).filter(|v| !v.is_empty())
+    }
+
     pub fn has(&self, name: &str) -> bool {
         self.get(name).is_some_and(|v| !v.is_empty())
     }
@@ -203,8 +213,13 @@ mod tests {
         assert!(!store.has("ai.openai"));
         store.set("ai.openai", "sk-test").unwrap();
         assert_eq!(store.get("ai.openai").as_deref(), Some("sk-test"));
+        assert_eq!(store.reveal("ai.openai").as_deref(), Some("sk-test"));
+        // Only Foli AI's keys are read back for the page.
+        store.set("auth.session", "token").unwrap();
+        assert_eq!(store.reveal("auth.session"), None);
         store.delete("ai.openai").unwrap();
         assert!(!store.has("ai.openai"));
+        assert_eq!(store.reveal("ai.openai"), None);
         assert!(store.set("nope", "x").is_err());
         let key = Sealer::from_file(&dir.path().join("k")).unwrap();
         let again = Sealer::from_file(&dir.path().join("k")).unwrap();

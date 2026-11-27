@@ -33,6 +33,7 @@ import { vAgentOp, vRunNote, vRunStatus } from "./lib/ai/tools/ops";
 import { vReportSource, vResearchStep } from "./lib/ai/research";
 import { vMemoryKind } from "./lib/ai/memory";
 import { vAiFeature } from "./lib/ai/usage";
+import { vAiProvider } from "./lib/ai/config";
 import { vReactionKind } from "./lib/reactions";
 import {
   vAccountKeyStatement,
@@ -851,6 +852,8 @@ export default defineSchema({
     /** Credits charged this period (monthly and extra) by feature, and by UTC day (lib/ai/usage.ts). */
     features: v.optional(v.record(v.string(), v.number())),
     days: v.optional(v.record(v.string(), v.number())),
+    /** Requests this period that ran on the person's own AI key (no credits), for the usage card's "Your key". */
+    ownKeyRequests: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_account_period", ["profileId", "workspaceId", "periodKey"]),
 
@@ -889,6 +892,11 @@ export default defineSchema({
     credits: v.number(),
     /** What the request is for (lib/ai/usage.ts), counted when it settles. */
     feature: v.optional(vAiFeature),
+    /**
+     * The provider of the person's own key, when the request runs on it (lib/ai/ownKey.ts): no credits held
+     * or charged. Never the key itself.
+     */
+    ownKey: v.optional(vAiProvider),
     createdAt: v.number(),
     expiresAt: v.number(),
   })
@@ -2673,6 +2681,23 @@ export default defineSchema({
     .index("by_profile", ["profileId", "epoch"])
     // Wraps of superseded epochs are kept 30 days, then swept (e2ee.keys.sweep).
     .index("by_status_superseded", ["status", "supersededAt"]),
+
+  /**
+   * A person's own sealed records, sealed with their account master key (AMK "account/records", context
+   * `record/account/<profileId>/<kind>/<recordId>`, docs/E2EE_DESIGN.md §3): today only their own Foli AI keys
+   * (kind "aiKey", one per provider, lib/ai/ownKey.ts), so their devices share them. The server never opens them.
+   * A removed record keeps its row with no content (`deletedAt`), so other devices forget their copy too.
+   */
+  e2eeAccountRecords: defineTable({
+    profileId: v.id("profiles"),
+    kind: v.literal("aiKey"),
+    recordId: v.string(),
+    /** The AMK epoch it was sealed under (a reset makes it unreadable; devices seal it again). */
+    epoch: v.number(),
+    sealed: v.optional(v.bytes()),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()),
+  }).index("by_profile", ["profileId", "kind", "recordId"]),
 
   /** The account master key, wrapped for each way in (a trusted device, the recovery key, a passkey, the passphrase). */
   e2eeAccountWraps: defineTable({

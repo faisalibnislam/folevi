@@ -70,6 +70,8 @@ export class FakeKeysServer {
   workspaces = new Map<string, { profileId: string; role: "owner" | "admin" | "member" }[]>();
   unlockAttempts = new Map<string, number>();
   calls: string[] = [];
+  /** e2ee.accountRecords: a person's own sealed records (their AI keys). */
+  accountRecords: { profileId: string; kind: string; recordId: string; epoch: number; sealed: ArrayBuffer | null; updatedAt: number; deletedAt: number | null }[] = [];
   /** Tests: rewrites what the approvals list returns (a server substituting keys). */
   tamperApprovals: ((rows: ReturnType<FakeKeysServer["approvalRows"]>) => ReturnType<FakeKeysServer["approvalRows"]>) | null = null;
   tamperApproval: ((row: NonNullable<ReturnType<FakeKeysServer["approvalRow"]>>) => NonNullable<ReturnType<FakeKeysServer["approvalRow"]>>) | null = null;
@@ -518,6 +520,27 @@ export class FakeKeysServer {
         }, cb),
       watchWraps: (cb: (rows: unknown[]) => void) => watch("wraps", listWraps, cb),
       watchStatus: (cb: (s: unknown) => void) => watch("status", status, cb),
+      accountRecords: {
+        list: q("accountRecords.list", (a: { kind: string }) =>
+          self.accountRecords.filter((r) => r.profileId === me && r.kind === a.kind).map(({ recordId, epoch, sealed, updatedAt, deletedAt }) => ({ recordId, epoch, sealed, updatedAt, deletedAt })),
+        ),
+        put: m("accountRecords.put", (a: { kind: string; recordId: string; epoch: number; sealed: ArrayBuffer }) => {
+          const acct = self.active(me);
+          if (!acct) return fail("forbidden", "Encryption isn't set up for this account.");
+          if (acct.epoch !== a.epoch) fail("conflict", "Your encryption key changed.");
+          const updatedAt = ++self.now;
+          const row = self.accountRecords.find((r) => r.profileId === me && r.kind === a.kind && r.recordId === a.recordId);
+          if (row) Object.assign(row, { epoch: a.epoch, sealed: a.sealed, updatedAt, deletedAt: null });
+          else self.accountRecords.push({ profileId: me, kind: a.kind, recordId: a.recordId, epoch: a.epoch, sealed: a.sealed, updatedAt, deletedAt: null });
+          return { updatedAt };
+        }),
+        remove: m("accountRecords.remove", (a: { kind: string; recordId: string }) => {
+          const updatedAt = ++self.now;
+          const row = self.accountRecords.find((r) => r.profileId === me && r.kind === a.kind && r.recordId === a.recordId);
+          if (row) Object.assign(row, { sealed: null, updatedAt, deletedAt: updatedAt });
+          return { updatedAt };
+        }),
+      },
     };
     return server as unknown as KeysServer;
   }

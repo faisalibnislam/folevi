@@ -1400,6 +1400,8 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
             s.secrets.set(name, opt_str(o, "value").unwrap_or(""))?;
             Ok(value(true))
         }
+        // Read back only for a Folevi Cloud request on the person's own AI key (web lib/ai/ownKey.ts).
+        "secretsReveal" => Ok(value(s.secrets.reveal(req_str(o, "name")?))),
         "secretsDelete" => {
             let name = req_str(o, "name")?;
             if secrets::is_page_secret(name) {

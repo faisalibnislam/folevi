@@ -15,6 +15,7 @@
 // model's JSON is checked in lib/stickiesAi.ts before it's returned, and nothing is stored here: the board
 // changes only when the person applies the result in the note (one undo step). Prompts, notes and photos
 // are never logged.
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, internalQuery, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -29,7 +30,7 @@ import { attachmentTokens } from "./lib/ai/attachments";
 import { ATTACHMENTS_OFF } from "./lib/ai/attachmentFiles";
 import { capabilities, type Part, loadAiSettings } from "./lib/ai/provider";
 import type { AiFeature } from "./lib/ai/usage";
-import { gemini, metered, MAX_QUESTION, providedArgs } from "./ai";
+import { gemini, metered, MAX_QUESTION, providedArgs, beginRequest } from "./ai";
 import { vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
 import {
   MAX_PHOTO_BASE64,
@@ -54,7 +55,7 @@ import {
   type PromptBoard,
 } from "./lib/stickiesAi";
 
-const vWhere = { scope: vScopeArg, documentId: v.optional(v.string()), board: v.string(), provided: v.optional(vProvidedContext) };
+const vWhere = { scope: vScopeArg, documentId: v.optional(v.string()), board: v.string(), provided: v.optional(vProvidedContext), ownKey: v.optional(vOwnKey) };
 
 interface Call<T> {
   /** The request (packages/ai-prompts stickies.ts). */
@@ -71,11 +72,11 @@ interface Call<T> {
  * One Foli AI call for a board: the gates and the hold (ai.begin: in the note's own scope when it's named),
  * the call, the reply checked, and the credits settled however it ends.
  */
-async function run<T>(ctx: ActionCtx, where: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext }, call: Call<T>): Promise<T> {
+async function run<T>(ctx: ActionCtx, where: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext; ownKey?: OwnKey }, call: Call<T>): Promise<T> {
   const req = call.request;
   const plan: PlannedCall[] = [{ fast: false, inputChars: req.system.length + req.prompt.length + (call.extraChars ?? 0), maxOutputTokens: req.maxOutputTokens ?? 0 }];
   const note = where.documentId ? { documentId: where.documentId, noteOnly: true } : null;
-  const { holdId } = await ctx.runMutation(internal.ai.begin, { feature: call.feature, scope: where.scope, plan, ...note, ...providedArgs(where.provided) });
+  const { holdId } = await beginRequest(ctx, { feature: call.feature, scope: where.scope, plan, ...note, ...providedArgs(where.provided) }, where.ownKey);
   return await metered(ctx, holdId, async (meter) => {
     const raw = await gemini({ ...req, ...(call.attachments ? { attachments: call.attachments } : {}) }, meter);
     const out = call.parse(raw);
@@ -150,7 +151,11 @@ export const photoAllowed = internalQuery({
 
 /** A photo of paper sticky notes, read into notes (one per paper note, with its colour). */
 export const photo = action({
-  args: { scope: vScopeArg, documentId: v.optional(v.string()), image: v.object({ mimeType: v.string(), data: v.string() }), provided: v.optional(vProvidedContext) },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    scope: vScopeArg, documentId: v.optional(v.string()), image: v.object({ mimeType: v.string(), data: v.string() }), provided: v.optional(vProvidedContext),
+  },
   handler: async (ctx, args): Promise<{ notes: { text: string; color: string }[] }> => {
     await requireIdentity(ctx);
     await loadAiSettings(ctx);

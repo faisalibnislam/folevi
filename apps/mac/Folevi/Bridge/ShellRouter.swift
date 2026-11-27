@@ -40,7 +40,7 @@ final class ShellRouter {
         "placesAddServer", "placesLocalServers",
         "libSetup", "libInfo", "libList", "libRead", "libWrite", "libRemove", "libConflictVersions", "libResolveConflicts", "libStartDownload",
         "libWatch", "libUnwatch", "libRescan", "journalAppend", "journalRead", "journalTruncate", "libUnlock", "libSetPassphrase", "libChangePassphrase", "libMove",
-        "secretsHas", "secretsSet", "secretsDelete",
+        "secretsHas", "secretsSet", "secretsDelete", "secretsReveal",
         "authSignIn", "authSignOut", "authFetch", "authConvexToken",
         "aiCapabilities", "aiGenerate", "aiCancel", "aiTestKey",
         "lockGet", "lockSet", "notifySchedule", "notifyCancel", "filesSave", "httpPreview", "httpCalendar",
@@ -316,7 +316,10 @@ final class ShellRouter {
                 return nil
             }
 
-        // ---- Foli AI's keys, written and removed, never read back
+        // ---- Foli AI's keys, written and removed, and read back only for a Folevi Cloud request on the
+        // person's own key (web lib/ai/ownKey.ts; the server uses it for that one request)
+        case "secretsReveal":
+            return ["value": Self.orNull(ShellSecrets.get(s(o, "name") ?? ""))]
         case "secretsHas":
             return ["value": ShellSecrets.has(s(o, "name") ?? "")]
         case "secretsSet":

@@ -104,21 +104,21 @@ export const FOLEVI_ROWS: Record<FoleviRowKey, { label: string; value: string }>
   },
   files: {
     label: "Where notes are stored",
-    value: "Without an account: a folder of files (one per note, plus a small index) in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder or only this device. Folevi’s servers never see them. With a Folevi account: on your devices and Folevi’s servers.",
+    value: "Without an account: a folder of files (one per note, plus a small index) in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder or only this device. Folevi’s servers never see them. With a Folevi account: on your devices and Folevi’s servers. Or on a Folevi Server you run yourself (in beta).",
   },
   monthly: { label: "Paid plans, monthly", value: `Core ${p(PRICES.core.month)}, Pro ${p(PRICES.pro.month)} and Pro AI ${p(PRICES.pro_ai.month)} a month` },
   yearly: { label: "Paid plans, yearly", value: `Core ${p(PRICES.core.year)}, Pro ${p(PRICES.pro.year)} and Pro AI ${p(PRICES.pro_ai.year)} a year` },
   teams: { label: "Teams", value: "Workspaces on the same four plans, priced per member. Guests are free." },
   ai: {
     label: "AI",
-    value: `Without an account, Foli AI runs on Apple Intelligence on the Mac, or on your own OpenAI, Anthropic or Google key, sent straight from your device. With Folevi Cloud, it’s metered in credits: Pro ${MONTHLY_CREDITS.pro}, Pro AI ${MONTHLY_CREDITS.pro_ai} (fair use), Free only during the trial, Core none. Packs of ${credits(CREDIT_PACKS.credits_500.credits)} for ${p(CREDIT_PACKS.credits_500.priceCents)} or ${credits(CREDIT_PACKS.credits_1000.credits)} for ${p(CREDIT_PACKS.credits_1000.priceCents)}.`,
+    value: `Without an account, Foli AI runs on Apple Intelligence on the Mac, or on your own OpenAI, Anthropic or Google key, sent straight from your device. With Folevi Cloud, it runs on models from Google, OpenAI and Anthropic and is metered in credits: Pro ${MONTHLY_CREDITS.pro}, Pro AI ${MONTHLY_CREDITS.pro_ai} (fair use), Free only during the trial, Core none. Packs of ${credits(CREDIT_PACKS.credits_500.credits)} for ${p(CREDIT_PACKS.credits_500.priceCents)} or ${credits(CREDIT_PACKS.credits_1000.credits)} for ${p(CREDIT_PACKS.credits_1000.priceCents)}.`,
   },
   offline: { label: "Offline", value: "Yes. The Mac, Windows, Linux, iPhone and iPad apps work fully offline. In the browser, every edit is saved on the device first and syncs when you reconnect." },
-  platforms: { label: "Apps", value: `Mac (${MAC_REQUIREMENT}), Windows, Linux (in beta), iPhone and iPad (${IOS_REQUIREMENT}), and the web app in any modern browser, with a Folevi account. The Android app is coming soon.` },
+  platforms: { label: "Apps", value: `Mac (${MAC_REQUIREMENT}), Windows, Linux (in beta), iPhone and iPad (${IOS_REQUIREMENT}), and the web app in any modern browser, with a Folevi account. The Android app is coming soon. Every app can also sign in to a Folevi Server you run (in beta).` },
   collaboration: { label: "Working together", value: "Workspaces with roles, guests, comments and mentions. If two people change the same block at once, Folevi shows a conflict to resolve." },
   publish: { label: "Public sharing", value: "Public links with an optional password and expiry date, revocable at any time" },
   export: { label: "Export", value: "A page as Markdown, HTML or PDF (through print). Everything as a ZIP of Markdown files." },
-  import: { label: "Import", value: "Markdown and text files, folders and ZIPs, with their images" },
+  import: { label: "Import", value: "Notion exports, Evernote .enex, Apple Notes (in the Mac app), Word, HTML, CSV, and Markdown and text files, folders and ZIPs with their images" },
   storage: { label: "Storage", value: `${gb(STORAGE_BYTES.free)} on Free, ${gb(STORAGE_BYTES.core)} on Core and Pro, ${gb(STORAGE_BYTES.pro_ai)} on Pro AI. Files up to 50 MB.` },
   encryption: {
     label: "Encryption",
@@ -231,7 +231,7 @@ export const COMPETITORS: Competitor[] = [
     intro:
       "Notion is a workspace for documents, wikis, databases and projects, with apps on every major platform and a large set of integrations. It suits teams that run their work from linked databases. Folevi is a workspace too: block documents and pages inside pages, tasks with a calendar, and databases you can see as a table, a gallery or a kanban board, with formulas. Its native Mac, iPhone and iPad apps are free forever with no account and work fully offline. Folevi Cloud adds the web app, team workspaces, comments and guests when you want them.",
     summary: "Deep team databases, or a workspace with free native apps.",
-    updated: "2026-11-18",
+    updated: "2026-11-27",
     rows: [
       { key: "price", them: "$0. File uploads up to 5 MB each. Up to 10 guests.", sources: ["pricing"] },
       { key: "account", them: "No. You sign in with a Notion account, in the mobile apps too.", sources: ["login", "mobilehelp"] },
@@ -297,6 +297,7 @@ export const COMPETITORS: Competitor[] = [
       { q: "Can Folevi replace Notion?", a: "For docs, team wikis, tasks, simple databases and shared workspaces, yes. If you rely on Notion’s databases, automations, integrations or Windows and Android apps, Folevi doesn’t have those." },
       { q: "Can I use Folevi without an account?", a: "Yes. In the Mac, Windows, Linux, iPhone and iPad apps, choose Keep notes on my devices. It’s free forever, and your notes are files in a place you pick, such as iCloud Drive. Notion needs an account." },
       { q: "Does Folevi work offline?", a: "Yes. The Mac, Windows, Linux, iPhone and iPad apps work fully offline. In the browser, every edit is saved on the device first and syncs when you reconnect." },
+      { q: "Can I host Folevi myself?", a: "Yes. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it." },
       { q: "Can I import my Notion pages?", a: "Yes, as Markdown. Export from Notion as Markdown, then import the ZIP in Settings → Import & export. Databases export as CSV, which Folevi doesn’t import." },
       { q: "Does Folevi have mobile apps?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}), on the App Store. The Android app is coming soon to Google Play.` },
       { q: "How much does Folevi cost compared with Notion?", a: `The apps are free with no account. Folevi Cloud’s paid plans are ${p(PRICES.core.month)}, ${p(PRICES.pro.month)} and ${p(PRICES.pro_ai.month)} a month, per member in a workspace. On September 30, 2026, Notion’s website listed Plus at $12 and Business at $24 per member a month, or $10 and $20 billed yearly.` },
@@ -327,7 +328,7 @@ export const COMPETITORS: Competitor[] = [
     intro:
       "Obsidian keeps your notes as Markdown files in a folder on your own device, and it’s free to use. It has apps for desktop and mobile, a large library of community plugins and themes, and paid add-ons for sync and publishing. It suits people who want to shape the app themselves. Folevi is a workspace that also keeps your pages as files you own, in a folder you pick: linked notes, tasks and databases, in a native app for Mac, iPhone and iPad that is ready the moment you open it. It’s free with no account, and syncs through iCloud Drive, Dropbox or Google Drive.",
     summary: "A linked workspace as your own files, ready when you open it.",
-    updated: "2026-11-18",
+    updated: "2026-11-27",
     rows: [
       { key: "price", them: "The app is free, including for work. A commercial license is optional, at $50 per user a year.", sources: ["license", "pricing"] },
       { key: "account", them: "Yes. Obsidian’s pricing page says no sign-up is required.", sources: ["pricing"] },
@@ -384,6 +385,7 @@ export const COMPETITORS: Competitor[] = [
     faq: [
       { q: "Is Folevi an Obsidian alternative?", a: "It is if you want linked notes, tasks and databases that are files you own, in a native app for Mac, iPhone and iPad that is ready when you open it, with no plugins to set up. If you want plain Markdown files and community plugins, Obsidian does that and Folevi doesn’t." },
       { q: "Do I need an account to use Folevi?", a: "No. In the Mac, Windows, Linux, iPhone and iPad apps, choose Keep notes on my devices. It’s free forever, like Obsidian, and your notes stay in a folder you pick." },
+      { q: "Can I host Folevi myself?", a: "Yes. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it." },
       { q: "Can I import my Obsidian vault?", a: "Yes. Choose the vault folder, or a ZIP of it, in Settings → Import & export. Wiki links come in as plain text." },
       { q: "Does Folevi have backlinks?", a: "Yes. Type [[ to link a page. The linked page lists every page that links to it, with a line of text around each link." },
       { q: "Does Folevi have mobile apps?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}), on the App Store. The Android app is coming soon to Google Play.` },

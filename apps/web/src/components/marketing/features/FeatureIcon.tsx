@@ -1,4 +1,4 @@
-import { CalendarDays, CheckSquare, FileDown, Folder, History, LayoutTemplate, Link2, MessageSquare, Mic, Network, Search, SquareSlash, Paintbrush, PenTool, Share2, ShieldCheck, Users, WifiOff, type LucideIcon } from "lucide-react";
+import { CalendarDays, CheckSquare, FileDown, Folder, History, LayoutTemplate, Link2, type LucideIcon, MessageSquare, Mic, Network, Paintbrush, PenTool, Search, Server, Share2, ShieldCheck, SpellCheck, SquareSlash, Users, WifiOff } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -20,6 +20,8 @@ const ICONS: Record<string, LucideIcon> = {
   templates: LayoutTemplate,
   "import-and-export": FileDown,
   "security-and-privacy": ShieldCheck,
+  "spell-check": SpellCheck,
+  "self-hosting": Server,
 };
 
 /** The feature's icon on its own (the site's sidebar lists a few features with it). */

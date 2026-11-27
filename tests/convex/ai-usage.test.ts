@@ -133,7 +133,7 @@ describe("recording use by feature", () => {
     await t.mutation(internal.ai.settle, { holdId, calls: [{ model: FLASH, promptTokens: 200_000, outputTokens: 0, thoughtsTokens: 0 }] });
 
     const seat = await usage(member, ws);
-    expect(seat).toMatchObject({ account: "seat", place: "Usage Co", allowance: 180, used: 30 });
+    expect(seat).toMatchObject({ account: "seat", place: "Usage Co", allowance: 150, used: 30 });
     expect(creditsOf(seat, "research")).toBe(30);
     // Their Personal is untouched.
     const personal = await usage(member, PERSONAL);
@@ -149,7 +149,10 @@ describe("recording use by feature", () => {
     let found = 0;
     for (const f of files) {
       const s = readFileSync(pathJoin(dir, f), "utf8");
-      for (const m of s.matchAll(/internal\.ai\.begin,\s*\{([^;]*?)\}\)/g)) {
+      // Straight to ai.begin, or through beginRequest (which adds the person's own key, lib/ai/ownKey.ts).
+      for (const m of s.matchAll(/(?:internal\.ai\.begin,|beginRequest\(ctx,)\s*\{([^;]*?)\}(?:, [\w.]+)?\)/g)) {
+        // beginRequest itself passes its caller's arguments on.
+        if (m[1]!.trim().startsWith("...args")) continue;
         found++;
         if (!/feature:/.test(m[1]!)) missing.push(`${f}: ${m[0].slice(0, 60)}`);
       }

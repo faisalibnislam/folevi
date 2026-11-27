@@ -1,6 +1,7 @@
 "use client";
 
-import { useAction, useMutation } from "convex/react";
+import { useAiAction, useOwnKeyChoice } from "@/components/ai/useAiAction";
+import { useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { createContext, useCallback, useContext } from "react";
 import { api } from "@/lib/convex/api";
@@ -139,7 +140,8 @@ export function useAiAccess(asked?: NoteHome | null): AiAccess {
   const p = profile as { aiEnabled?: boolean; entitlements?: { ai: boolean; plan?: string } };
   const setting = p.aiEnabled !== false;
   const personalEntitled = p.entitlements ? p.entitlements.ai : true;
-  const personalCore = p.entitlements?.plan === "core";
+  // No plan blocks Foli AI since 2026-11-27 (Core included); kept for callers that still read it.
+  const personalCore = false;
   let context: AiAccess["context"];
   let entitled: boolean;
   if (!note) {
@@ -166,6 +168,9 @@ export function useAiAccess(asked?: NoteHome | null): AiAccess {
   const ask = caps.aiServer && context === "shared" && setting && personalEntitled && Boolean(note?.id);
   const shared = useQuery(api.billing.credits, ask ? { scope, documentId: note!.id } : "skip");
   if (context === "shared") entitled = Boolean(ask && shared?.aiIncluded);
+  // The person's own AI key works on every plan (lib/ai/ownKey.ts): Foli AI's entry points show on Core too.
+  const ownKey = useOwnKeyChoice();
+  if (ownKey && caps.aiServer) entitled = true;
   if (!(caps.foliAi ?? caps.aiServer)) entitled = false;
   return { on: setting && entitled, entitled, personalEntitled, personalCore, context, setting };
 }
@@ -181,10 +186,10 @@ export function useAiEnabled(note?: NoteHome | null): boolean {
  */
 export function useAi() {
   const { scope } = useAppState();
-  const askAction = useAction(api.ai.ask);
-  const writeAction = useAction(api.ai.write);
-  const flowchartAction = useAction(api.ai.flowchart);
-  const translateAction = useAction(api.aiStudy.translateNote);
+  const askAction = useAiAction(api.ai.ask);
+  const writeAction = useAiAction(api.ai.write);
+  const flowchartAction = useAiAction(api.ai.flowchart);
+  const translateAction = useAiAction(api.aiStudy.translateNote);
   const versionMutation = useMutation(api.aiStudy.versionBeforeReplace);
   const ask = useCallback(
     (question: string, opts: { documentId?: string; range?: "note" | "all"; folderId?: string; history?: AskTurn[]; streamId?: Id<"aiStreams"> } = {}) =>

@@ -466,10 +466,10 @@ struct AiUnavailableView: View {
         case "setup":
             return ("Set up Foli AI on this Mac", "Turn on Apple Intelligence, or add your own OpenAI, Anthropic or Google key. Your notes go straight from this Mac to the model, never through Folevi.", ("Open Foli AI settings", "ai"))
         case "workspacePlan":
-            return ("Foli AI isn't part of this workspace's plan", "Plans with Foli AI include \(includes). A workspace owner or admin can change the plan.", purchases ? ("See plans", "billing") : nil)
+            return ("Foli AI is turned off in this workspace", "Nothing in this workspace is sent to an AI model. A workspace owner or admin can turn Foli AI on in the workspace's Privacy settings.", nil)
         default:
             if local { return copy("setup", local: true, purchases: false) }
-            return ("Foli AI isn't part of your plan", "Core doesn't include Foli AI. Pro and Pro AI do: \(includes).", purchases ? ("Upgrade", "billing") : nil)
+            return ("Foli AI isn't available here", "Nothing here is sent to an AI model. Foli AI is on every plan: \(includes).", ("Open Foli AI settings", "ai"))
         }
     }
 

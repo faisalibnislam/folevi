@@ -18,12 +18,12 @@ import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, 
 
 const GB = 1024 ** 3;
 
-/** "10 GB per member · 180 AI credits per member a month" */
+/** "10 GB per member · 150 AI credits per member a month" */
 function planIncludes(id: WorkspacePlanId): string {
   const p = PLAN_CATALOG[id];
   const e = p.entitlements;
   const storage = p.tier === "free" ? `The owner's free ${sizeLabel(e.storageBytes)}` : `${sizeLabel(e.storageBytes)} per member`;
-  const ai = !e.aiAssistant ? "no AI for anyone" : p.tier === "free" ? "members use their personal AI credits" : `${e.monthlyCredits.toLocaleString()} AI credits per member a month`;
+  const ai = p.tier === "free" ? "members use their personal AI credits" : e.monthlyCredits === 0 ? "AI credit packs only" : `${e.monthlyCredits.toLocaleString()} AI credits per member a month`;
   return `${storage} · ${ai}`;
 }
 

@@ -95,7 +95,7 @@ describe("billing rows have exactly one owner", () => {
 });
 
 describe("workspace plans and entitlements", () => {
-  test("Pro and Pro AI: credits and storage per member; Free: the owner's pool, and members' own personal credits (none after a Free trial)", async () => {
+  test("Pro and Pro AI: credits and storage per member; Free: the owner's pool, and members' own personal credits (Free's 30 after the trial)", async () => {
     const t = setup();
     const owner = await person(t, "plans-owner@example.com");
     const member = await person(t, "plans-member@example.com");
@@ -105,26 +105,27 @@ describe("workspace plans and entitlements", () => {
     let s = await summary(owner, id);
     expect(s.entitlements).toMatchObject({ planId: "workspace_free", ai: true, monthlyCredits: 0, storageBytes: 500 * MB, storageRule: "shared_free" });
     expect(s).toMatchObject({ credits: null, pool: { workspaces: 1, includesPersonal: false } });
-    // On Free the member's own personal credits apply, and their trial is over: Free has none, so no AI here.
-    expect(await member.as.query(api.billing.credits, { scope: inWorkspace(id) })).toMatchObject({ account: "personal", allowance: 0, available: 0 });
-    await expect(member.as.mutation(internal.ai.begin, { scope: inWorkspace(id) })).rejects.toThrow(/Foli AI comes with Pro and Pro AI/);
+    // On Free the member's own personal credits apply, and their trial is over: Free's 30 a month.
+    expect(await member.as.query(api.billing.credits, { scope: inWorkspace(id) })).toMatchObject({ account: "personal", allowance: 30, available: 30 });
+    const { holdId } = await member.as.mutation(internal.ai.begin, { scope: inWorkspace(id) });
+    expect(await t.run(async (ctx) => ctx.db.get(holdId))).toMatchObject({ scope: "workspace" });
 
     await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: id, planId: "workspace_pro_monthly" });
     s = await summary(owner, id);
-    expect(s.entitlements).toMatchObject({ planId: "workspace_pro_monthly", paid: true, ai: true, monthlyCredits: 180, storageBytes: 10 * GB, storageRule: "per_person" });
-    expect(s.plan).toMatchObject({ tier: "pro", name: "Pro", interval: "month", seatPriceCents: 499 });
-    expect(s).toMatchObject({ seats: 2, estimatedChargeCents: 998, storagePerMemberBytes: 10 * GB, yourStorageUsedBytes: 0, pool: null });
-    expect(s.credits).toMatchObject({ allowance: 180, canBuy: true });
+    expect(s.entitlements).toMatchObject({ planId: "workspace_pro_monthly", paid: true, ai: true, monthlyCredits: 150, storageBytes: 10 * GB, storageRule: "per_person" });
+    expect(s.plan).toMatchObject({ tier: "pro", name: "Pro", interval: "month", seatPriceCents: 400 });
+    expect(s).toMatchObject({ seats: 2, estimatedChargeCents: 800, storagePerMemberBytes: 10 * GB, yourStorageUsedBytes: 0, pool: null });
+    expect(s.credits).toMatchObject({ allowance: 150, canBuy: true });
     expect(s.subscription).toMatchObject({ provider: "test", status: "active", quantity: 2 });
-    expect(s.payments[0]).toMatchObject({ amountCents: 998, plan: "pro", quantity: 2, status: "paid" });
+    expect(s.payments[0]).toMatchObject({ amountCents: 800, plan: "pro", quantity: 2, status: "paid" });
     // A Free (trial over) member gets the workspace's own credits inside it.
-    expect(await member.as.query(api.billing.credits, { scope: inWorkspace(id) })).toMatchObject({ account: "seat", allowance: 180 });
+    expect(await member.as.query(api.billing.credits, { scope: inWorkspace(id) })).toMatchObject({ account: "seat", allowance: 150 });
     await member.as.mutation(internal.ai.begin, { scope: inWorkspace(id) });
 
     await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: id, planId: "workspace_pro_ai_yearly" });
     s = await summary(owner, id);
-    expect(s.entitlements).toMatchObject({ planId: "workspace_pro_ai_yearly", ai: true, aiFairUse: "high", monthlyCredits: 550, storageBytes: 50 * GB });
-    expect(s.estimatedChargeCents).toBe(2 * 15900);
+    expect(s.entitlements).toMatchObject({ planId: "workspace_pro_ai_yearly", ai: true, aiFairUse: "high", monthlyCredits: 450, storageBytes: 25 * GB });
+    expect(s.estimatedChargeCents).toBe(2 * 10000);
     // The switcher reads the plan's short name.
     expect((await member.as.query(api.workspaces.mine, {})).find((w) => w.id === id)!.plan).toMatchObject({ shortName: "Pro AI", tier: "pro_ai" });
   });
@@ -138,15 +139,15 @@ describe("workspace plans and entitlements", () => {
     await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: id, planId: "workspace_pro_ai_monthly" });
     const after = await owner.as.query(api.billing.mine, {});
     expect(after.entitlements).toEqual(before.entitlements);
-    expect(after.entitlements).toMatchObject({ planId: "personal_free", monthlyCredits: 0, storageBytes: 500 * MB });
+    expect(after.entitlements).toMatchObject({ planId: "personal_free", monthlyCredits: 30, storageBytes: 500 * MB });
     // Personal billing history has none of the workspace's payments, and the other way round.
     expect(after.payments).toHaveLength(0);
     await owner.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
     expect((await owner.as.query(api.billing.mine, {})).payments).toHaveLength(1);
     expect((await summary(owner, id)).payments).toHaveLength(1);
     expect((await summary(owner, id)).payments[0]!.plan).toBe("pro_ai");
-    // Their Core Personal has no AI, whatever the workspace has.
-    await expect(owner.as.mutation(internal.ai.begin, { scope: PERSONAL })).rejects.toThrow(/Core/);
+    // Their Core Personal has no monthly credits, whatever the workspace has.
+    await expect(owner.as.mutation(internal.ai.begin, { scope: PERSONAL })).rejects.toThrow(/There are no AI credits on this plan/);
   });
 
   test("test purchases are refused in production", async () => {
@@ -253,7 +254,7 @@ describe("seats (10–17)", () => {
     const [ib, ic] = [await invite(t, owner, id, "race-b@example.com"), await invite(t, owner, id, "race-c@example.com")];
     await Promise.all([b.as.mutation(api.workspaces.acceptInvite, { inviteId: ib }), c.as.mutation(api.workspaces.acceptInvite, { inviteId: ic })]);
     expect((await workspaceSub(t, id))!.quantity).toBe(3);
-    expect((await summary(owner, id)).estimatedChargeCents).toBe(3 * 499);
+    expect((await summary(owner, id)).estimatedChargeCents).toBe(3 * 400);
   });
 
   test("with Polar: accepts are gathered into one sync that sets the subscription's seats to the current count; repeats are harmless (35)", async () => {
@@ -372,7 +373,7 @@ describe("who can see and change workspace billing (25)", () => {
     await expect(summary(admin, id)).rejects.toThrow(/forbidden/);
     // Members see the seat count and the price of a seat only if they can invite (owners and admins).
     expect((await member.as.query(api.workspaces.members, { workspaceId: id })).seats).toBeNull();
-    expect((await admin.as.query(api.workspaces.members, { workspaceId: id })).seats).toMatchObject({ billable: 3, paid: true, seatPriceCents: 499, interval: "month" });
+    expect((await admin.as.query(api.workspaces.members, { workspaceId: id })).seats).toMatchObject({ billable: 3, paid: true, seatPriceCents: 400, interval: "month" });
   });
 });
 

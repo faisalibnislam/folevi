@@ -1,7 +1,7 @@
 // The AI agent (convex/aiAgent.ts, convex/lib/ai/tools/, docs/AI_ASSISTANT.md milestone 3): tool argument
 // checks, read tools as the person, proposals that change nothing until approved, partial approval,
 // checks again at approval, versions saved first, Undo (content, renames, moves, created notes and
-// folders, tags, merges), idempotency, credits, Core, and untrusted note text. Gemini is a stubbed `fetch`
+// folders, tags, merges), idempotency, credits, Foli AI turned off, and untrusted note text. Gemini is a stubbed `fetch`
 // that plays back a script of model turns (function calls, then text).
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
@@ -564,10 +564,12 @@ describe("access and safety", () => {
     expect(await t.run(async (ctx) => (await ctx.db.query("documents").collect()).filter((d) => d.title === "HACKED").length)).toBe(0);
   });
 
-  test("Core: refused before anything is sent (zero model calls), the refusal stored on the answer", async () => {
+  test("Foli AI turned off in the workspace: refused before anything is sent (zero model calls), the refusal stored on the answer", async () => {
     const t = setup();
-    const a = await person(t, "agent-core@example.com");
-    await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
+    const owner = await person(t, "agent-core@example.com");
+    const { workspaceId, scope } = await teamWorkspace(owner, "No AI");
+    await owner.as.mutation(api.workspaces.setAiDisabled, { workspaceId, disabled: true });
+    const a = { ...owner, scope };
     const { fetchMock } = script([{ text: "Never." }]);
     const { sent, answer, run } = await ask(a, "Rename everything");
     expect(sent.status).toBe("error");

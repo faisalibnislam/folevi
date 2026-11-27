@@ -140,7 +140,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "apps-and-local-notes",
     title: "The apps and notes on your devices",
     nav: "Apps and no-account notes",
-    description: "Folevi for Mac, Windows, Linux, iPhone and iPad: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
+    description: "The Folevi apps for Mac, Windows, Linux, iPhone, iPad and Android: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
     published: "2026-11-06",
     updated: "2026-11-27",
     body: () => (
@@ -154,27 +154,31 @@ export const DOC_ARTICLES: DocArticle[] = [
             ["Windows", <>A free download from <Link href="/downloads#windows">folevi.com/downloads</Link>, for Intel and AMD or Arm PCs; it updates itself.</>],
             ["Linux", <>A free download from <Link href="/downloads#linux">folevi.com/downloads</Link>: AppImage, .deb or .rpm, for Intel and AMD or ARM. Linux is in beta.</>],
             ["iPhone and iPad", <>Free on the <a href={APP_STORE_URL}>App Store</a>. {IOS_REQUIREMENT}.</>],
+            ["Android, Windows and Linux (Beta)", <>Free, from the <Link href="/downloads">downloads page</Link>.</>],
             ["Web", <>In any modern browser: <a href={WEB_APP_URL}>open the web app</a>. Needs a Folevi account.</>],
           ]}
         />
-        <p>The Android app is coming soon to Google Play. Until then, use the web app in your phone’s browser.</p>
+        <p>Every app is free, with every feature, and needs no account.</p>
         <h2 id="no-account">Keep notes on your devices</h2>
         <p>
-          The first time you open the Mac, Windows, Linux, iPhone or iPad app, choose <strong>Keep notes on my devices</strong>. It’s free forever and needs no account. Then pick where your library lives:
+          The first time you open a Folevi app, choose <strong>Keep notes on my devices</strong>. It’s free forever and needs no account. Then pick where your library lives:
         </p>
         <ul>
           <li><strong>Sync with iCloud</strong>: a Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account.</li>
-          <li><strong>Sync with Dropbox</strong>: sign in to Dropbox once. Folevi only uses its own folder, Apps › Folevi.</li>
-          <li><strong>Sync with Google Drive</strong>: sign in to Google once. Folevi only sees the files it makes.</li>
-          <li><strong>Choose a folder</strong>: any folder on the Mac, or any folder the Files app offers on iPhone and iPad, such as one in OneDrive.</li>
+          <li><strong>Sync with Dropbox</strong>: sign in to Dropbox once. Folevi only uses its own folder, Apps › Folevi. In the Mac, iPhone and iPad apps for now.</li>
+          <li><strong>Sync with Google Drive</strong>: sign in to Google once. Folevi only sees the files it makes. In the Mac, iPhone and iPad apps for now.</li>
+          <li><strong>Choose a folder</strong>: any folder on a computer, or any folder the Files app offers on iPhone and iPad, such as one in OneDrive.</li>
           <li><strong>This device only</strong>: your notes never leave the device. When you’re online, the app only checks Folevi for new note styles, and sends nothing about you or your notes. You can turn on sync later in Settings.</li>
         </ul>
         <p>
           A library is a folder of files: one file for each note, and a small index beside them. Folevi’s servers never see them. To use the same library on another device, open the app there, choose Keep notes on my devices and pick the same place.
         </p>
+        <p>
+          You can also run your own <Link href="/server">Folevi Server</Link> (Beta), which is free, and sync every app through it.
+        </p>
         <h2 id="ai">Foli AI without an account</h2>
         <p>
-          On the Mac, Foli AI runs on Apple Intelligence, or on your own OpenAI, Anthropic or Google API key. On Windows and Linux it runs on your own key. Your notes go straight from your computer to the model, never through Folevi. Set it up in Settings → Foli AI.
+          In a library on your devices, Foli AI works with your own OpenAI, Anthropic or Google API key, called straight from your device, or with Apple Intelligence on the Mac. Your notes go straight from your device to the model, never through Folevi, and it uses no credits. Set it up in Settings → Foli AI.
         </p>
         <h2 id="account">What needs an account</h2>
         <p>
@@ -470,7 +474,7 @@ export const DOC_ARTICLES: DocArticle[] = [
             <strong>Roles.</strong> Every workspace has one owner. Admins manage members, guests and settings; members work on the workspace’s pages (some members can only comment or view). Guests aren’t members: they see only the pages shared with them.
           </li>
           <li>
-            <strong>Plans.</strong> Free, Core, Pro and Pro AI, the same as personal plans. Paid plans are billed per member seat. The owner, admins and members each take one and get the plan’s storage and AI credits in the workspace; guests and pending invitations are free. On Core, nobody in the workspace can use AI. The owner, and admins the owner allows, manage the plan in Settings → Plan & billing. See <Link href="/pricing">Pricing</Link>.
+            <strong>Plans.</strong> Free, Core, Pro and Pro AI, the same as personal plans. Paid plans are billed per member seat. The owner, admins and members each take one and get the plan’s storage and AI credits in the workspace; guests and pending invitations are free. If an owner or admin turns Foli AI off in the workspace’s Privacy settings, nobody there can use it. The owner, and admins the owner allows, manage the plan in Settings → Plan & billing. See <Link href="/pricing">Pricing</Link>.
           </li>
           <li>
             <strong>Separate plans.</strong> A personal plan never upgrades a workspace, and a workspace plan never changes your Personal. On Free, your Personal and the free workspaces you own share {sizeLabel(STORAGE_BYTES.free)}, and in a free workspace each member uses their own personal AI credits. On paid plans, storage and AI credits are per person. If a space goes over its limit, nothing is deleted. New uploads wait until there’s room.
@@ -590,9 +594,9 @@ export const DOC_ARTICLES: DocArticle[] = [
         </p>
         <ul>
           <li>
-            {TIER_NAMES.free}: AI during the {TRIAL_DAYS}-day trial ({TRIAL_CREDITS} credits), then none.
+            {TIER_NAMES.free}: {MONTHLY_CREDITS.free} credits a month.
           </li>
-          <li>{TIER_NAMES.core}: no AI.</li>
+          <li>{TIER_NAMES.core}: no included credits. Foli AI works with a credit pack.</li>
           <li>
             {TIER_NAMES.pro}: {MONTHLY_CREDITS.pro} credits a month.
           </li>
@@ -604,7 +608,7 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
         </ul>
         <p>
-          On {TIER_NAMES.pro} and {TIER_NAMES.pro_ai} you can buy a credit pack ({CREDIT_PACKS.credits_500.credits} credits for {formatPrice(CREDIT_PACKS.credits_500.priceCents)} or {CREDIT_PACKS.credits_1000.credits.toLocaleString("en-US")} for {formatPrice(CREDIT_PACKS.credits_1000.priceCents)}). Packs last {PACK_VALID_MONTHS} months and are used after your monthly credits. In a paid workspace, each member has the plan’s credits there; in a free workspace, and as a guest, you use your own personal credits. See <Link href="/pricing">Pricing</Link>.
+          On every plan you can buy a credit pack ({CREDIT_PACKS.credits_500.credits} credits for {formatPrice(CREDIT_PACKS.credits_500.priceCents)} or {CREDIT_PACKS.credits_1000.credits.toLocaleString("en-US")} for {formatPrice(CREDIT_PACKS.credits_1000.priceCents)}). Packs last {PACK_VALID_MONTHS} months and are used after your monthly credits. In a paid workspace, each member has the plan’s credits there; in a free workspace, and as a guest, you use your own personal credits. See <Link href="/pricing">Pricing</Link>.
         </p>
         <h2 id="wont">What Foli AI won’t do</h2>
         <p>
@@ -616,7 +620,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         </p>
         <h2 id="off">Turning it off</h2>
         <p>
-          Turn Foli AI off in Settings at any time. While it’s off, none of your notes are sent to it. On Core, the server refuses every AI request and the app hides AI. See <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/privacy#ai">Privacy</Link> page.
+          Turn Foli AI off in Settings → Foli AI at any time, on any plan. While it’s off, the server refuses every AI request, the app hides Foli AI, and none of your notes are sent to it. Owners and admins can turn it off for a whole workspace in the workspace’s Privacy settings. See <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/privacy#ai">Privacy</Link> page.
         </p>
       </>
     ),
@@ -1009,7 +1013,7 @@ app.listen(3000);`}</code>
     body: () => (
       <>
         <ul>
-          <li>Email verification is required before you can use a Folevi account. (The Mac, Windows, Linux, iPhone and iPad apps also work with no account; see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)</li>
+          <li>Email verification is required before you can use a Folevi account. (Every Folevi app also works with no account; see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)</li>
           <li>
             Folevi won’t accept a password that has appeared in a known data breach. It checks with Have I Been Pwned using only the first five characters of a scrambled (hashed) version of the password, so the password itself never leaves Folevi.
           </li>

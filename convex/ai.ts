@@ -21,8 +21,9 @@
 // needs. Prompts, note text and answers are never logged or stored. Only the event, model, status and
 // token counts are.
 import { noteText as textOfNote } from "./lib/documentText";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { action, internalQuery, query, type ActionCtx, type MutationCtx } from "./_generated/server";
+import type { FunctionArgs } from "convex/server";
 import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -30,7 +31,8 @@ import { blocksToMarkdown } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
-import { aiAccountFor, aiBlockedIn, estimateCredits, holdCredits, settleHold, sweepHolds, type CallUsage, type PlannedCall } from "./lib/credits";
+import { HOLD_MS, aiAccountFor, aiBlockedIn, estimateCredits, holdCredits, holdOwnKey, settleHold, sweepHolds, type CallUsage, type PlannedCall } from "./lib/credits";
+import { checkedOwnKey, ownKeyMeta, ownKeyRoute, vOwnKey, vOwnKeyMeta, type OwnKey, type OwnKeyMeta } from "./lib/ai/ownKey";
 import { assertAiNotPaused, sweepRefusalCounts } from "./lib/ai/safety";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
@@ -50,7 +52,7 @@ import { withSyncedForReader } from "./lib/synced";
 import { failE2ee, isSealed, readableFor } from "./lib/e2ee/state";
 import { aiGate, providedMemories, providedMeta, providedNote, providedSources, vProvidedContext, vProvidedMeta, type ProvidedContext } from "./lib/e2ee/ai";
 import { memoryPrompt } from "./lib/ai/memory";
-import { routedFeatureOf, setMeterRoute } from "./lib/ai/config";
+import { routedFeatureOf, routedMeter, setMeterRoute } from "./lib/ai/config";
 import { loadHoldRoute, routeIn } from "./aiConfig";
 import {
   ASK_MESSAGES,
@@ -266,6 +268,8 @@ export const begin = internalMutation({
     feature: v.optional(vAiFeature),
     /** The ids of the notes an encrypted space's device sent with the request (lib/e2ee/ai.ts), never their text. */
     provided: v.optional(vProvidedMeta),
+    /** The request runs on the person's own AI key (lib/ai/ownKey.ts): its provider and model, never the key. */
+    ownKey: v.optional(vOwnKeyMeta),
   },
   handler: async (ctx, args): Promise<{ holdId: Id<"aiCreditHolds">; sealed: boolean }> => {
     const profile = await requireProfile(ctx);
@@ -289,7 +293,7 @@ export const begin = internalMutation({
     }
     // End-to-end encryption: Foli AI allowed in every scope involved, no locked note, a valid provided context.
     const gate = await aiGate(ctx, profile, [target, ...also], rows, args.provided);
-    return { holdId: await holdFor(ctx, profile, target, (args.plan ?? []) as PlannedCall[], also, args.feature), sealed: gate.sealed };
+    return { holdId: await holdFor(ctx, profile, target, (args.plan ?? []) as PlannedCall[], also, args.feature, args.ownKey), sealed: gate.sealed };
   },
 });
 
@@ -299,19 +303,29 @@ export const begin = internalMutation({
  * limit, and enough credits (`out_of_credits` otherwise). Shared by `begin` (as the signed-in person) and
  * background jobs that act for someone (digests, convex/aiDigest.ts).
  */
-export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target: Scope, plan: PlannedCall[], also: Scope[] = [], feature?: AiFeature): Promise<Id<"aiCreditHolds">> {
-  // Folevi Server: Foli AI only when the owner set it up, and only for the people they allow.
+export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target: Scope, plan: PlannedCall[], also: Scope[] = [], feature?: AiFeature, ownKey?: OwnKeyMeta): Promise<Id<"aiCreditHolds">> {
+  // Folevi Server: Foli AI only when the owner set it up (or the person brings their own key), and only
+  // for the people they allow.
   if (isServerEdition()) {
     const settings = await readServerSettings(ctx);
-    if (!aiConfigured(settings)) fail("forbidden", "Foli AI is off on this server.", { reason: "ai_off" });
+    if (!ownKey && !aiConfigured(settings)) fail("forbidden", "Foli AI is off on this server.", { reason: "ai_off" });
     const role = serverRoleOf(profile);
     if (settings.ai.allowed === "admins" && role !== "owner" && role !== "admin") fail("forbidden", "On this server, Foli AI is only for its admins.", { reason: "ai_not_allowed" });
     await loadAiSettings(ctx);
   }
-  // Nothing from a Core Personal or a Core workspace is ever sent to AI, whoever asks.
+  // Foli AI turned off for the person or the workspace: nothing is sent, own key or not.
   for (const s of [target, ...also]) {
     const blocked = await aiBlockedIn(ctx, profile._id, s);
     if (blocked) fail("forbidden", blocked, { reason: "ai_not_included" });
+  }
+  // The person's own key: every plan, no credits held or charged. The hourly limit still applies, because
+  // our server does the work (docs/PRICING_PLAN.md, "Bring your own AI").
+  if (ownKey) {
+    if (feature === "transcription") fail("invalid_argument", "Reading audio uses Folevi's AI, not your own key.");
+    // Whose hourly limit it counts against (a member's seat, else their Personal); the plan doesn't matter.
+    const { account } = await aiAccountFor(ctx, profile, target);
+    await consume(ctx, account.rateRule, account.rateSubject);
+    return await holdOwnKey(ctx, account, target, ownKey.provider, Date.now(), feature);
   }
   const access = await aiAccountFor(ctx, profile, target);
   if (!access.allowed) fail("forbidden", access.message ?? "Foli AI isn't available here.", { reason: "ai_not_included" });
@@ -320,6 +334,62 @@ export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target
   const route = await routeIn(ctx, routedFeatureOf(feature));
   return await holdCredits(ctx, access.account, target, estimateCredits(plan, route.models), Date.now(), feature);
 }
+
+type BeginArgs = Omit<FunctionArgs<typeof internal.ai.begin>, "ownKey">;
+
+/**
+ * Keys brought with requests, by hold, for `metered` in the same action (lib/ai/ownKey.ts). Memory only:
+ * taken when the work starts and gone when it settles.
+ */
+const ownKeys = new Map<string, { key: OwnKey; at: number }>();
+
+/**
+ * `ai.begin` for an action: the checks and the credit hold. With the person's own key, the hold gets only its
+ * provider and model (the mutation never sees the key) and the key waits here for `metered`.
+ */
+export async function beginRequest(ctx: Pick<ActionCtx, "runMutation">, args: BeginArgs, ownKey?: OwnKey): Promise<{ holdId: Id<"aiCreditHolds">; sealed: boolean }> {
+  const key = ownKey ? checkedOwnKey(ownKey) : undefined;
+  const r = await ctx.runMutation(internal.ai.begin, { ...args, ...ownKeyMeta(key) });
+  if (key) {
+    // A request that failed between here and `metered` leaves nothing behind for long.
+    const now = Date.now();
+    for (const [id, e] of ownKeys) if (now - e.at > HOLD_MS) ownKeys.delete(id);
+    ownKeys.set(r.holdId, { key, at: now });
+  }
+  return r;
+}
+
+/** The hourly limit for a key test (the same limit as Foli AI requests). */
+export const beginKeyTest = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<void> => {
+    const profile = await requireProfile(ctx);
+    const { account } = await aiAccountFor(ctx, profile, { kind: "personal", profileId: profile._id });
+    await consume(ctx, account.rateRule, account.rateSubject);
+  },
+});
+
+/**
+ * "Test key" in Settings, Foli AI, Your own AI key: one short call to the person's provider with their key
+ * and model. Nothing is stored or logged, and no credits are used. Returns the provider's refusal in words.
+ */
+export const testOwnKey = action({
+  args: { ownKey: vOwnKey },
+  handler: async (ctx, args): Promise<{ ok: true; model: string } | { ok: false; message: string }> => {
+    await requireIdentity(ctx);
+    await ctx.runMutation(internal.ai.beginKeyTest, {});
+    if (isServerEdition()) await loadAiSettings(ctx as unknown as { runQuery: (ref: never, args: never) => Promise<unknown> });
+    const route = ownKeyRoute("other", args.ownKey);
+    try {
+      await provider().generate({ system: "You check that an API key works.", prompt: "Reply with the word OK.", maxOutputTokens: 16, noMemory: true }, routedMeter(route));
+      return { ok: true, model: route.models.main };
+    } catch (e) {
+      const message = e instanceof ConvexError ? (e.data as { message?: string } | undefined)?.message : undefined;
+      console.log(JSON.stringify({ event: "ai.own_key_test", provider: route.provider, ok: false }));
+      return { ok: false, message: message ?? "The key couldn't be checked. Try again." };
+    }
+  },
+});
 
 /** Ends a request: releases its hold and charges what its Gemini calls really cost. */
 export const settle = internalMutation({
@@ -351,7 +421,9 @@ export async function metered<T>(
   work: (meter: CallUsage[]) => Promise<T>,
   onSettled?: (cost: Settled) => Promise<void>,
   provided?: ProvidedContext,
+  ownKey: OwnKey | undefined = ownKeys.get(holdId)?.key,
 ): Promise<T> {
+  ownKeys.delete(holdId);
   const meter: CallUsage[] = [];
   try {
     // Folevi Server: the provider the owner chose (a no-op on Folevi Cloud).
@@ -367,8 +439,9 @@ export async function metered<T>(
         /* answered without preferences */
       }
     setMeterMemory(meter, memory);
-    // Where the request's calls go: its feature's provider, models and key (lib/ai/config.ts).
-    setMeterRoute(meter, await loadHoldRoute(ctx, holdId));
+    // Where the request's calls go: its feature's provider, models and key (lib/ai/config.ts), or the
+    // person's own key for this request only (lib/ai/ownKey.ts; it lives on the meter, never stored).
+    setMeterRoute(meter, await loadHoldRoute(ctx, holdId, ownKey));
     return await work(meter);
   } finally {
     const r = (await ctx.runMutation(internal.ai.settle, { holdId, calls: meter })) as { credits: number } | null;
@@ -673,6 +746,8 @@ export async function answerFromNotes(ctx: ActionCtx, input: AnswerInput, meter:
  */
 export const ask = action({
   args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
     scope: vScopeArg,
     question: v.string(),
     documentId: v.optional(v.string()),
@@ -695,7 +770,7 @@ export const ask = action({
     const historyChars = history.reduce((n, t) => n + t.text.length + 12, 0);
     const provided = args.provided;
     const plan = provided ? providedPlan(question.length, historyChars, provided) : answerPlan({ questionChars: question.length, historyChars, focusNotes: args.documentId ? 1 : 0, search: args.range !== "note" });
-    const { holdId, sealed } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: args.range === "note", plan, feature: "chat", ...(provided ? { provided: providedMeta(provided) } : {}) });
+    const { holdId, sealed } = await beginRequest(ctx, { scope: args.scope, documentId: args.documentId, noteOnly: args.range === "note", plan, feature: "chat", ...(provided ? { provided: providedMeta(provided) } : {}) }, args.ownKey);
     return await metered(
       ctx,
       holdId,
@@ -742,6 +817,8 @@ export function providedPlan(questionChars: number, historyChars: number, provid
  */
 export const write = action({
   args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
     scope: vScopeArg,
     task: v.string(),
     documentId: v.optional(v.string()),
@@ -767,7 +844,7 @@ export const write = action({
     // Writing help works on one note (or text from it), so that note's scope decides.
     const plan: PlannedCall[] = [{ fast, inputChars: writingInputChars(task, text, instruction, readsThisNote ? FOCUS_CHARS : 0), maxOutputTokens: taskSpec(task).maxOutputTokens }];
     const provided = args.provided;
-    const { holdId, sealed } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing", ...(provided ? { provided: providedMeta(provided) } : {}) });
+    const { holdId, sealed } = await beginRequest(ctx, { scope: args.scope, documentId: args.documentId, noteOnly: true, plan, feature: "writing", ...(provided ? { provided: providedMeta(provided) } : {}) }, args.ownKey);
     return await metered(ctx, holdId, async (meter) => {
       if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId, ephemeral: sealed });
       const note = readsThisNote ? (providedNote(provided, args.documentId) ?? (provided ? null : await ctx.runQuery(internal.ai.noteText, { documentId: args.documentId! }))) : null;
@@ -792,6 +869,8 @@ export const write = action({
  */
 export const flowchart = action({
   args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
     scope: vScopeArg,
     mode: v.union(v.literal("create"), v.literal("update")),
     instruction: v.string(),
@@ -806,7 +885,7 @@ export const flowchart = action({
     const current = args.mode === "update" ? flowchartForPrompt(args.current ?? "") : null;
     if (args.mode === "update" && !current) fail("invalid_argument", ASK_MESSAGES.noFlowchart);
     const plan: PlannedCall[] = [{ fast: false, inputChars: FLOWCHART_SYSTEM.length + 300 + instruction.length + (current?.length ?? 0), maxOutputTokens: 6144 }];
-    const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan, feature: "writing", ...(args.provided ? { provided: providedMeta(args.provided) } : {}) });
+    const { holdId } = await beginRequest(ctx, { scope: args.scope, plan, feature: "writing", ...(args.provided ? { provided: providedMeta(args.provided) } : {}) }, args.ownKey);
     const req = flowchartRequest({ mode: args.mode, instruction, current });
     return await metered(ctx, holdId, async (meter) => {
       const raw = await gemini(req, meter);
@@ -867,6 +946,8 @@ export const recent = internalQuery({
 /** "Catch me up": a short brief of recent notes and what's due, citing the notes. */
 export const brief = action({
   args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
     scope: vScopeArg,
     today: v.string(),
     streamId: v.optional(v.id("aiStreams")),
@@ -878,7 +959,7 @@ export const brief = action({
     const provided = args.provided;
     // At most 8 recent notes (2,500 characters each) and 20 tasks.
     const plan: PlannedCall[] = [{ fast: false, inputChars: PERSONA.length + 700 + 8 * 2600 + 20 * 260, maxOutputTokens: 1024 }];
-    const { holdId, sealed } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan, feature: "chat", ...(provided ? { provided: providedMeta(provided) } : {}) });
+    const { holdId, sealed } = await beginRequest(ctx, { scope: args.scope, plan, feature: "chat", ...(provided ? { provided: providedMeta(provided) } : {}) }, args.ownKey);
     return await metered(ctx, holdId, async (meter) => {
       if (args.streamId) await ctx.runMutation(internal.ai.claimStream, { id: args.streamId, ephemeral: sealed });
       const today = cleanToday(args.today);

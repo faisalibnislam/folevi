@@ -101,7 +101,7 @@ const PAGES = [
   { path: "/docs", h1: "How Folevi works." },
   // Pages that gained links to the new ones.
   { path: "/", h1: "Folevi is a digital workspace for notes, docs, projects and team wikis." },
-  { path: "/pricing", h1: "Free forever on your devices." },
+  { path: "/pricing", h1: "Folevi is free." },
   { path: "/apps", h1: "Folevi on your Mac, iPhone and iPad." },
   // Comparison pages and the blog.
   { path: "/compare", h1: "How Folevi compares." },

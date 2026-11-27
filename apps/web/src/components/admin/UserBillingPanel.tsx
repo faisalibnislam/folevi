@@ -132,7 +132,7 @@ export function UserBillingPanel({
               { label: "Status", value: <StatusBadge status={sub.status} /> },
               { label: sub.cancelAtPeriodEnd ? "Ends" : "Renews / ends", value: sub.currentPeriodEnd ? formatDateTime(sub.currentPeriodEnd) : "Not set" },
               { label: "Paying since", value: sub.paidSince ? day(sub.paidSince) : "Never" },
-              { label: "AI", value: !e.ai ? "Not included (Core has no AI)" : e.trialing ? "Included (Pro AI trial)" : `Included (${e.monthlyCredits.toLocaleString()} credits a month)` },
+              { label: "AI", value: !e.ai ? "Not available" : e.trialing ? "Included (Pro AI trial)" : e.monthlyCredits === 0 ? "Included (packs only)" : `Included (${e.monthlyCredits.toLocaleString()} credits a month)` },
               {
                 label: "Devices",
                 value: `${data.devicesActive} signed in · ${e.devices === null ? "unlimited" : `limit ${e.devices}`}${sub.deviceLimitOverride !== null ? " (custom)" : ""}`,
@@ -154,7 +154,7 @@ export function UserBillingPanel({
         <div className="mt-4">
           <div className="mb-1.5 flex items-baseline justify-between gap-3 text-subheadline">
             <span className="text-muted">AI credits {c.trialing ? "in the trial" : "this period"} · {c.plan}</span>
-            <span className="whitespace-nowrap tabular-nums">{e.ai ? `${n(c.used)} of ${n(c.allowance)} used` : "No AI"}</span>
+            <span className="whitespace-nowrap tabular-nums">{e.ai ? `${n(c.used)} of ${n(c.allowance)} used` : "Not available"}</span>
           </div>
           <Meter value={c.used} max={c.allowance} label="Monthly AI credits used" />
           {e.ai ? (
@@ -384,7 +384,7 @@ function BillingDialogs({
                   initial: personalAi ? "personal" : seatWorkspaces[0]!.id,
                   options: [{ value: "personal", label: "Personal" }, ...seatWorkspaces.map((w) => ({ value: w.id, label: `${w.name} (their seat)` }))],
                   hint: "Their Pro and Pro AI workspaces are listed: each member has their own credits there. In other workspaces they use their personal credits.",
-                  validate: (v: string) => (v === "personal" && !personalAi ? "Their personal plan is Core, which has no AI. Change the plan first, or pick a workspace." : null),
+                  validate: (v: string) => (v === "personal" && !personalAi ? "Foli AI isn't available on their personal plan. Pick a workspace." : null),
                 },
               ]
             : []),
@@ -403,13 +403,13 @@ function BillingDialogs({
         onSubmit={async ({ reason, fields, meta }) => {
           const credits = Number(fields.credits);
           const where = fields.where && fields.where !== "personal" ? fields.where : undefined;
-          if (!where && !personalAi) throw new Error("Their personal plan is Core, which has no AI. Change the plan first.");
+          if (!where && !personalAi) throw new Error("Foli AI isn't available on their personal plan.");
           await grantCredits({ profileId, credits, workspaceId: where, months: Number(fields.months), reason, ...meta });
           const place = where ? seatWorkspaces.find((w) => w.id === where)?.name : null;
           return done(`${credits.toLocaleString()} AI credits granted${place ? ` in ${place}` : ""}`);
         }}
       >
-        {!personalAi && !seatWorkspaces.length ? <Callout tone="warning">Their personal plan is Core, which has no AI. Change the plan before granting personal credits.</Callout> : null}
+        {!personalAi && !seatWorkspaces.length ? <Callout tone="warning">Foli AI isn't available on their personal plan, so personal credits can't be granted.</Callout> : null}
       </ActionDialog>
       <ActionDialog
         open={action === "storage"}

@@ -6,10 +6,12 @@ import com.folevi.android.bridge.Plugin
 import com.folevi.android.bridge.PluginCall
 import com.folevi.android.bridge.PluginMethod
 import com.folevi.android.bridge.annotation.BridgePlugin
+import org.json.JSONObject
 
 /**
- * "FoleviSecrets": `foleviShell.secrets`, the person's own Foli AI keys. Write-only from the page: it can store,
- * remove and ask whether one is set, never read one back. Only the names the contract allows (SecretName).
+ * "FoleviSecrets": `foleviShell.secrets`, the person's own Foli AI keys. The page can store, remove and ask whether
+ * one is set, and read one back only to send it with a Folevi Cloud request on the person's own key (web
+ * lib/ai/ownKey.ts; the server uses it for that request only). Only the names the contract allows (SecretName).
  */
 @BridgePlugin(name = "FoleviSecrets")
 class SecretsPlugin : Plugin() {
@@ -32,6 +34,13 @@ class SecretsPlugin : Plugin() {
         } catch (e: Exception) {
             call.reject("Folevi couldn't keep that key on this device.", "unavailable")
         }
+    }
+
+    /** A Foli AI key for one Folevi Cloud request on the person's own key; null when none is stored. */
+    @PluginMethod
+    fun reveal(call: PluginCall) {
+        val n = name(call) ?: return call.reject("Not a secret this page may use.", "invalid_argument")
+        call.resolve(JSObject().put("value", FoleviApp.instance.secrets.get(n) ?: JSONObject.NULL))
     }
 
     @PluginMethod

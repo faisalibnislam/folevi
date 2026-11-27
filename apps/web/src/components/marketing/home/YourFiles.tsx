@@ -1,4 +1,4 @@
-import { Cloud, FileText, Folder, HardDrive, Sparkles, WifiOff, ArrowLeftRight } from "lucide-react";
+import { Cloud, FileText, Folder, HardDrive, Server, Sparkles, WifiOff, ArrowLeftRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { SectionHeading, box, container, cx } from "../ui";
 import { Mark, Sticker } from "../fun";
@@ -13,12 +13,13 @@ const PLACES: Array<{ icon: ReactNode; title: string; body: string }> = [
   { icon: <Cloud size={18} />, title: "iCloud Drive", body: "On every iPhone, iPad and Mac signed in to your iCloud account." },
   { icon: <Folder size={18} />, title: "Dropbox or Google Drive", body: "Folevi only uses its own folder there." },
   { icon: <Folder size={18} />, title: "Any folder", body: "Such as one in OneDrive, or one the Files app offers." },
+  { icon: <Server size={18} />, title: "Your own Folevi Server", body: "Free to run on your computer, NAS or server. In Beta." },
   { icon: <HardDrive size={18} />, title: "Just this device", body: "Turn on sync later in Settings." },
 ];
 
 const POINTS: Array<{ icon: ReactNode; title: string; body: string }> = [
   { icon: <WifiOff size={17} />, title: "Offline, always", body: "Everything is on your device first. Write on a plane and it syncs when you land." },
-  { icon: <Sparkles size={17} />, title: "Private Foli AI", body: "On the Mac, Foli AI runs on Apple Intelligence or on your own key, and requests go straight from your Mac." },
+  { icon: <Sparkles size={17} />, title: "Private Foli AI", body: "Foli AI works with your own OpenAI, Anthropic or Google key, called straight from your device, or with Apple Intelligence on your Mac." },
   { icon: <ArrowLeftRight size={17} />, title: "Never stuck", body: "Sign in later to move your notes to Folevi Cloud, or export them back into a folder." },
 ];
 
@@ -76,7 +77,7 @@ export function YourFiles() {
                   Your notes are files, in a folder <Mark>you</Mark> pick.
                 </>
               }
-              lede="In the apps, your library is a folder of files in the cloud you already use. Each note is its own file, and Folevi’s servers never see them."
+              lede="Every Folevi app is free, on every platform. Your library is a folder of files in the cloud you already use, or on your own Folevi Server. Each note is its own file, and Folevi’s servers never see them."
             />
             <ul className="mt-8 grid gap-3 sm:grid-cols-2">
               {PLACES.map((p) => (

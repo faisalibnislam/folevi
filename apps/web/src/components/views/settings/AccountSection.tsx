@@ -17,8 +17,6 @@ import { RowIcon } from "@/components/iphone/Grouped";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { Switch } from "@/components/ui/Switch";
 import { useAiAccess } from "@/components/ai/useAi";
-import { AppLink } from "@/lib/app/router";
-import { canPurchaseHere } from "@/lib/nativeApp";
 
 /**
  * The time zones to choose from, always with the current one: the browser's list leaves out aliases such as "UTC"
@@ -149,8 +147,8 @@ export function AccountSection() {
 
 /** Turns the AI assistant on or off for this person (the server enforces it). */
 export function AiSettingCard() {
-  // Your own setting and Personal plan. Core has no AI, so there's nothing to turn on.
-  const { setting: on, personalCore: core } = useAiAccess();
+  // Your own setting. Every plan includes Foli AI; while it's off nothing in your Personal is sent to a model.
+  const { setting: on } = useAiAccess();
   const update = useMutation(api.users.updateProfile);
   const toast = useToast();
   const descId = useId();
@@ -165,34 +163,20 @@ export function AiSettingCard() {
     return (
       <IosSection
         footer={
-          core
-            ? "Not included in Core. Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli AI."
-            : "Foli AI answers from your notes, helps you write and sums notes up, powered by Google. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."
+          "Foli AI answers from your notes, helps you write and sums notes up, powered by Google. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."
         }
       >
-        <SwitchRow label="Foli AI" icon={<RowIcon><AiIcon /></RowIcon>} checked={on && !core} disabled={core} onChange={turn} />
+        <SwitchRow label="Foli AI" icon={<RowIcon><AiIcon /></RowIcon>} checked={on} onChange={turn} />
       </IosSection>
     );
   return (
     <Card title="Foli AI">
       <div className="flex items-start justify-between gap-6">
         <p id={descId} className="max-w-prose text-subheadline text-muted">
-          {core ? (
-            <>
-              <span className="font-medium text-heading">Not included in Core.</span> Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli AI.{" "}
-              {canPurchaseHere() ? (
-                <AppLink href="/settings/billing" className="underline underline-offset-2">
-                  See plans
-                </AppLink>
-              ) : null}
-            </>
-          ) : (
-            "Foli AI answers from your notes, helps you write and sums notes up, powered by Google. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."
-          )}
+          {"Foli AI answers from your notes, helps you write and sums notes up, powered by Google. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."}
         </p>
         <Switch
-          checked={on && !core}
-          disabled={core}
+          checked={on}
           label="Foli AI"
           describedBy={descId}
           onChange={turn}

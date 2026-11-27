@@ -1,6 +1,6 @@
 // AI digests (convex/aiDigest.ts, lib/ai/digest.ts, docs/AI_ASSISTANT.md milestone 8): when they're due in
 // the person's time zone, the cron, what a digest reads, credits held and settled, delivery as a note
-// under the Inbox with a notification, out of credits, Core, nothing new, a failed model call, lost access,
+// under the Inbox with a notification, out of credits, Foli AI turned off, nothing new, a failed model call, lost access,
 // and the off switches. Gemini is a stubbed `fetch`.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
@@ -91,7 +91,7 @@ async function digester(t: T, email: string) {
   return p;
 }
 
-/** Spends every credit the trial has (Free has no AI credits after its trial, so the trial is where they run out). */
+/** Spends every credit the trial has. */
 async function spendAll(t: T, p: Person) {
   const { holdId } = await p.as.mutation(internal.ai.begin, { scope: p.scope });
   await t.mutation(internal.ai.settle, { holdId, calls: [{ model: "gemini-3.8-flash", promptTokens: 1_000_000, outputTokens: 0, thoughtsTokens: 0 }] });
@@ -205,16 +205,18 @@ describe("a digest", () => {
     expect((await notificationsOf(t, a)).map((n) => n.title)).toEqual(["Your daily digest was skipped: you're out of AI credits."]);
   });
 
-  test("Core: skipped with zero model calls", async () => {
+  test("a workspace with Foli AI turned off: skipped with zero model calls", async () => {
     const t = setup();
     const a = await digester(t, "digest-core@example.com");
-    await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
-    await note(a, a.scope, "Ferry times", "The ferry leaves at nine.");
+    const { workspaceId, scope } = await teamWorkspace(a, "No AI");
+    await a.as.mutation(api.aiDigest.save, { scope });
+    await note(a, scope, "Ferry times", "The ferry leaves at nine.");
+    await a.as.mutation(api.workspaces.setAiDisabled, { workspaceId, disabled: true });
     const calls = gemini();
     expect(await t.action(internal.aiDigest.run, { digestId: (await digestRow(t, a))._id })).toEqual({ status: "skipped", reason: "plan" });
     expect(calls).toHaveLength(0);
     expect(await holds(t)).toBe(0);
-    expect((await notificationsOf(t, a))[0]!.title).toMatch(/skipped: AI isn't part of your plan/);
+    expect((await notificationsOf(t, a))[0]!.title).toMatch(/digest was skipped/);
   });
 
   test("a failed model call: no note, credits settled, the next one covers the gap", async () => {

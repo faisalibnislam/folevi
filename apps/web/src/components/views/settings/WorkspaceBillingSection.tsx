@@ -203,7 +203,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
           </Tile>
           <Tile icon={<AiIcon size={15} aria-hidden className="text-[#7c6cf0]" />} title="AI credits">
             {!e.ai ? (
-              <p className="mt-1 text-subheadline text-muted">Core doesn&apos;t include AI, so nothing in this workspace is sent to an AI model.</p>
+              <p className="mt-1 text-subheadline text-muted">Foli AI is turned off in this workspace, so nothing here is sent to an AI model.</p>
             ) : !e.paid ? (
               <p className="mt-1 text-subheadline text-muted">On Free, each member uses their own personal AI credits here.</p>
             ) : data.credits ? (

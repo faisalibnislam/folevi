@@ -56,9 +56,9 @@ afterEach(() => {
 describe("the catalog", () => {
   test("exact prices, scopes and billing models", () => {
     const price = (id: keyof typeof PLAN_CATALOG) => PLAN_CATALOG[id].priceCents;
-    expect(["personal_free", "personal_core_monthly", "personal_core_yearly", "personal_pro_monthly", "personal_pro_yearly", "personal_pro_ai_monthly", "personal_pro_ai_yearly"].map((id) => price(id as keyof typeof PLAN_CATALOG))).toEqual([0, 199, 1900, 499, 4900, 1399, 15900]);
+    expect(["personal_free", "personal_core_monthly", "personal_core_yearly", "personal_pro_monthly", "personal_pro_yearly", "personal_pro_ai_monthly", "personal_pro_ai_yearly"].map((id) => price(id as keyof typeof PLAN_CATALOG))).toEqual([0, 200, 2000, 400, 4000, 1000, 10000]);
     // Team prices are the same, per member seat.
-    expect(["workspace_free", "workspace_core_monthly", "workspace_core_yearly", "workspace_pro_monthly", "workspace_pro_yearly", "workspace_pro_ai_monthly", "workspace_pro_ai_yearly"].map((id) => price(id as keyof typeof PLAN_CATALOG))).toEqual([0, 199, 1900, 499, 4900, 1399, 15900]);
+    expect(["workspace_free", "workspace_core_monthly", "workspace_core_yearly", "workspace_pro_monthly", "workspace_pro_yearly", "workspace_pro_ai_monthly", "workspace_pro_ai_yearly"].map((id) => price(id as keyof typeof PLAN_CATALOG))).toEqual([0, 200, 2000, 400, 4000, 1000, 10000]);
     expect(Object.keys(PLAN_CATALOG)).toHaveLength(14);
     for (const plan of Object.values(PLAN_CATALOG)) {
       expect(plan.id.startsWith(plan.scope)).toBe(true);
@@ -68,31 +68,31 @@ describe("the catalog", () => {
     }
     expect(PLAN_ORDER).toEqual(["free", "core", "pro", "pro_ai"]);
     expect(WORKSPACE_PLAN_ORDER).toEqual(["free", "core", "pro", "pro_ai"]);
-    expect(CREDIT_PACKS).toEqual({ credits_500: { id: "credits_500", credits: 500, priceCents: 799 }, credits_1000: { id: "credits_1000", credits: 1000, priceCents: 1499 } });
+    expect(CREDIT_PACKS).toEqual({ credits_500: { id: "credits_500", credits: 500, priceCents: 800 }, credits_1000: { id: "credits_1000", credits: 1000, priceCents: 1500 } });
   });
 
   test("what each plan includes: storage, credits, packs, devices, AI", () => {
     const e = (id: keyof typeof PLAN_CATALOG) => PLAN_CATALOG[id].entitlements;
     const row = (id: keyof typeof PLAN_CATALOG) => [e(id).storageBytes, e(id).storageRule, e(id).monthlyCredits, e(id).creditPacks, e(id).aiAssistant, e(id).devices];
-    // Free has no monthly AI credits: Foli AI only during the 7-day trial (TRIAL_CREDITS), then Pro or Pro AI.
-    expect(row("personal_free")).toEqual([500 * MB, "shared_free", 0, false, true, 2]);
-    expect(row("personal_core_yearly")).toEqual([10 * GB, "per_person", 0, false, false, null]);
-    expect(row("personal_pro_monthly")).toEqual([10 * GB, "per_person", 180, true, true, null]);
-    expect(row("personal_pro_ai_yearly")).toEqual([50 * GB, "per_person", 550, true, true, null]);
-    expect(row("workspace_free")).toEqual([500 * MB, "shared_free", 0, false, true, null]);
-    expect(row("workspace_core_monthly")).toEqual([10 * GB, "per_person", 0, false, false, null]);
-    expect(row("workspace_pro_yearly")).toEqual([10 * GB, "per_person", 180, true, true, null]);
-    expect(row("workspace_pro_ai_monthly")).toEqual([50 * GB, "per_person", 550, true, true, null]);
+    // Every plan includes Foli AI and credit packs; no plan limits devices. Free has 30 credits a month, Core none.
+    expect(row("personal_free")).toEqual([500 * MB, "shared_free", 30, true, true, null]);
+    expect(row("personal_core_yearly")).toEqual([5 * GB, "per_person", 0, true, true, null]);
+    expect(row("personal_pro_monthly")).toEqual([10 * GB, "per_person", 150, true, true, null]);
+    expect(row("personal_pro_ai_yearly")).toEqual([25 * GB, "per_person", 450, true, true, null]);
+    expect(row("workspace_free")).toEqual([500 * MB, "shared_free", 30, true, true, null]);
+    expect(row("workspace_core_monthly")).toEqual([5 * GB, "per_person", 0, true, true, null]);
+    expect(row("workspace_pro_yearly")).toEqual([10 * GB, "per_person", 150, true, true, null]);
+    expect(row("workspace_pro_ai_monthly")).toEqual([25 * GB, "per_person", 450, true, true, null]);
     expect(e("personal_pro_ai_monthly").aiFairUse).toBe("high");
     expect(e("personal_pro_monthly").aiFairUse).toBe("standard");
     // Features that don't exist yet aren't promised; no plan limits members or guests.
     for (const plan of Object.values(PLAN_CATALOG)) expect(plan.entitlements).toMatchObject({ auditLog: false, workspaceAnalytics: false, securityControls: false, advancedPermissions: false, prioritySupport: false, members: null, guests: null });
     // Cards read the catalog.
     expect(PLAN_ORDER.map((t) => [PLANS[t].name, PLANS[t].monthlyCents, PLANS[t].yearlyCents, PLANS[t].monthlyCredits])).toEqual([
-      ["Free", 0, 0, 0],
-      ["Core", 199, 1900, 0],
-      ["Pro", 499, 4900, 180],
-      ["Pro AI", 1399, 15900, 550],
+      ["Free", 0, 0, 30],
+      ["Core", 200, 2000, 0],
+      ["Pro", 400, 4000, 150],
+      ["Pro AI", 1000, 10000, 450],
     ]);
     expect(WORKSPACE_PLAN_ORDER.map((t) => [WORKSPACE_PLANS[t].name, WORKSPACE_PLANS[t].perSeat])).toEqual([
       ["Free", false],
@@ -100,30 +100,30 @@ describe("the catalog", () => {
       ["Pro", true],
       ["Pro AI", true],
     ]);
-    expect([monthlyEquivalent(1900), monthlyEquivalent(4900), monthlyEquivalent(15900)]).toEqual(["$1.58", "$4.08", "$13.25"]);
-    expect([yearlySavingPercent("core"), yearlySavingPercent("pro"), yearlySavingPercent("pro_ai")]).toEqual([20, 18, 5]);
-    expect(PLANS.core.features.join(" ")).toMatch(/No AI/);
-    expect(PLANS.free.features).toEqual(expect.arrayContaining(["500 MB storage, shared with the free workspaces you own", "Foli AI during your 7-day trial"]));
-    expect(PLANS.free.features.join(" ")).not.toMatch(/credits/);
-    expect([PLANS.core, PLANS.pro, PLANS.pro_ai].map((p) => p.features[0])).toEqual(["10 GB storage", "10 GB storage", "50 GB storage"]);
-    expect(WORKSPACE_PLANS.free.features.slice(0, 2)).toEqual(["Uses the owner's free 500 MB", "No AI after members' trials"]);
-    expect(PLANS.pro_ai.features.join(" ")).toMatch(/550 AI credits a month, the most of any plan/);
+    expect([monthlyEquivalent(2000), monthlyEquivalent(4000), monthlyEquivalent(10000)]).toEqual(["$1.66", "$3.33", "$8.33"]);
+    expect([yearlySavingPercent("core"), yearlySavingPercent("pro"), yearlySavingPercent("pro_ai")]).toEqual([17, 17, 17]);
+    expect(PLANS.core.features.join(" ")).toMatch(/No AI credits included: buy credits when you want Foli AI/);
+    expect(PLANS.free.features).toEqual(expect.arrayContaining(["500 MB storage, shared with the free workspaces you own", "30 AI credits a month", "Unlimited devices"]));
+    expect(PLANS.free.features.join(" ")).not.toMatch(/2 devices|trial/);
+    expect([PLANS.core, PLANS.pro, PLANS.pro_ai].map((p) => p.features[0])).toEqual(["5 GB storage", "10 GB storage", "25 GB storage"]);
+    expect(WORKSPACE_PLANS.free.features.slice(0, 2)).toEqual(["Uses the owner's free 500 MB", "Members use their own AI credits"]);
+    expect(PLANS.pro_ai.features.join(" ")).toMatch(/450 AI credits a month, the most of any plan/);
     expect(Object.values(PLANS).flatMap((p) => p.features).join(" ")).not.toMatch(/Unlimited AI/i);
     expect(Object.values(PLANS).flatMap((p) => p.features).join(" ")).not.toMatch(/\u2014|iOS/);
   });
 
   test("the rules: the trial is Pro AI with 100 credits; lapsed plans fall back to Free", () => {
     const now = Date.now();
-    expect(personalEntitlementsOf(null, now)).toMatchObject({ scope: "personal", planId: "personal_free", plan: "free", paid: false, monthlyCredits: 0, storageBytes: 500 * MB, devices: 2 });
+    expect(personalEntitlementsOf(null, now)).toMatchObject({ scope: "personal", planId: "personal_free", plan: "free", paid: false, ai: true, monthlyCredits: 30, creditPacks: true, storageBytes: 500 * MB, devices: null });
     const trial = personalEntitlementsOf({ plan: "free", status: "active", trialEndsAt: now + DAY_MS }, now);
-    expect(trial).toMatchObject({ planId: "personal_pro_ai_monthly", paidPlanId: "personal_free", plan: "pro_ai", paidPlan: "free", paid: false, trialing: true, ai: true, aiSource: "trial", monthlyCredits: TRIAL_CREDITS, storageBytes: 50 * GB, devices: null });
+    expect(trial).toMatchObject({ planId: "personal_pro_ai_monthly", paidPlanId: "personal_free", plan: "pro_ai", paidPlan: "free", paid: false, trialing: true, ai: true, aiSource: "trial", monthlyCredits: TRIAL_CREDITS, storageBytes: 25 * GB, devices: null });
     expect(personalEntitlementsOf({ plan: "free", status: "active", trialEndsAt: now - 1 }, now)).toMatchObject({ plan: "free", trialing: false });
-    expect(personalEntitlementsOf({ plan: "core", status: "active", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ planId: "personal_core_monthly", ai: false, aiSource: null, storageBytes: 10 * GB });
-    expect(personalEntitlementsOf({ plan: "pro", catalogVersion: 2, interval: "year", status: "active" }, now)).toMatchObject({ planId: "personal_pro_yearly", monthlyCredits: 180 });
+    expect(personalEntitlementsOf({ plan: "core", status: "active", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ planId: "personal_core_monthly", ai: true, aiSource: "plan", monthlyCredits: 0, creditPacks: true, storageBytes: 5 * GB });
+    expect(personalEntitlementsOf({ plan: "pro", catalogVersion: 2, interval: "year", status: "active" }, now)).toMatchObject({ planId: "personal_pro_yearly", monthlyCredits: 150 });
     expect(personalEntitlementsOf({ plan: "pro", status: "active", currentPeriodEnd: now - 1 }, now)).toMatchObject({ plan: "free", paid: false });
     expect(personalEntitlementsOf({ plan: "pro_ai", status: "canceled", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ plan: "pro_ai", paid: true });
     // A paying Core customer with a trial date left doesn't get the trial.
-    expect(personalEntitlementsOf({ plan: "core", status: "active", trialEndsAt: now + DAY_MS }, now)).toMatchObject({ trialing: false, ai: false });
+    expect(personalEntitlementsOf({ plan: "core", status: "active", trialEndsAt: now + DAY_MS }, now)).toMatchObject({ trialing: false, plan: "core", monthlyCredits: 0 });
     // A stored "pro" is Pro (the January 2027 plan migration ran on 2026-09-30; nothing reads catalogVersion).
     expect(personalEntitlementsOf({ plan: "pro", status: "active" }, now)).toMatchObject({ planId: "personal_pro_monthly" });
     expect(personalEntitlementsOf({ plan: "free", status: "active", storageOverrideBytes: 5 * GB }, now).storageBytes).toBe(5 * GB);
@@ -133,8 +133,8 @@ describe("the catalog", () => {
   test("workspace entitlements: Free without a subscription; a paid plan while in force; an admin override is its own total", () => {
     const now = Date.now();
     expect(workspaceEntitlementsOf(null, {}, now)).toMatchObject({ scope: "workspace", planId: "workspace_free", paid: false, ai: true, monthlyCredits: 0, storageBytes: 500 * MB, storageRule: "shared_free" });
-    expect(workspaceEntitlementsOf({ tier: "pro_ai", interval: "year", status: "active", currentPeriodEnd: now + DAY_MS }, {}, now)).toMatchObject({ planId: "workspace_pro_ai_yearly", ai: true, aiFairUse: "high", monthlyCredits: 550, storageBytes: 50 * GB, storageRule: "per_person" });
-    expect(workspaceEntitlementsOf({ tier: "core", status: "active" }, {}, now)).toMatchObject({ planId: "workspace_core_monthly", ai: false, monthlyCredits: 0, storageBytes: 10 * GB });
+    expect(workspaceEntitlementsOf({ tier: "pro_ai", interval: "year", status: "active", currentPeriodEnd: now + DAY_MS }, {}, now)).toMatchObject({ planId: "workspace_pro_ai_yearly", ai: true, aiFairUse: "high", monthlyCredits: 450, storageBytes: 25 * GB, storageRule: "per_person" });
+    expect(workspaceEntitlementsOf({ tier: "core", status: "active" }, {}, now)).toMatchObject({ planId: "workspace_core_monthly", ai: true, monthlyCredits: 0, storageBytes: 5 * GB });
     expect(workspaceEntitlementsOf({ tier: "pro", status: "canceled", currentPeriodEnd: now + DAY_MS }, {}, now)).toMatchObject({ planId: "workspace_pro_monthly", ai: true });
     expect(workspaceEntitlementsOf({ tier: "pro", status: "active", currentPeriodEnd: now - 1 }, {}, now)).toMatchObject({ planId: "workspace_free" });
     expect(workspaceEntitlementsOf(null, { storageBytes: 50 * GB }, now)).toMatchObject({ storageBytes: 50 * GB, storageOverridden: true, storageRule: "override" });
@@ -162,7 +162,7 @@ describe("personal plans", () => {
     await a.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "year" });
     let mine = await a.as.query(api.billing.mine, {});
     expect(mine.entitlements).toMatchObject({ plan: "pro_ai", paidPlan: "pro_ai", trialing: false });
-    expect(mine.payments[0]).toMatchObject({ amountCents: 15900, plan: "pro_ai", interval: "year", status: "paid" });
+    expect(mine.payments[0]).toMatchObject({ amountCents: 10000, plan: "pro_ai", interval: "year", status: "paid" });
     expect(mine.subscription).toMatchObject({ plan: "pro_ai", provider: "test" });
     await a.as.mutation(api.billing.cancelPlan, {});
     mine = await a.as.query(api.billing.mine, {});
@@ -234,7 +234,7 @@ describe("Polar checkout and portal", () => {
     expect(calls[0]).toMatchObject({ method: "POST", path: "customer-sessions/", body: { external_customer_id: a.profileId } });
   });
 
-  test("credit packs: bought for your Personal (Pro, Pro AI) or your own seat in a paid workspace; never on Free, Core or the trial", async () => {
+  test("credit packs: bought on every plan for your Personal or your own seat in a paid workspace; never during the trial", async () => {
     const t = setup();
     const a = await person(t, "packs@example.com");
     const other = await person(t, "packs-other@example.com");
@@ -242,9 +242,12 @@ describe("Polar checkout and portal", () => {
     const calls = fakePolar(() => ({ url: "https://sandbox.polar.sh/checkout/pack" }));
     await expect(a.as.action(api.billing.buyCredits, { pack: "credits_500", scope: PERSONAL })).rejects.toThrow(/Choose a plan first/);
     await endTrial(t, a);
-    await expect(a.as.action(api.billing.buyCredits, { pack: "credits_500", scope: PERSONAL })).rejects.toThrow(/Pro and Pro AI/);
+    // Free and Core can buy packs too (2026-11-27).
+    await a.as.action(api.billing.buyCredits, { pack: "credits_500", scope: PERSONAL });
+    expect(calls.at(-1)!.body).toMatchObject({ products: [product("credits_500")], metadata: { kind: "credits", profileId: a.profileId, pack: "credits_500" } });
     await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
-    await expect(a.as.action(api.billing.buyCredits, { pack: "credits_500", scope: PERSONAL })).rejects.toThrow(/Pro and Pro AI/);
+    await a.as.action(api.billing.buyCredits, { pack: "credits_500", scope: PERSONAL });
+    expect(calls.at(-1)!.body).toMatchObject({ products: [product("credits_500")], metadata: { kind: "credits", profileId: a.profileId, pack: "credits_500" } });
     await a.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
     await a.as.action(api.billing.buyCredits, { pack: "credits_1000", scope: PERSONAL });
     expect(calls.at(-1)!.body).toMatchObject({ products: [product("credits_1000")], external_customer_id: a.profileId, metadata: { kind: "credits", profileId: a.profileId, pack: "credits_1000" } });
@@ -308,9 +311,9 @@ describe("Polar webhooks", () => {
     const sub = (extra: Partial<Parameters<typeof subscription>[0]> = {}) => subscription({ id: "sub_l", productKey: "personal_pro_ai_monthly", metadata: meta, start, ...extra });
     await postEvent(t, "subscription.created", sub(), { at: start });
     let mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ paidPlan: "pro_ai", trialing: false, monthlyCredits: 550 });
+    expect(mine.entitlements).toMatchObject({ paidPlan: "pro_ai", trialing: false, monthlyCredits: 450 });
     expect(mine.subscription).toMatchObject({ provider: "polar", plan: "pro_ai", interval: "month", status: "active" });
-    expect(mine.credits.allowance).toBe(550);
+    expect(mine.credits.allowance).toBe(450);
     await postEvent(t, "order.paid", order({ id: "ord_1", productKey: "personal_pro_ai_monthly", total: 1399, metadata: meta, subscriptionId: "sub_l" }));
     await postEvent(t, "order.paid", order({ id: "ord_1", productKey: "personal_pro_ai_monthly", total: 1399, metadata: meta, subscriptionId: "sub_l" }));
     mine = await a.as.query(api.billing.mine, {});
@@ -330,10 +333,10 @@ describe("Polar webhooks", () => {
     expect(row!.currentPeriodStart).toBe(next - 1);
     await postEvent(t, "order.paid", order({ id: "ord_2", productKey: "personal_pro_ai_monthly", total: 1399, metadata: meta, subscriptionId: "sub_l", billingReason: "subscription_cycle" }));
     expect((await a.as.query(api.billing.mine, {})).payments).toHaveLength(2);
-    // Revoked: the plan ends now; the history stays.
+    // Revoked: the plan ends now (back to Free's 30 credits a month); the history stays.
     await postEvent(t, "subscription.revoked", sub({ status: "canceled" }), { at: start + 4000 });
     mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ paidPlan: "free", monthlyCredits: 0 });
+    expect(mine.entitlements).toMatchObject({ paidPlan: "free", monthlyCredits: 30 });
     expect(mine.payments).toHaveLength(2);
   });
 
@@ -354,15 +357,15 @@ describe("Polar webhooks", () => {
     await endTrial(t, a);
     await a.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
     const meta = { kind: "credits", profileId: a.profileId, pack: "credits_1000" };
-    const paid = order({ id: "ord_pack", productKey: "credits_1000", total: 1499, metadata: meta });
+    const paid = order({ id: "ord_pack", productKey: "credits_1000", total: 1500, metadata: meta });
     await postEvent(t, "order.paid", paid);
     // Redelivered under a new delivery id: still one pack.
     await postEvent(t, "order.paid", paid);
     let mine = await a.as.query(api.billing.mine, {});
-    expect(mine.credits).toMatchObject({ packCredits: 1000, available: 180 + 1000 });
-    expect(mine.payments[0]).toMatchObject({ amountCents: 1499, plan: "credits", credits: 1000, status: "paid" });
-    // A partial refund (about a quarter) takes back 250 unused credits; the payment stays paid.
-    await postEvent(t, "order.refunded", { ...paid, status: "partially_refunded", refunded_amount: 374 });
+    expect(mine.credits).toMatchObject({ packCredits: 1000, available: 150 + 1000 });
+    expect(mine.payments[0]).toMatchObject({ amountCents: 1500, plan: "credits", credits: 1000, status: "paid" });
+    // A partial refund (a quarter) takes back 250 unused credits; the payment stays paid.
+    await postEvent(t, "order.refunded", { ...paid, status: "partially_refunded", refunded_amount: 375 });
     mine = await a.as.query(api.billing.mine, {});
     expect(mine.credits.packCredits).toBe(750);
     expect(mine.payments[0]!.status).toBe("paid");
@@ -371,7 +374,7 @@ describe("Polar webhooks", () => {
       const pack = (await ctx.db.query("aiCreditPacks").collect())[0]!;
       await ctx.db.patch(pack._id, { remaining: 600 });
     });
-    await postEvent(t, "order.refunded", { ...paid, status: "refunded", refunded_amount: 1499 });
+    await postEvent(t, "order.refunded", { ...paid, status: "refunded", refunded_amount: 1500 });
     mine = await a.as.query(api.billing.mine, {});
     expect(mine.credits.packCredits).toBe(0);
     expect(mine.payments[0]!.status).toBe("refunded");
@@ -422,17 +425,18 @@ describe("admin: billing, plans, credits and analytics", () => {
     await endTrial(t, user);
 
     await admin.as.mutation(api.adminBilling.setPlan, { profileId: user.profileId, plan: "core", interval: "year", reason: REASON });
-    expect((await user.as.query(api.billing.mine, {})).entitlements).toMatchObject({ plan: "core", ai: false });
-    // Core has no AI, so it can't be given credits.
-    await expect(admin.as.mutation(api.adminBilling.grantCredits, { profileId: user.profileId, credits: 100, reason: REASON })).rejects.toThrow(/Core/);
+    expect((await user.as.query(api.billing.mine, {})).entitlements).toMatchObject({ plan: "core", ai: true, monthlyCredits: 0 });
+    // Core includes Foli AI (no monthly credits), so it can be given credits.
+    await admin.as.mutation(api.adminBilling.grantCredits, { profileId: user.profileId, credits: 100, reason: REASON });
+    expect((await user.as.query(api.billing.mine, {})).credits).toMatchObject({ allowance: 0, packCredits: 100, available: 100 });
     await admin.as.mutation(api.adminBilling.setPlan, { profileId: user.profileId, plan: "pro", interval: "month", reason: REASON });
     await expect(admin.as.mutation(api.adminBilling.grantCredits, { profileId: user.profileId, credits: 100, reason: "short" })).rejects.toThrow(/reason/);
     await expect(admin.as.mutation(api.adminBilling.grantCredits, { profileId: user.profileId, credits: 0, reason: REASON })).rejects.toThrow(/between 1 and/);
     await expect(admin.as.mutation(api.adminBilling.grantCredits, { profileId: user.profileId, credits: 100_000, reason: REASON })).rejects.toThrow(/between 1 and/);
     await admin.as.mutation(api.adminBilling.grantCredits, { profileId: user.profileId, credits: 300, months: 3, reason: REASON });
     const mine = await user.as.query(api.billing.mine, {});
-    expect(mine.credits).toMatchObject({ allowance: 180, packCredits: 300, available: 480 });
-    const pack = await t.run(async (ctx) => (await ctx.db.query("aiCreditPacks").collect())[0]!);
+    expect(mine.credits).toMatchObject({ allowance: 150, packCredits: 400, available: 550 });
+    const pack = await t.run(async (ctx) => (await ctx.db.query("aiCreditPacks").collect()).find((p) => p.credits === 300)!);
     expect(pack).toMatchObject({ source: "admin", credits: 300 });
     expect(pack.expiresAt - Date.now()).toBeGreaterThan(85 * DAY_MS);
     expect(pack.expiresAt - Date.now()).toBeLessThan(95 * DAY_MS);
@@ -442,26 +446,26 @@ describe("admin: billing, plans, credits and analytics", () => {
 
     // Refunds: owner only; a refunded pack's unused credits go.
     await user.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: PERSONAL });
-    expect((await user.as.query(api.billing.mine, {})).credits.packCredits).toBe(800);
+    expect((await user.as.query(api.billing.mine, {})).credits.packCredits).toBe(900);
     const paymentId = (await user.as.query(api.billing.mine, {})).payments.find((p) => p.plan === "credits")!.id;
     await expect(admin.as.mutation(api.adminBilling.markRefunded, { paymentId, reason: REASON })).rejects.toThrow(/not_found/);
     await owner.as.mutation(api.adminBilling.markRefunded, { paymentId, reason: REASON });
     const after = await user.as.query(api.billing.mine, {});
     expect(after.payments.find((p) => p.id === paymentId)!.status).toBe("refunded");
-    expect(after.credits.packCredits).toBe(300);
+    expect(after.credits.packCredits).toBe(400);
 
     const log = await owner.as.query(api.admin.auditLog, {});
     const grant = log.entries.find((e) => e.action === "billing.grant_credits");
     expect(grant).toMatchObject({ reason: REASON });
     expect(log.entries.map((e) => e.action)).toEqual(expect.arrayContaining(["billing.set_plan", "billing.grant_credits", "billing.set_storage", "billing.mark_refunded"]));
     const view = await admin.as.mutation(api.adminBilling.userBilling, { profileId: user.profileId });
-    expect(view.packs.map((p) => [p.source, p.credits])).toEqual(expect.arrayContaining([["admin", 300], ["test", 500]]));
+    expect(view.packs.map((p) => [p.source, p.credits])).toEqual(expect.arrayContaining([["admin", 100], ["admin", 300], ["test", 500]]));
     // Revenue counts real payments only unless asked to include test ones (a manual plan counts as paying).
     const real = await admin.as.query(api.adminAnalytics.revenue, { months: 12 });
     expect(real.paying).toBe(1);
     expect(real.revenueByMonth.at(-1)!.creditPacksCents).toBe(0);
     const revenue = await admin.as.query(api.adminAnalytics.revenue, { months: 12, includeTest: true });
-    expect(revenue.revenueByMonth.at(-1)!.creditPacksCents).toBe(799);
+    expect(revenue.revenueByMonth.at(-1)!.creditPacksCents).toBe(800);
   });
 
   test("the users list shows each person's plan; plans billed through Polar are flagged and refused", async () => {
@@ -507,15 +511,21 @@ describe("device limits", () => {
     return { as: t.withIdentity(identity(email, { subject: p.userId, tokenIdentifier: `https://test.folevi.local|${p.userId}`, sessionId })), sessionId };
   }
 
-  test("Free allows 2 devices: a third is held (and refused) until one signs out", async () => {
+  test("Free has unlimited devices after the trial; an admin device limit still holds a third device until one signs out", async () => {
     vi.useFakeTimers();
     const t = setup();
+    const admin = await person(t, "devices-admin@example.com");
+    await withRole(t, admin, "ops_admin");
     const a = await person(t, "devices@example.com");
     await endTrial(t, a);
     vi.advanceTimersByTime(1000);
     const second = await anotherDevice(t, a, "devices@example.com");
     vi.advanceTimersByTime(1000);
     const third = await anotherDevice(t, a, "devices@example.com");
+    for (const d of [a, second, third]) expect((await d.as.query(api.users.me, {})).state).toBe("ready");
+    expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ plan: "free", devices: null });
+    // An admin override of 2 devices still limits Free.
+    await admin.as.mutation(api.adminBilling.setDeviceLimit, { profileId: a.profileId, devices: 2, reason: REASON });
     expect((await a.as.query(api.users.me, {})).state).toBe("ready");
     expect((await second.as.query(api.users.me, {})).state).toBe("ready");
     expect(await third.as.query(api.users.me, {})).toMatchObject({ state: "device_limit", limit: 2, active: 3 });
@@ -525,7 +535,7 @@ describe("device limits", () => {
     expect((await third.as.query(api.billing.mine, {})).devicesActive).toBe(2);
   });
 
-  test("the Pro AI trial, Core, Pro and Pro AI have unlimited devices; upgrading frees a held device", async () => {
+  test("the Pro AI trial, Free, Core, Pro and Pro AI have unlimited devices", async () => {
     vi.useFakeTimers();
     const t = setup();
     const a = await person(t, "many-devices@example.com");
@@ -537,9 +547,12 @@ describe("device limits", () => {
     for (const d of extra) expect((await d.as.query(api.users.me, {})).state).toBe("ready");
     expect((await a.as.query(api.billing.mine, {})).entitlements.devices).toBeNull();
     await endTrial(t, a);
-    expect((await extra[2]!.as.query(api.users.me, {})).state).toBe("device_limit");
-    await extra[2]!.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
-    expect((await extra[2]!.as.query(api.users.me, {})).state).toBe("ready");
+    for (const d of extra) expect((await d.as.query(api.users.me, {})).state).toBe("ready");
+    for (const plan of ["core", "pro", "pro_ai"] as const) {
+      await extra[2]!.as.mutation(api.billing.testPurchase, { plan, interval: "month" });
+      expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ paidPlan: plan, devices: null });
+      for (const d of extra) expect((await d.as.query(api.users.me, {})).state).toBe("ready");
+    }
   });
 
   test("admins can set a device limit for someone (audited); support staff can't", async () => {
@@ -556,7 +569,7 @@ describe("device limits", () => {
     await admin.as.mutation(api.adminBilling.setDeviceLimit, { profileId: user.profileId, devices: "unlimited", reason: REASON });
     expect((await user.as.query(api.billing.mine, {})).entitlements.devices).toBeNull();
     await admin.as.mutation(api.adminBilling.setDeviceLimit, { profileId: user.profileId, devices: null, reason: REASON });
-    expect((await user.as.query(api.billing.mine, {})).entitlements.devices).toBe(2);
+    // Back to the plan's: Free has no limit.
+    expect((await user.as.query(api.billing.mine, {})).entitlements.devices).toBeNull();
   });
 });
-

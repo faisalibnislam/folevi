@@ -15,7 +15,7 @@ test("a new account is on a 7-day Pro AI trial, can take a test plan, and cancel
   await expect(plan.getByText(/(7|6) days of Pro AI left/)).toBeVisible();
   await expect(plan.getByText("100 AI credits left")).toBeVisible();
   await expect(plan.getByText(/100 of 100 trial credits left\. Your trial ends on /)).toBeVisible();
-  await expect(plan.getByText("Your own 50 GB during your trial.")).toBeVisible();
+  await expect(plan.getByText("Your own 25 GB during your trial.")).toBeVisible();
   await expect(plan.getByText(/Unlimited during your trial/)).toBeVisible();
 
   // Four personal plans, in order; yearly prices first.
@@ -26,31 +26,31 @@ test("a new account is on a 7-day Pro AI trial, can take a test plan, and cancel
   await expect(cards.locator("h4")).toHaveText(["Free", "Core", "Pro", "Pro AI"]);
   const card = (name: string) => page.getByRole("region", { name: `${name} plan`, exact: true });
   await expect(card("Free").getByRole("button", { name: "Your plan" })).toBeDisabled();
-  await expect(card("Core").getByText("$19", { exact: true })).toBeVisible();
-  await expect(card("Core").getByText("$1.58/month, billed yearly")).toBeVisible();
-  await expect(card("Pro").getByText("$49", { exact: true })).toBeVisible();
-  await expect(card("Pro").getByText("$4.08/month, billed yearly")).toBeVisible();
-  await expect(card("Pro AI").getByText("$159", { exact: true })).toBeVisible();
-  await expect(card("Pro AI").getByText("$13.25/month, billed yearly")).toBeVisible();
-  await expect(card("Core").getByText("No AI. Your notes stay yours: nothing is sent to an AI model")).toBeVisible();
+  await expect(card("Core").getByText("$20", { exact: true })).toBeVisible();
+  await expect(card("Core").getByText("$1.66/month, billed yearly")).toBeVisible();
+  await expect(card("Pro").getByText("$40", { exact: true })).toBeVisible();
+  await expect(card("Pro").getByText("$3.33/month, billed yearly")).toBeVisible();
+  await expect(card("Pro AI").getByText("$100", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$8.33/month, billed yearly")).toBeVisible();
+  await expect(card("Core").getByText("No AI credits included: buy credits when you want Foli AI")).toBeVisible();
   await page.getByRole("group", { name: "Billing period" }).getByRole("button", { name: "Monthly" }).click();
-  await expect(card("Core").getByText("$1.99", { exact: true })).toBeVisible();
-  await expect(card("Pro").getByText("$4.99", { exact: true })).toBeVisible();
-  await expect(card("Pro AI").getByText("$13.99", { exact: true })).toBeVisible();
+  await expect(card("Core").getByText("$2", { exact: true })).toBeVisible();
+  await expect(card("Pro").getByText("$4", { exact: true })).toBeVisible();
+  await expect(card("Pro AI").getByText("$10", { exact: true })).toBeVisible();
 
   // Choosing a plan ends the trial: Pro (test purchase), monthly.
   await card("Pro").getByRole("button", { name: "Choose Pro (test)" }).click();
   await expect(page.getByRole("status").filter({ hasText: "You're on Pro (test purchase)." })).toBeVisible();
   await expect(plan.getByText("Pro", { exact: true })).toBeVisible();
   await expect(plan.getByText("Active", { exact: true })).toBeVisible();
-  await expect(plan.getByText("180 AI credits left")).toBeVisible();
-  await expect(plan.getByText(/180 of 180 monthly credits left\. Resets on /)).toBeVisible();
+  await expect(plan.getByText("150 AI credits left")).toBeVisible();
+  await expect(plan.getByText(/150 of 150 monthly credits left\. Resets on /)).toBeVisible();
   await expect(plan.getByText("Your own 10 GB on Pro.")).toBeVisible();
   await expect(card("Pro").getByRole("button", { name: "Your plan" })).toBeDisabled();
   await expect(card("Pro AI").getByRole("button", { name: "Upgrade to Pro AI (test)" })).toBeVisible();
   await expect(card("Core").getByRole("button", { name: "Change to Core (test)" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Pro · monthly" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "$4.99 USD" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "$4 USD" })).toBeVisible();
 
   // Cancel at the end of the period, then resume.
   await plan.getByRole("button", { name: "Cancel plan" }).click();
@@ -66,7 +66,7 @@ test("a new account is on a 7-day Pro AI trial, can take a test plan, and cancel
   await context.close();
 });
 
-test("Core: more room and no AI, said plainly on the plan page", async ({ browser }) => {
+test("Core: more room, no monthly AI credits, and credit packs to buy", async ({ browser }) => {
   const { page, context } = await newPerson(browser, "Core Planner");
   await page.goto(`${APP}/settings/billing`);
   const plan = page.getByRole("region", { name: "Your plan", exact: true });
@@ -75,12 +75,13 @@ test("Core: more room and no AI, said plainly on the plan page", async ({ browse
   await expect(page.getByRole("status").filter({ hasText: "You're on Core (test purchase)." })).toBeVisible();
   await expect(plan.getByText("Core", { exact: true })).toBeVisible();
   await expect(plan.getByText("Annual", { exact: true })).toBeVisible();
-  await expect(plan.getByText(/Core doesn't include AI, so nothing in your notes is sent to an AI model\./)).toBeVisible();
-  await expect(plan.getByText("Your own 10 GB on Core.")).toBeVisible();
+  // No monthly credits on Core, but Foli AI isn't blocked: a credit pack (or the person's own key) turns it on.
+  await expect(plan.getByText("Your plan has no monthly AI credits. Buy credits or upgrade to use Foli AI.")).toBeVisible();
+  await expect(plan.getByText("Your own 5 GB on Core.")).toBeVisible();
   const personal = page.getByRole("listitem", { name: "AI credits: Personal" });
-  await expect(personal).toContainText("Not included in Core.");
-  await expect(personal.getByRole("button", { name: "Buy credits" })).toHaveCount(0);
+  await expect(personal).toContainText("Your plan has no monthly AI credits.");
+  await expect(personal.getByRole("button", { name: "Buy credits" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Core · yearly" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "$19 USD" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "$20 USD" })).toBeVisible();
   await context.close();
 });

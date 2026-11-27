@@ -138,7 +138,7 @@ test("an admin upgrades a person straight from the users list (reason required, 
   const changes = dialog.getByRole("region", { name: "What changes" });
   await expect(changes).toContainText("Pro, yearly");
   await expect(changes).toContainText("10 GB");
-  await expect(changes).toContainText("180 a month");
+  await expect(changes).toContainText("150 a month");
   await settle(page);
   const scan = await new AxeBuilder({ page }).include("dialog[open]").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
   expect(scan.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
@@ -184,7 +184,7 @@ test("an owner manages a person's plan and AI credits from their page; analytics
   await page.getByRole("button", { name: "Upgrade", exact: true }).click();
   let dialog = page.getByRole("dialog", { name: "Change plan for Plan Target" });
   await dialog.getByRole("radio", { name: "Pro AI", exact: true }).check();
-  await expect(dialog.getByRole("region", { name: "What changes" })).toContainText("550 a month");
+  await expect(dialog.getByRole("region", { name: "What changes" })).toContainText("450 a month");
   await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: comped for a support issue");
   await dialog.getByRole("button", { name: "Upgrade to Pro AI" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Plan set to Pro AI, monthly" })).toBeVisible();
@@ -244,13 +244,13 @@ test("an admin puts a workspace on Pro by hand (audited), and its plan, seats an
   await expect(dialog.getByRole("radio")).toHaveCount(4);
   await dialog.getByRole("radio", { name: "Pro", exact: true }).check();
   const changes = dialog.getByRole("region", { name: "What changes" });
-  await expect(changes).toContainText("1 seat × $4.99 = $4.99 / month, not billed");
+  await expect(changes).toContainText("1 seat × $4 = $4 / month, not billed");
   await expect(changes).toContainText("10 GB per member");
   await dialog.getByRole("textbox", { name: "Reason" }).fill("E2E: comped Pro for a design partner");
   await dialog.getByRole("button", { name: "Upgrade to Pro" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Plan set to Workspace Pro, monthly" })).toBeVisible();
   await expect(page.getByText("Workspace Pro").first()).toBeVisible();
-  await expect(page.getByText("1 × $4.99 = $4.99/month")).toBeVisible();
+  await expect(page.getByText("1 × $4 = $4/month")).toBeVisible();
   await expect(page.getByRole("table", { name: "Workspace payments" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Admin audit history for this workspace" }).getByText("billing.set_workspace_plan").first()).toBeVisible();
   // The workspaces list shows the plan too, with Change plan on the row.
@@ -289,8 +289,8 @@ test("the owner sees Billing setup: Polar's connection and all 14 products, not 
   await expect(products.getByRole("row")).toHaveCount(15);
   await expect(products.getByText("Not created")).toHaveCount(14);
   await expect(products.getByRole("rowheader", { name: /Folevi Core \(monthly\)/ })).toBeVisible();
-  await expect(products.getByRole("row", { name: /Folevi Team Pro AI \(yearly\)/ })).toContainText("$159 per seat a year");
-  await expect(products.getByRole("row", { name: /Folevi AI credits: 1,000/ })).toContainText("$14.99 once");
+  await expect(products.getByRole("row", { name: /Folevi Team Pro AI \(yearly\)/ })).toContainText("$100 per seat a year");
+  await expect(products.getByRole("row", { name: /Folevi AI credits: 1,000/ })).toContainText("$15 once");
   await page.context().close();
 });
 

@@ -94,7 +94,7 @@ export const RELEASES: Release[] = [
         title: "Windows and Linux",
         items: [
           "Automatic updates, app lock with Windows Hello, and background sync",
-          "Sign in to your own server (Beta), Dropbox and Google Drive, call recording and text in pictures",
+          "Sign in to your own server (Beta), and on Windows, call recording and text in pictures",
           "The Jump List, notification actions, Windows Share, and windows that reopen where you left them",
           "The apps call themselves by their own names",
         ],

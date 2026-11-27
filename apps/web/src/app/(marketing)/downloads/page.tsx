@@ -148,8 +148,8 @@ export default async function DownloadsPage() {
       <HeaderCard crumbs={CRUMBS}>
         <Eyebrow>Downloads</Eyebrow>
         <h1 className="mk-display mt-5 text-[44px] leading-[0.98] sm:text-[64px]">Download Folevi.</h1>
-        <p className="mk-lede mt-6 max-w-[56ch]">Every Folevi app and package, for every platform, in one list. Jump to yours from the bar at the bottom.</p>
-              </HeaderCard>
+        <p className="mk-lede mt-6 max-w-[56ch]">Every Folevi app and package, for every platform, in one list. Every app is free with every feature, and you don’t need an account. Folevi Server is free to run yourself. Jump to yours from the bar at the bottom.</p>
+      </HeaderCard>
 
       {PLATFORMS.map((p) => (
         <Card key={p.id} id={p.id} aria-labelledby={`${p.id}-title`} className="scroll-mt-20">

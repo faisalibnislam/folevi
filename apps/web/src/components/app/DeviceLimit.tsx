@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { useState } from "react";
 import { Laptop, Monitor, Smartphone } from "lucide-react";
@@ -10,8 +10,6 @@ import { errorMessage } from "@/components/ui/Toast";
 import { SignOutButton } from "@/components/auth/SignOut";
 import { FullPageMessage } from "@/lib/app/state";
 import { formatRelative } from "@/lib/format";
-import { PLANS, formatPrice } from "@/lib/plans";
-import { canPurchaseHere } from "@/lib/nativeApp";
 
 function DeviceIcon({ label, client }: { label: string; client: string }) {
   if (client === "mac") return <Laptop size={16} aria-hidden />;
@@ -20,16 +18,14 @@ function DeviceIcon({ label, client }: { label: string; client: string }) {
 }
 
 /**
- * Shown on a device that signed in over the plan's device limit (Free: 2). Nothing on this device can
- * reach the account until another device is signed out here, or the plan is upgraded. The server holds
+ * Shown on a device that signed in over the account's device limit. No plan has one since 2026-11-27, so this
+ * only appears with a custom limit (deviceLimitOverride). Nothing on this device can reach the account until
+ * another device is signed out here. The server holds
  * it either way (users.me → "device_limit"; every other call is refused).
  */
 export function DeviceLimitScreen({ limit }: { limit: number }) {
   const sessions = useQuery(api.users.listSessions, {});
-  const billing = useQuery(api.billing.mine, {});
   const revoke = useMutation(api.users.revokeSession);
-  const testPurchase = useMutation(api.billing.testPurchase);
-  const checkout = useAction(api.billing.checkout);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,23 +40,11 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
       setBusy(null);
     }
   };
-  const upgrade = (plan: "core" | "pro") =>
-    run(plan, async () => {
-      if (billing?.checkoutAvailable) {
-        // null: an existing subscription was switched instead; the server lifts the limit once it lands.
-        const { url } = await checkout({ plan, interval: "month" });
-        if (url) window.location.assign(url);
-      } else if (billing?.testPurchases) await testPurchase({ plan, interval: "month" });
-      else throw new Error("Online payments aren't available yet.");
-    });
   const others = sessions?.filter((s) => !s.current) ?? [];
-  // Never in the iOS app (no buying there): signing out of another device is the way on.
-  const canBuy = canPurchaseHere() && Boolean(billing?.checkoutAvailable || billing?.testPurchases);
-
   return (
     <FullPageMessage
       title={`You’re on ${limit} ${limit === 1 ? "device" : "devices"} already`}
-      body={`Your plan works on ${limit} ${limit === 1 ? "device" : "devices"} at a time. Sign out of one below to use Folevi here${canPurchaseHere() ? ", or upgrade for unlimited devices" : ""}.`}
+      body={`Your account works on ${limit} ${limit === 1 ? "device" : "devices"} at a time. Sign out of one below to use Folevi here.`}
       gate="deviceLimit"
       deviceLimit={{ limit, devices: others.map((s) => ({ id: s.id, label: s.label, lastSeenAt: s.lastSeenAt })) }}
       actions={others.map((s) => ({ id: `signOut:${s.id}`, label: `Sign out ${s.label}`, enabled: busy === null, run: () => run(s.id, () => revoke({ sessionId: s.id })) }))}
@@ -91,18 +75,6 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
           {error}
         </p>
       ) : null}
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        {canBuy ? (
-          <>
-            <Button variant="primary" onClick={() => void upgrade("core")} disabled={busy !== null}>
-              {busy === "core" ? "Upgrading…" : `Upgrade to ${PLANS.core.name} · ${formatPrice(PLANS.core.monthlyCents)}/mo`}
-            </Button>
-            <Button onClick={() => void upgrade("pro")} disabled={busy !== null}>
-              {busy === "pro" ? "Upgrading…" : `${PLANS.pro.name} with AI · ${formatPrice(PLANS.pro.monthlyCents)}/mo`}
-            </Button>
-          </>
-        ) : null}
-      </div>
       <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-4">
         <p className="text-subheadline text-muted">Not using this device?</p>
         <SignOutButton accountKey={null} label="Sign out here" />

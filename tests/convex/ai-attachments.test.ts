@@ -305,17 +305,31 @@ describe("chat attachments", () => {
     expect(JSON.stringify(last.contents)).toContain("Ferry at 9.");
   });
 
-  test("Core: refused with nothing sent (chat with files, and transcription)", async () => {
+  test("Foli AI turned off in the workspace: refused with nothing sent (chat with files, and transcription)", async () => {
     const t = setup();
-    const a = await person(t, "attach-core@example.com");
+    const owner = await person(t, "attach-core@example.com");
+    const { workspaceId, scope } = await teamWorkspace(owner, "No AI");
+    const a = { ...owner, scope };
     const { fetchMock } = gemini();
     const txt = await attach(t, a, "notes.txt", enc.encode("Ferry at 9."), "text/plain");
     const { noteId, fileId: audio } = await noteWithFile(t, a, { filename: "memo.webm", bytes: WEBM, mimeType: "audio/webm", kind: "audio" });
-    await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
+    await owner.as.mutation(api.workspaces.setAiDisabled, { workspaceId, disabled: true });
     const { answer } = await sendWith(a, "Read this", [txt]);
     expect(answer.status).toBe("error");
     expect(answer.error).toMatchObject({ code: "forbidden", reason: "ai_not_included" });
-    await expect(a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId: audio })).rejects.toThrow(/Core/);
+    await expect(a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId: audio })).rejects.toThrow(/turned off in this workspace/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("Foli AI turned off in your own settings: refused with nothing sent (chat with files, and transcription)", async () => {
+    const t = setup();
+    const a = await person(t, "attach-off@example.com");
+    const { fetchMock } = gemini();
+    const txt = await attach(t, a, "notes.txt", enc.encode("Ferry at 9."), "text/plain");
+    const { noteId, fileId: audio } = await noteWithFile(t, a, { filename: "memo.webm", bytes: WEBM, mimeType: "audio/webm", kind: "audio" });
+    await a.as.mutation(api.users.updateProfile, { aiEnabled: false });
+    await expect(sendWith(a, "Read this", [txt])).rejects.toThrow(/turned off in your settings/);
+    await expect(a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId: audio })).rejects.toThrow(/turned off/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

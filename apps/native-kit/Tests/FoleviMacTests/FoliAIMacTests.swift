@@ -29,8 +29,10 @@ struct FoliAIMacTests {
         let off = AiUnavailableView.copy("off", local: false, purchases: true)
         #expect(off.title == "Foli AI is turned off")
         let plan = AiUnavailableView.copy("plan", local: false, purchases: true)
-        #expect(plan.link?.label == "Upgrade")
-        // No buying here (iOS): no way to plans.
+        // Every plan has Foli AI now (pricing, 2026-11-27), so there is nothing to upgrade to: the way out is Settings.
+        #expect(plan.link?.label == "Open Foli AI settings")
+        #expect(plan.link?.section == "ai")
+        // A workspace that turned Foli AI off has no link: only its owner or an admin can turn it on.
         #expect(AiUnavailableView.copy("workspacePlan", local: false, purchases: false).link == nil)
         for reason in ["off", "setup", "plan", "workspacePlan", "odd"] {
             let c = AiUnavailableView.copy(reason, local: false, purchases: true)

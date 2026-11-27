@@ -6,8 +6,8 @@ import { DeviceShowcase } from "./DeviceShowcase";
 import { Mark } from "../fun";
 
 /*
- * The apps, right under the hero: the Mac, Windows, Linux, iPhone and iPad apps (free forever with no account) and the web app
- * (with an account). The Mac picture is drawn from the site's own note pieces, not a screenshot, so it follows the
+ * The apps, right under the hero: the Mac, Windows, Linux, iPhone, iPad and Android apps (free forever, with every
+ * feature and no account) and the web app (with an account). The Mac picture is drawn from the site's own note pieces, not a screenshot, so it follows the
  * theme like everything else on the page (the iPad and iPhone: product/TouchDevices.tsx).
  */
 
@@ -65,7 +65,7 @@ export function MacPicture() {
 const PROMISES = [
   { icon: LockKeyhole, text: "End-to-end encryption, when you want it" },
   { icon: WifiOff, text: "Works offline" },
-  { icon: Cloud, text: "Your own iCloud, Dropbox or Google Drive" },
+  { icon: Cloud, text: "Your own iCloud Drive, Dropbox, Google Drive or Folevi Server" },
   { icon: Sparkles, text: "Folevi Cloud and Foli AI, optional" },
 ];
 
@@ -78,12 +78,12 @@ export function HeroApps() {
         <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
           <div>
             <h2 id="apps-title" className="mk-h2">
-              On your Mac, Windows, Linux, iPhone and iPad.
+              On your Mac, Windows, Linux, iPhone, iPad and Android.
               <br />
               <Mark kind="circle">Free,</Mark> with no account.
             </h2>
             <p className="mk-lede mt-4 max-w-[54ch]">
-              The whole workspace in apps that open in a moment and work offline. Choose Keep notes on my devices and start writing without signing up. There’s no trial and no limit.
+              The whole workspace, with every feature, on Mac, Windows, Linux (Beta), iPhone, iPad and Android. The apps open in a moment and work offline. Choose Keep notes on my devices and start writing without signing up. There’s no trial and no limit.
             </p>
             <ul className="mt-5 flex flex-wrap gap-2">
               {PROMISES.map((p) => (
@@ -102,6 +102,9 @@ export function HeroApps() {
           </ButtonLink>
           <ButtonLink href={APP_STORE_URL} lead="app-store" size="lg">
             Get it on the App Store
+          </ButtonLink>
+          <ButtonLink href="/downloads" variant="secondary" size="lg">
+            Android, Windows and Linux
           </ButtonLink>
           <ButtonLink href={WEB_APP_URL} variant="secondary" size="lg">
             Open the web app

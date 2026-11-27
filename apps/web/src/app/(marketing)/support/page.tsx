@@ -33,11 +33,11 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Which devices does Folevi work on?",
-    a: "Mac (a free download from folevi.com/mac), Windows and Linux (free downloads from folevi.com/downloads; Linux is in beta), iPhone and iPad (free on the App Store), and any modern browser through the web app. The Android app is coming soon to Google Play; until then, use the web app in your phone’s browser.",
+    a: "Mac (a free download from folevi.com/mac), Windows and Linux (free downloads from folevi.com/downloads; Linux is in beta), iPhone and iPad (free on the App Store), Android (a free download from folevi.com/downloads), and any modern browser through the web app. Every app is free, with every feature.",
   },
   {
     q: "Do I need an account?",
-    a: "Not in the Mac, Windows, Linux, iPhone and iPad apps. Choose Keep notes on my devices and your notes are files in a folder you pick, such as iCloud Drive, free forever. The web app, sharing and AI credits need a Folevi account.",
+    a: "Not in the apps. Choose Keep notes on my devices and your notes are files in a folder you pick, such as iCloud Drive, Dropbox or Google Drive, free forever. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. You can also sync through your own Folevi Server (Beta). The web app, sharing and AI credits need a Folevi account.",
   },
   {
     q: "Does Folevi work offline?",
@@ -49,7 +49,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "What do the plans cost?",
-    a: `Free includes ${sizeLabel(PLANS.free.storageBytes)} of storage and ${PLANS.free.devices} devices, with Foli AI during the trial. Core is ${formatPrice(PLANS.core.monthlyCents)} a month (or ${formatPrice(PLANS.core.yearlyCents)} a year) with ${sizeLabel(PLANS.core.storageBytes)} and no AI. Pro is ${formatPrice(PLANS.pro.monthlyCents)} a month (or ${formatPrice(PLANS.pro.yearlyCents)} a year) with ${sizeLabel(PLANS.pro.storageBytes)} and ${MONTHLY_CREDITS.pro} AI credits a month. Pro AI is ${formatPrice(PLANS.pro_ai.monthlyCents)} a month (or ${formatPrice(PLANS.pro_ai.yearlyCents)} a year) with ${sizeLabel(PLANS.pro_ai.storageBytes)} and ${MONTHLY_CREDITS.pro_ai} AI credits a month. Team plans cost the same per member. Every new account gets Pro AI free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card; after that you stay on Free unless you choose a plan.`,
+    a: `The apps are free; you pay only for Folevi Cloud. Free includes ${sizeLabel(PLANS.free.storageBytes)} of storage and ${MONTHLY_CREDITS.free} AI credits a month. Core is ${formatPrice(PLANS.core.monthlyCents)} a month (or ${formatPrice(PLANS.core.yearlyCents)} a year) with ${sizeLabel(PLANS.core.storageBytes)} and no included AI credits. Pro is ${formatPrice(PLANS.pro.monthlyCents)} a month (or ${formatPrice(PLANS.pro.yearlyCents)} a year) with ${sizeLabel(PLANS.pro.storageBytes)} and ${MONTHLY_CREDITS.pro} AI credits a month. Pro AI is ${formatPrice(PLANS.pro_ai.monthlyCents)} a month (or ${formatPrice(PLANS.pro_ai.yearlyCents)} a year) with ${sizeLabel(PLANS.pro_ai.storageBytes)} and ${MONTHLY_CREDITS.pro_ai} AI credits a month. Every plan works on unlimited devices and can buy credit packs. Team plans cost the same per member. Every new account gets Pro AI free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card; after that you stay on Free unless you choose a plan.`,
   },
   {
     q: "How do I change or cancel my plan?",

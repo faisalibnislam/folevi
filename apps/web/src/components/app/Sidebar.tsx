@@ -567,7 +567,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [allFoldersShown, setAllFoldersShown] = useLocalStorage("folevi:sidebar-folders-all", false);
   const [folderDialog, setFolderDialog] = useState(false);
   const [starredOpen, setStarredOpen] = useLocalStorage("folevi:sidebar-starred-open", true);
-  // The AI page, where AI is included and on (never on Core).
+  // The AI page, where Foli AI is on (not where it's turned off).
   const aiOn = useAiEnabled();
   // Folders and notes marked Always fully encrypted (the lists carry `locked` once the account has encryption).
   const isLockedFolder = (f: object) => (f as { locked?: boolean }).locked === true;

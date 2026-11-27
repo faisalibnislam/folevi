@@ -393,6 +393,50 @@ As built (flowchart v2, 2026-10-21; docs/FLOWCHART_V2_PLAN.md, Intelligence).
 AI on or off (existing), conversation history, memory, proactive suggestions, attachment reading, web research,
 digests. Each setting is enforced on the server.
 
+### Your own AI key (`convex/lib/ai/ownKey.ts`, `apps/web/src/lib/ai/ownKey.ts`, 2026-11-27)
+
+Foli AI runs on the person's own Anthropic, OpenAI or Google Gemini key on every plan, Core and Free included, with
+no credits (docs/PRICING_PLAN.md, "Bring your own AI"). Settings, Foli AI, "Your own AI key" has the provider, the
+key, the model (each provider's default is marked), Test key, and a switch to use it. The web has `OwnKeyCard.tsx`;
+the Mac and iPhone draw native cards (`SettingsOwnKey.swift`, `PhoneOwnKey.swift`) from the engine's `ownAiKey`
+settings query and `ownAiKey.*` runs.
+
+Where the key lives: in an app, the system store local mode already uses (`ai.anthropic`, `ai.openai`, `ai.google`),
+read back through `secrets.reveal` only for these names: the Keychain on the Mac and iPhone, Credential Manager or
+the Secret Service on Windows and Linux (`secrets.rs`, sealed under the app's key there), the Android Keystore in both
+Android apps (`SecretsPlugin.kt`). In a browser, the page's IndexedDB, sealed with a non-extractable AES-GCM key and
+wiped on sign-out. Which provider is on and the model are in localStorage.
+
+Syncing (`apps/web/src/lib/ai/ownKeySync.ts`, `convex/e2ee/accountRecords.ts`): for an account with encryption set
+up, each key is sealed on the device with the account master key (AMK `account/records`, context
+`record/account/<profileId>/aiKey/<provider>`, docs/E2EE_DESIGN.md §3) and stored in `e2eeAccountRecords`, which the
+server never opens. A device syncs when its encryption keys unlock (AccountGate starts it) and before a request
+that has no key yet: it opens a key saved elsewhere and keeps its own copy (memory only on a public computer), forgets
+one removed elsewhere (a removal leaves an empty row), and seals again a key only it has or one sealed before an
+encryption reset. Which provider and model Foli AI uses (or none) is one more record, `choice`, synced the same
+way: the newest change wins, so turning own keys on or off, or picking a model, reaches every device. An account
+without encryption keeps keys and the choice per device, since there is no key the server can't read
+to seal them with.
+
+On Folevi Cloud and Folevi Server the client adds `ownKey: { provider, apiKey, model }` to the AI action's arguments
+(`useAiAction` on the web, `commandsAi.ts` in the engine). The server uses it for that request only:
+
+- `beginRequest` (convex/ai.ts) passes `ai.begin` the provider and model, never the key. The hold is an own-key hold
+  (`aiCreditHolds.ownKey`): no credits held, the plan's AI block skipped, the hourly limit still consumed.
+- The key waits in the action's memory, by hold id, until `metered()` takes it and puts it on the meter's route
+  (not enumerable, so never stored, settled or logged). `loadHoldRoute` refuses an own-key hold without the key,
+  and a key on a hold with credits.
+- `settleHold` charges nothing for an own-key hold; it counts the request in `aiCreditPeriods.ownKeyRequests`, which
+  the usage card shows as "Your key", and in `aiUsage` with its tokens.
+- A refused key comes back as "Anthropic refused your key. Check it in Settings, Foli AI, Your own AI key."
+  `ai.testOwnKey` makes one short call for Test key.
+- Folevi Server: own keys work even when the server's own AI is off; the owner's "admins only" setting still applies.
+
+Not on own keys yet (they use credits): scheduled digests and routines (no device behind them), deep research
+(it runs as a scheduled job, and a scheduled job's arguments are stored), audio transcription (always Gemini), and
+search embeddings (platform-paid). Local libraries call the provider straight from the app (WP11, `ShellAi`) on
+the Mac, iPhone, Windows and Linux; a browser library and Android have no Foli AI there.
+
 ### Credits and limits
 
 Every model call goes through `metered()` and is charged to the right account (`aiAccountFor`). Embeddings and graph

@@ -58,9 +58,9 @@ interface TierInfo {
   yearlyCents: number;
   perMember: boolean;
   storageBytes: number;
-  /** Whether the plan includes AI at all (every plan but Core). */
+  /** Whether the plan includes AI at all (every plan, since 2026-11-27). */
   ai: boolean;
-  /** AI credits a month (per member in a workspace); 0 on Core, and on Workspace Free (members use their own). */
+  /** AI credits a month (per member in a workspace); 0 on Core (packs only), and on Workspace Free (members use their own). */
   credits: number;
   /** Devices at once (Personal plans); null = unlimited. undefined = not applicable. */
   devices?: number | null;
@@ -104,8 +104,8 @@ const price = (t: TierInfo, i: BillingInterval) => {
 /** "500 MB, shared", "10 GB per member" */
 const storageText = (t: TierInfo, kind: "personal" | "workspace") => (t.tier === "free" ? (kind === "personal" ? `${storageLimit(t.storageBytes)}, shared` : `Owner's ${storageLimit(t.storageBytes)}`) : `${storageLimit(t.storageBytes)}${kind === "workspace" ? " per member" : ""}`);
 
-/** "180 a month", "No AI", "Trial only", "Their personal credits" */
-const creditsText = (t: TierInfo, kind: "personal" | "workspace") => (!t.ai ? "No AI" : kind === "workspace" && t.tier === "free" ? "Their personal credits" : t.tier === "free" ? "Trial only" : `${t.credits.toLocaleString()} a month${kind === "workspace" ? " per member" : ""}`);
+/** "150 a month", "30 a month", "Packs only", "Their personal credits" */
+const creditsText = (t: TierInfo, kind: "personal" | "workspace") => (kind === "workspace" && t.tier === "free" ? "Their personal credits" : t.credits === 0 ? "Packs only" : `${t.credits.toLocaleString()} a month${kind === "workspace" ? " per member" : ""}`);
 
 // ---------------------------------------------------------------- the dialog
 
@@ -269,7 +269,7 @@ function PlanChangeDialog({
                 <span id={`${uid}-${t.tier}`} className="mt-1 text-muted">
                   {t.tier === "free" ? "No charge" : `${formatPrice(interval === "year" ? t.yearlyCents : t.monthlyCents)} / ${interval === "year" ? "year" : "month"}`}
                   <br />
-                  {[t.perMember && t.tier !== "free" ? "per member" : null, storageLimit(t.storageBytes), !t.ai ? "no AI" : t.credits ? `${t.credits.toLocaleString()} credits` : null].filter(Boolean).join(" · ")}
+                  {[t.perMember && t.tier !== "free" ? "per member" : null, storageLimit(t.storageBytes), t.credits ? `${t.credits.toLocaleString()} credits` : t.tier === "core" ? "packs only" : null].filter(Boolean).join(" · ")}
                 </span>
               </label>
             );

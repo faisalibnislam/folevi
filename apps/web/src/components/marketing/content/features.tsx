@@ -57,7 +57,7 @@ export const FEATURES: Feature[] = [
     h1: "An AI notes app that answers from your own notes",
     intro:
       "Foli AI works with the notes you can already open. Ask it a question and it answers with links to the notes it used. Select a paragraph to rewrite, shorten or translate it, turn a meeting into to-dos, draw a flowchart from a sentence, or ask it to sum up the whole note.",
-    plans: `Free, Pro and Pro AI, and the ${TRIAL_DAYS}-day trial. Core has no AI.`,
+    plans: `Every plan. ${TIER_NAMES.free} has ${MONTHLY_CREDITS.free} credits a month, and ${TIER_NAMES.core} works with credit packs. Free with your own AI key in the apps.`,
     updated: "2026-10-01",
     art: "art-49",
     visual: "ai",
@@ -155,7 +155,7 @@ export const FEATURES: Feature[] = [
             </p>
             <ul>
               <li>
-                {TIER_NAMES.free}: AI during the {TRIAL_DAYS}-day trial ({TRIAL_CREDITS} credits), then none.
+                {TIER_NAMES.free}: {MONTHLY_CREDITS.free} credits a month, at no cost.
               </li>
               <li>
                 {TIER_NAMES.pro}: {MONTHLY_CREDITS.pro} credits a month, for {formatPrice(PRICES.pro.month)} a month.
@@ -164,11 +164,11 @@ export const FEATURES: Feature[] = [
                 {TIER_NAMES.pro_ai}: {credits(MONTHLY_CREDITS.pro_ai)} AI credits a month, for {formatPrice(PRICES.pro_ai.month)} a month.
               </li>
               <li>
-                {TIER_NAMES.core}: no AI at all, for {formatPrice(PRICES.core.month)} a month.
+                {TIER_NAMES.core}: no included credits, for {formatPrice(PRICES.core.month)} a month. Foli AI works with a credit pack.
               </li>
             </ul>
             <p>
-              New accounts get {TIER_NAMES.pro_ai} free for {TRIAL_DAYS} days with {TRIAL_CREDITS} credits. On {TIER_NAMES.pro} and {TIER_NAMES.pro_ai} you can buy a pack of {credits(CREDIT_PACKS.credits_500.credits)} or {credits(CREDIT_PACKS.credits_1000.credits)} credits that lasts {PACK_VALID_MONTHS} months. See <Link href="/pricing">pricing</Link>.
+              New accounts get {TIER_NAMES.pro_ai} free for {TRIAL_DAYS} days with {TRIAL_CREDITS} credits. On every plan you can buy a pack of {credits(CREDIT_PACKS.credits_500.credits)} credits for {formatPrice(CREDIT_PACKS.credits_500.priceCents)} or {credits(CREDIT_PACKS.credits_1000.credits)} for {formatPrice(CREDIT_PACKS.credits_1000.priceCents)}, and it lasts {PACK_VALID_MONTHS} months. In a library on your devices, Foli AI also works for free with your own OpenAI, Anthropic or Google key, or with Apple Intelligence on the Mac. See <Link href="/pricing">pricing</Link>.
             </p>
           </>
         ),
@@ -178,18 +178,18 @@ export const FEATURES: Feature[] = [
         title: "What happens to your notes",
         body: (
           <p>
-            When you use the AI, your request and the notes it needs go to Google. Google doesn’t use them to train its models, and neither does Folevi. You can turn Foli AI off in Settings; while it’s off, none of your notes are sent. On Core, the server refuses every AI request. More on the <Link href="/privacy#ai">Privacy</Link> page.
+            When you use the AI, your request and the notes it needs go to Google. Google doesn’t use them to train its models, and neither does Folevi. You can turn Foli AI off on any plan in Settings → Foli AI; while it’s off, the server refuses every AI request and none of your notes are sent. Workspace owners and admins can turn it off for a whole workspace. More on the <Link href="/privacy#ai">Privacy</Link> page.
           </p>
         ),
       },
     ],
     faq: [
-      { q: "Which Folevi plans include AI?", a: `Pro (${MONTHLY_CREDITS.pro} AI credits a month) and Pro AI (unlimited with fair use, ${credits(MONTHLY_CREDITS.pro_ai)} a month). Every new account gets a ${TRIAL_DAYS}-day trial with ${TRIAL_CREDITS} credits. Free has AI only during the trial, and Core has none.` },
+      { q: "Which Folevi plans include AI?", a: `All of them. ${TIER_NAMES.free} has ${MONTHLY_CREDITS.free} AI credits a month, ${TIER_NAMES.pro} ${MONTHLY_CREDITS.pro} and ${TIER_NAMES.pro_ai} ${credits(MONTHLY_CREDITS.pro_ai)}. ${TIER_NAMES.core} has no included credits but works with credit packs, which every plan can buy. Every new account gets a ${TRIAL_DAYS}-day trial with ${TRIAL_CREDITS} credits.` },
       { q: "What is an AI credit?", a: "One cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Foli AI or a new flowchart usually 3 to 5. A request needs a few credits free before it starts." },
       { q: "Can the AI see notes I don’t have access to?", a: "No. Foli AI answers from the open note or from notes it finds by searching the ones you can already read." },
-      { q: "Can I turn the AI off?", a: "Yes. Turn Foli AI off in Settings at any time. While it’s off, none of your notes are sent to it." },
+      { q: "Can I turn the AI off?", a: "Yes, on every plan. Turn Foli AI off in Settings → Foli AI at any time. While it’s off, none of your notes are sent to it. Owners and admins can turn it off for a workspace in the workspace’s Privacy settings." },
       { q: "Does Folevi use my notes to train AI?", a: "No. Folevi doesn’t use your notes to train AI models, and Google doesn’t use requests to its paid AI service for training either." },
-      { q: "How does AI work in a team workspace?", a: "In a paid workspace, each member has the plan’s AI credits there. In a free workspace, and as a guest, you use your own personal credits. In a Core workspace nobody can use AI." },
+      { q: "How does AI work in a team workspace?", a: "In a paid workspace, each member has the plan’s AI credits there. In a free workspace, and as a guest, you use your own personal credits. If an owner or admin turns Foli AI off for a workspace, nobody there can use it." },
     ],
     related: ["flowcharts", "search", "tasks"],
   },
@@ -259,7 +259,7 @@ export const FEATURES: Feature[] = [
         title: "Or keep notes on your devices",
         body: (
           <p>
-            The Mac, Windows, Linux, iPhone and iPad apps also work with no account. Your notes are files in a folder you pick, such as iCloud Drive, and your own cloud syncs them. See <Link href="/features/notes-on-your-devices">notes on your devices</Link>.
+            Every Folevi app also works with no account. Your notes are files in a folder you pick, such as iCloud Drive, and your own cloud syncs them. See <Link href="/features/notes-on-your-devices">notes on your devices</Link>.
           </p>
         ),
       },
@@ -279,12 +279,12 @@ export const FEATURES: Feature[] = [
     slug: "notes-on-your-devices",
     name: "Notes on your devices",
     summary: "Free forever, no account. Your notes are files in your own cloud.",
-    title: "Free notes app with no account: Mac, iPhone, iPad",
-    description: "Use Folevi on Mac, Windows, Linux, iPhone and iPad with no account. Your notes are files in iCloud Drive, Dropbox, Google Drive or any folder, never on our servers.",
+    title: "Free notes app with no account, on every device",
+    description: "Use Folevi on Mac, Windows, Linux, iPhone, iPad and Android with no account and every feature. Your notes are files in a folder you pick, never on our servers.",
     h1: "A notes app with no account, free forever",
     intro:
-      "The Folevi apps for Mac, Windows, Linux, iPhone and iPad work without an account. Choose Keep notes on my devices when the app opens, pick a place for your library, and start writing. Your notes are files in that place, and Folevi’s servers never see them.",
-    plans: "Free forever in the Mac, Windows, Linux, iPhone and iPad apps. No account.",
+      "The Folevi apps for Mac, Windows, Linux (Beta), iPhone, iPad and Android are free, with every feature, and work without an account. Choose Keep notes on my devices when the app opens, pick a place for your library, and start writing. Your notes are files in that place, and Folevi’s servers never see them.",
+    plans: "Free forever in every Folevi app. No account.",
     updated: "2026-11-06",
     art: "art-13",
     visual: "folders",
@@ -298,8 +298,8 @@ export const FEATURES: Feature[] = [
             <p>The first time you open the app, choose one of these:</p>
             <ul>
               <li><strong>iCloud Drive</strong>: a Folevi folder that syncs to every iPhone, iPad and Mac signed in to your iCloud account.</li>
-              <li><strong>Dropbox</strong> or <strong>Google Drive</strong>: sign in once, and Folevi only uses its own folder there.</li>
-              <li><strong>Any folder</strong>: on the Mac, any folder; on iPhone and iPad, any folder the Files app offers, such as one in OneDrive.</li>
+              <li><strong>Dropbox</strong> or <strong>Google Drive</strong>: sign in once, and Folevi only uses its own folder there. In the Mac, iPhone and iPad apps for now.</li>
+              <li><strong>Any folder</strong>: on a computer, any folder; on iPhone and iPad, any folder the Files app offers, such as one in OneDrive.</li>
               <li><strong>This device only</strong>: your notes never leave the device. When you’re online, the app only checks Folevi for new note styles, and sends nothing about you or your notes. You can turn on sync later in Settings.</li>
             </ul>
           </>
@@ -319,7 +319,7 @@ export const FEATURES: Feature[] = [
         title: "Private Foli AI",
         body: (
           <p>
-            On the Mac, Foli AI runs on Apple Intelligence, or on your own OpenAI, Anthropic or Google key. Your notes go straight from your Mac to the model, never through Folevi. More on the <Link href="/foli-ai">Foli AI</Link> page.
+            Foli AI works with your own OpenAI, Anthropic or Google key, called straight from your device, or with Apple Intelligence on the Mac. Your notes go straight from your device to the model, never through Folevi, and it costs nothing on our side. More on the <Link href="/foli-ai">Foli AI</Link> page.
           </p>
         ),
       },
@@ -339,9 +339,9 @@ export const FEATURES: Feature[] = [
       },
     ],
     faq: [
-      { q: "Is Folevi free without an account?", a: "Yes. The Mac, Windows, Linux, iPhone and iPad apps are free forever when you keep notes on your devices, with no account." },
-      { q: "Where are my notes stored?", a: "In the place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Each note is a file, with a small index beside them. Folevi’s servers never see them." },
-      { q: "Do my notes sync between iPhone, iPad and Mac?", a: "Yes, through your own cloud. Put the library in iCloud Drive, Dropbox or Google Drive and open it on each device." },
+      { q: "Is Folevi free without an account?", a: "Yes. Every Folevi app is free forever, with every feature, when you keep notes on your devices: Mac, Windows, Linux (Beta), iPhone, iPad and Android. No account needed." },
+      { q: "Where are my notes stored?", a: "In the place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. Each note is a file, with a small index beside them. Folevi’s servers never see them." },
+      { q: "Do my notes sync between my devices?", a: "Yes, through your own cloud. Put the library in iCloud Drive, Dropbox or Google Drive (Mac, iPhone and iPad for now) or any synced folder and open it on each device, or sync through your own Folevi Server (Beta)." },
       { q: "What doesn’t work without an account?", a: "Sharing, public pages, comments with others, workspaces, email-in, the web clipper, the API, AI credits and the web app need a Folevi account." },
       { q: "Can I switch to an account later?", a: "Yes. Sign in and upload your library. You can also export everything from an account back into a folder." },
     ],
@@ -407,7 +407,7 @@ export const FEATURES: Feature[] = [
         title: "Find action items with AI",
         body: (
           <p>
-            After a meeting, ask Foli AI to <strong>find action items</strong>. It lists the follow-ups and decisions in the note as to-dos, which are tasks like any other. This uses AI credits and isn’t available on Core. See <Link href="/features/ai-notes">AI notes</Link>.
+            After a meeting, ask Foli AI to <strong>find action items</strong>. It lists the follow-ups and decisions in the note as to-dos, which are tasks like any other. This uses AI credits. See <Link href="/features/ai-notes">AI notes</Link>.
           </p>
         ),
       },
@@ -1079,7 +1079,7 @@ export const FEATURES: Feature[] = [
     h1: "Flowcharts and diagrams inside your notes",
     intro:
       "A flowchart in Folevi is a block in your note, next to the text that explains it. Add shapes and connectors by hand, describe the process and let the AI draw it, or write a Mermaid diagram.",
-    plans: "Flowcharts and Mermaid on every plan. Drawing with AI needs Free, Pro or Pro AI.",
+    plans: "Flowcharts and Mermaid on every plan. Drawing with AI uses AI credits, on every plan.",
     updated: "2026-11-18",
     art: "art-50",
     visual: "flowchart",
@@ -1127,7 +1127,7 @@ export const FEATURES: Feature[] = [
       },
     ],
     faq: [
-      { q: "Can AI make a flowchart for me?", a: "Yes. Describe the process in a sentence or step by step, and the AI draws the chart. It can also update a chart you already have. It uses 3 to 5 AI credits and isn’t available on Core." },
+      { q: "Can AI make a flowchart for me?", a: "Yes. Describe the process in a sentence or step by step, and the AI draws the chart. It can also update a chart you already have. It uses 3 to 5 AI credits." },
       { q: "Can I paste a Mermaid diagram?", a: "Yes. Add a Mermaid diagram block and paste the code. Mermaid flowcharts can be converted to a flowchart block you can edit by hand." },
       { q: "What happens to a flowchart when I export to Markdown?", a: "It’s written as a Mermaid flowchart in a code block." },
       { q: "Which shapes can I use?", a: "Process, decision, start or end, input or output, circle, sticky note and text." },
@@ -1398,7 +1398,7 @@ export const FEATURES: Feature[] = [
       { q: "Do guests take a seat?", a: "No. Guests and pending invitations are free on every plan." },
       { q: "Does my personal plan upgrade the workspace?", a: "No. A workspace has its own plan, separate from anyone’s personal plan." },
       { q: "What happens to pages when someone leaves?", a: "They stay. Content in a workspace belongs to the workspace." },
-      { q: "How much storage does a workspace get?", a: `On Free, a workspace shares its owner’s ${gb(STORAGE_BYTES.free)}. On paid plans each member gets their own: ${gb(STORAGE_BYTES.core)} on Core and Pro, ${gb(STORAGE_BYTES.pro_ai)} on Pro AI.` },
+      { q: "How much storage does a workspace get?", a: `On Free, a workspace shares its owner’s ${gb(STORAGE_BYTES.free)}. On paid plans each member gets their own: ${gb(STORAGE_BYTES.core)} on Core, ${gb(STORAGE_BYTES.pro)} on Pro and ${gb(STORAGE_BYTES.pro_ai)} on Pro AI.` },
     ],
     related: ["comments", "sharing", "tasks"],
   },
@@ -1649,7 +1649,7 @@ export const FEATURES: Feature[] = [
     title: "Security and privacy for your notes and workspace",
     description: "Folevi requires a verified email, offers two-step verification, encrypts data in transit and at rest, has optional end-to-end encryption and loads no trackers.",
     h1: "Private by default: how Folevi protects your notes",
-    intro: "Here is what protects your account and your notes in Folevi today. The Security page has the full details, including every subprocessor. If you’d rather your notes never reach our servers, the Mac, Windows, Linux, iPhone and iPad apps can keep them on your devices with no account.",
+    intro: "Here is what protects your account and your notes in Folevi today. The Security page has the full details, including every subprocessor. If you’d rather your notes never reach our servers, every Folevi app can keep them on your devices with no account.",
     plans: "Every plan, including Free.",
     updated: "2026-11-18",
     art: "art-01",

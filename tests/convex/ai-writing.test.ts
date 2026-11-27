@@ -147,7 +147,7 @@ describe("ai.write", () => {
     expect(n.types).toEqual(["heading", "todo"]);
   });
 
-  test("the usual refusals: unknown task, nothing selected, no description, AI off, Core (nothing sent)", async () => {
+  test("the usual refusals: unknown task, nothing selected, no description, AI off, AI off in the workspace (nothing sent)", async () => {
     const t = setup();
     const a = await person(t, "write-refuse@example.com");
     const calls = gemini("never");
@@ -157,8 +157,9 @@ describe("ai.write", () => {
     await a.as.mutation(api.users.updateProfile, { aiEnabled: false });
     await expect(a.as.action(api.ai.write, { scope: a.scope, task: "toList", text: "a, b" })).rejects.toThrow(/turned off/);
     await a.as.mutation(api.users.updateProfile, { aiEnabled: true });
-    await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
-    await expect(a.as.action(api.ai.write, { scope: a.scope, task: "page", instruction: "A trip plan" })).rejects.toThrow(/Core/);
+    const { workspaceId, scope } = await teamWorkspace(a, "No AI");
+    await a.as.mutation(api.workspaces.setAiDisabled, { workspaceId, disabled: true });
+    await expect(a.as.action(api.ai.write, { scope, task: "page", instruction: "A trip plan" })).rejects.toThrow(/turned off in this workspace/);
     expect(calls).toHaveLength(0);
   });
 });

@@ -87,8 +87,8 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
       note = `${monthlyEquivalent(card.yearlyCents)} ${perMember}a month, billed yearly (save ${saving}%)`;
     }
   }
-  // Core is the plan with no AI at all, Pro AI the one with as much AI as you need (as on Home).
-  const sticker = card.tier === "core" ? "No AI" : card.tier === "pro_ai" ? "Most AI" : null;
+  // Pro AI is the plan with the most AI credits (as on Home).
+  const sticker = card.tier === "pro_ai" ? "Most AI" : null;
   const cta = free ? "Start free" : featured && !team ? `Try ${TRIAL_DAYS} days free` : `Start with ${card.name}`;
   return (
     <div
@@ -98,7 +98,7 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
     >
       <div className="flex min-h-7 items-center gap-2">
         <Heading className="flex items-center gap-1.5 text-[16px] font-semibold text-(--color-heading)">
-          {/* The plans with Foli AI carry its flower. */}
+          {/* The plans with the most AI credits carry Foli AI's flower. */}
           {card.tier === "pro" || card.tier === "pro_ai" ? <AiIcon size={16} /> : null}
           {card.name}
         </Heading>
@@ -129,7 +129,7 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
  */
 export function PlanPicker({ headingLevel = "h3", align = "left" }: { headingLevel?: "h2" | "h3"; align?: "left" | "center" }) {
   const [audience, setAudience] = useState<Audience>("personal");
-  const [interval, setBilling] = useState<Interval>("month");
+  const [interval, setBilling] = useState<Interval>("year");
   const team = audience === "team";
   return (
     <div>

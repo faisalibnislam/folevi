@@ -13,7 +13,7 @@ import { Eyebrow } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Folevi vs Notion and Obsidian: a workspace compared",
   description:
-    "Folevi, a workspace for docs, tasks and databases with free Mac, Windows, Linux, iPhone and iPad apps, next to Notion and Obsidian.",
+    "Folevi, a workspace for docs, tasks and databases with free apps on every platform, next to Notion and Obsidian.",
   path: "/compare",
   ogImage: "segment",
 });
@@ -55,7 +55,7 @@ export default function CompareIndexPage() {
             How Folevi <Mark>compares.</Mark>
           </h1>
           <p className="mk-lede mt-6 max-w-[60ch]">
-            Folevi is a workspace for docs, tasks and databases. Its Mac, Windows, Linux, iPhone and iPad apps are free forever, with no account, and your pages stay files in a folder you pick. Each app below has its own comparison page, with sources and the steps for moving your notes across.
+            Folevi is a workspace for docs, tasks and databases. Its apps for Mac, Windows, Linux, iPhone, iPad and Android are free forever, with every feature and no account, and your pages stay files in a folder you pick. Each app below has its own comparison page, with sources and the steps for moving your notes across.
           </p>
         </HeaderCard>
         <Card as="div">

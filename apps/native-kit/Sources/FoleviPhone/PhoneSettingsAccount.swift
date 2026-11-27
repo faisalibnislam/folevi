@@ -32,7 +32,8 @@ private func ago(_ ms: Double?) -> String {
 }
 private func tier(_ t: String) -> String {
     switch t {
-    case "free", "core": "Core"
+    case "free": "Free"
+    case "core": "Core"
     case "pro": "Pro"
     case "proAi", "pro_ai": "Pro AI"
     default: t.capitalized
@@ -57,7 +58,7 @@ struct PhoneAccountSettings: View {
         case "digest": "Comment emails"
         case "workspace-name": "Name"
         case "invite": "Invite people"
-        default: nil
+        default: PhoneOwnKey.title(screen)
         }
     }
 
@@ -150,13 +151,16 @@ struct PhoneAccountSettings: View {
     }
 
     @ViewBuilder private var ai: some View {
-        if let a = model.ai.value {
-            let core = !a.included
-            PhoneSettingsGroup(footer: core ? "Foli AI comes with Pro AI." : "Foli AI helps you write, answers from your notes and sums them up. Nothing is sent while it's off.") {
-                PhoneSettingsSwitchRow("Foli AI", on: a.enabled && !core, disabled: core, change: { on in
+        if let s = screen, s.hasPrefix("own-key-") {
+            PhoneOwnKeyScreen(model: model, screen: s)
+        } else if let a = model.ai.value {
+            // Every plan includes Foli AI since 2026-11-27, so no plan disables these switches.
+            PhoneSettingsGroup(footer: "Foli AI helps you write, answers from your notes and sums them up. Nothing is sent while it's off.") {
+                PhoneSettingsSwitchRow("Foli AI", on: a.enabled, disabled: false, change: { on in
                     Task { await model.perform(.settingsUpdate(aiEnabled: on), done: on ? "Foli AI turned on" : "Foli AI turned off") }
                 }) { PhoneRowIcon.foliAI }
             }
+            PhoneOwnKeyGroup(model: model)
             PhoneSettingsGroup(footer: "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. When this is off, a conversation is deleted as soon as you close it.") {
                 PhoneSettingsSwitchRow("Keep conversations", on: a.history, change: { on in
                     Task { await model.perform(.settingsSetAiPref(key: .history, on: on), done: on ? "Conversations are kept" : "New conversations aren't kept") }
@@ -167,7 +171,7 @@ struct PhoneAccountSettings: View {
                     PhoneSettingsRow(p.label, description: p.body) {
                         EmptyView()
                     } trailing: {
-                        PhoneSettingsSwitch(label: p.label, on: pref(a, p.key), disabled: core && p.key != .deviceText) { on in
+                        PhoneSettingsSwitch(label: p.label, on: pref(a, p.key), disabled: false) { on in
                             Task { await model.perform(.settingsSetAiPref(key: p.key, on: on), done: on ? p.on : p.off) }
                         }
                     }

@@ -1,4 +1,4 @@
-import { PRICES, formatPrice } from "@/lib/plans";
+import { MONTHLY_CREDITS, PRICES, formatPrice } from "@/lib/plans";
 import { FaqSection } from "../parts";
 import type { FaqItem } from "../seo";
 
@@ -10,7 +10,7 @@ export const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "Is Folevi really free?",
-    a: "Yes. The Mac, Windows, Linux, iPhone and iPad apps are free forever when you keep notes on your devices: no account, no trial, no card and no limit on notes. Folevi Cloud plans are optional.",
+    a: `Yes. Every Folevi app is free forever, with every feature: Mac, Windows, Linux (Beta), iPhone, iPad and Android, and the web. Keep notes on your devices with no account, no trial, no card and no limit on notes, or run your own Folevi Server for free. You pay only for Folevi Cloud, from ${formatPrice(PRICES.core.month)} a month, and it has a free plan too.`,
   },
   {
     q: "Do I need an account?",
@@ -18,7 +18,7 @@ export const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "Where are my notes stored?",
-    a: "In a folder you pick: iCloud Drive, Dropbox, Google Drive, any other folder, or just your device. Each note is its own file, and Folevi’s servers never see them.",
+    a: "In a folder you pick: iCloud Drive, Dropbox, Google Drive, any other folder, or just your device. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. Each note is its own file, and Folevi’s servers never see them. You can also sync through your own Folevi Server (Beta).",
   },
   {
     q: "How do my notes sync between my devices?",
@@ -26,7 +26,7 @@ export const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "Can I use Foli AI without an account?",
-    a: "On the Mac, yes: Foli AI runs on Apple Intelligence, or on your own OpenAI, Anthropic or Google key, with requests sent straight from your Mac. Folevi Cloud plans include Foli AI credits on every device.",
+    a: `Yes. In a library on your devices, Foli AI works with your own OpenAI, Anthropic or Google key, called straight from your device, or with Apple Intelligence on your Mac. On Folevi Cloud, the Free plan has ${MONTHLY_CREDITS.free} AI credits a month.`,
   },
   {
     q: "What does a Folevi account add?",
@@ -38,11 +38,11 @@ export const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "Can I host Folevi myself?",
-    a: "Yes. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it.",
+    a: "Yes, for free. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it.",
   },
   {
     q: "Is there an app for Windows, Linux or Android?",
-    a: "Yes for Windows and Linux: get them from folevi.com/downloads. Linux is in beta. The Android app is coming soon to Google Play; until then, use the web app in your phone’s browser.",
+    a: "Yes, all three, free and with every feature: get them from folevi.com/downloads. Linux is in beta.",
   },
 ];
 

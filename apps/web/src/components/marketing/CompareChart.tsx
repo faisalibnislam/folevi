@@ -25,7 +25,7 @@ const ROWS: Row[] = [
   },
   {
     label: "No account needed",
-    folevi: { mark: "yes", text: "In the Mac, Windows, Linux, iPhone and iPad apps" },
+    folevi: { mark: "yes", text: "In every Folevi app" },
     them: { notion: { mark: "no", text: "Notion account" }, obsidian: { mark: "yes", text: "No sign-up" } },
   },
   {

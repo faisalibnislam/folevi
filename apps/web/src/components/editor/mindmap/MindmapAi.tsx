@@ -5,7 +5,7 @@
 // (to-dos in the note) or tidy the whole map. The server returns checked block data or short lists; the
 // canvas applies each result as one change (⌘Z undoes it). Shown only while Foli AI is on (useAiEnabled);
 // in the iPhone app the panel is one of the app's sheets.
-import { useAction } from "convex/react";
+import { useAiAction } from "@/components/ai/useAiAction";
 import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, FileText, ListChecks, NotebookText, TextSelect, X, Network, ScrollText, PenLine } from "lucide-react";
@@ -38,11 +38,11 @@ export interface AiStart {
 export function useMindmapAi() {
   const { scope } = useAppState();
   const documentId = useNoteAi()?.home?.id;
-  const gen = useAction(api.mindmapAi.generate);
-  const exp = useAction(api.mindmapAi.expand);
-  const sum = useAction(api.mindmapAi.summarize);
-  const tsk = useAction(api.mindmapAi.tasks);
-  const tdy = useAction(api.mindmapAi.tidy);
+  const gen = useAiAction(api.mindmapAi.generate);
+  const exp = useAiAction(api.mindmapAi.expand);
+  const sum = useAiAction(api.mindmapAi.summarize);
+  const tsk = useAiAction(api.mindmapAi.tasks);
+  const tdy = useAiAction(api.mindmapAi.tidy);
   return {
     documentId,
     generate: useCallback((a: { source: MapSource; instruction?: string; text?: string; fileId?: string; layout?: MindmapLayout }) => gen({ scope, documentId, ...a }), [gen, scope, documentId]),

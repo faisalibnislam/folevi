@@ -1,7 +1,7 @@
 // "Find to-dos" (convex/aiTodos.ts, lib/ai/actionItems.ts; docs/AI_ASSISTANT.md): Foli AI lists a note's
 // action items with owner and date as written, owners matched to people who can be assigned there (shared
 // matchOwner), dates left to the browser. Note text is data, replies are checked, credits are held and
-// charged, Core sends nothing, and only people who can edit the note can ask. Gemini is a stubbed `fetch`.
+// charged, Foli AI turned off sends nothing, and only people who can edit the note can ask. Gemini is a stubbed `fetch`.
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -151,7 +151,7 @@ describe("aiTodos.find", () => {
     ]);
   });
 
-  test("refusals: viewers, an empty note, Core (nothing sent)", async () => {
+  test("refusals: viewers, an empty note, Foli AI turned off in the workspace or in your settings (nothing sent)", async () => {
     const t = setup();
     const owner = await person(t, "todos-refuse@example.com");
     const viewer = await person(t, "todos-viewer@example.com");
@@ -162,8 +162,10 @@ describe("aiTodos.find", () => {
     const calls = gemini(REPLY);
     await expect(viewer.as.action(api.aiTodos.find, { scope: inWorkspace(workspaceId), documentId: id })).rejects.toThrow(/permission/);
     await expect(owner.as.action(api.aiTodos.find, { scope: owner.scope, documentId: empty.id })).rejects.toThrow(/nothing in this note/);
-    await owner.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
-    await expect(owner.as.action(api.aiTodos.find, { scope: owner.scope, documentId: empty.id, text: "Sam sends the deck" })).rejects.toThrow(/Core/);
+    await owner.as.mutation(api.workspaces.setAiDisabled, { workspaceId, disabled: true });
+    await expect(owner.as.action(api.aiTodos.find, { scope, documentId: id })).rejects.toThrow(/turned off in this workspace/);
+    await owner.as.mutation(api.users.updateProfile, { aiEnabled: false });
+    await expect(owner.as.action(api.aiTodos.find, { scope: owner.scope, documentId: empty.id, text: "Sam sends the deck" })).rejects.toThrow(/turned off/);
     expect(calls).toHaveLength(0);
     expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
   });

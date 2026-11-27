@@ -4,7 +4,7 @@
 // live preview on the view's first rows, the number format, and (when Foli AI is on) "Write a formula" from
 // words through the table formula action (convex/tableAi.ts, AI credits). Results are worked out here, on
 // the device; the server checks and keeps only the formula's text.
-import { useAction } from "convex/react";
+import { useAiAction } from "@/components/ai/useAiAction";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUp } from "lucide-react";
 import {
@@ -377,7 +377,7 @@ function WriteWithAi({
 }) {
   const aiOn = useAiEnabled();
   const { scope } = useAppState();
-  const formulaAction = useAction(api.tableAi.formula);
+  const formulaAction = useAiAction(api.tableAi.formula);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AiProblem | null>(null);

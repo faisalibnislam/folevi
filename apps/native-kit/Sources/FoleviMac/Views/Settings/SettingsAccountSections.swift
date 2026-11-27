@@ -132,13 +132,13 @@ struct AiSettingCard: View {
     let model: MacSettingsModel
     var body: some View {
         let ai = model.ai.value
-        let core = ai.map { !$0.included } ?? false
+        // Every plan includes Foli AI since 2026-11-27, so no plan disables these switches.
         SettingsCard("Foli AI") {
             HStack(alignment: .top, spacing: 24) {
-                SText(core ? "Not included in Core. Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli AI." : "Foli AI answers from your notes, helps you write and sums notes up, powered by Google. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden.", "toggle.text")
+                SText("Foli AI answers from your notes, helps you write and sums notes up, powered by Google. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden.", "toggle.text")
                     .frame(maxWidth: 560, alignment: .leading)
                 Spacer(minLength: 0)
-                SettingsSwitch(isOn: (ai?.enabled ?? false) && !core, label: "Foli AI", disabled: core) { on in
+                SettingsSwitch(isOn: ai?.enabled ?? false, label: "Foli AI", disabled: false) { on in
                     await model.perform(.settingsUpdate(aiEnabled: on), done: on ? "Foli AI turned on" : "Foli AI turned off") != nil
                 }
             }
@@ -166,20 +166,20 @@ struct AccountAiSettings: View {
 
     var body: some View {
         let ai = model.ai.value
-        let core = ai.map { !$0.included } ?? false
         VStack(alignment: .leading, spacing: 20) {
             AiSettingCard(model: model)
+            OwnAiKeyCard(model: model)
             SettingsCard("Conversations") {
-                SettingsPrefRow(label: "Keep conversations", body_: "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.", isOn: ai?.history ?? true, disabled: core) { await set(.history, $0, "Conversations are kept", "New conversations aren't kept") }
+                SettingsPrefRow(label: "Keep conversations", body_: "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.", isOn: ai?.history ?? true, disabled: false) { await set(.history, $0, "Conversations are kept", "New conversations aren't kept") }
             }
             SettingsCard("How Foli AI works for you", description: "The server checks each of these wherever the feature runs.") {
                 SettingsDivided(Self.settings, gap: 14) { p in
-                    SettingsPrefRow(label: p.label, body_: p.body, isOn: value(ai, p.key), disabled: core) { await set(p.key, $0, p.on, p.off) }
+                    SettingsPrefRow(label: p.label, body_: p.body, isOn: value(ai, p.key), disabled: false) { await set(p.key, $0, p.on, p.off) }
                 }
             }
             SettingsCard("Search in images", description: "So search finds the words in your images and handwriting, like the words in your PDFs.") {
                 SettingsDivided(Self.images, gap: 14) { p in
-                    SettingsPrefRow(label: p.label, body_: p.body, isOn: value(ai, p.key), disabled: p.key == .readImages && core) { await set(p.key, $0, p.on, p.off) }
+                    SettingsPrefRow(label: p.label, body_: p.body, isOn: value(ai, p.key), disabled: false) { await set(p.key, $0, p.on, p.off) }
                 }
             }
             MemoryCard(model: model)

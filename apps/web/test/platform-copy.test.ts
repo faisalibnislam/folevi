@@ -42,7 +42,7 @@ describe("platform copy on the website", () => {
 
   test.each([
     ["home page title", "app/(marketing)/page.tsx", /title: "Folevi: [^"]*"/],
-    ["site description", "app/layout.tsx", /"Folevi is a notes and writing workspace for [^"]*"/],
+    ["site description", "app/layout.tsx", /"Folevi is a digital workspace for [^"]*"/],
     ["share image", "app/opengraph-image.tsx", /On the web, [^\n<]*/],
     ["footer", "components/marketing/SiteFooter.tsx", /A digital workspace for [^\n<]*/],
   ])("the %s names Mac, Windows, Linux, iPhone and iPad", (_, path, pattern) => {

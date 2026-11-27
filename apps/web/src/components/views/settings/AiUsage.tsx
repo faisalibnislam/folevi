@@ -105,16 +105,10 @@ function Figure({ label, value }: { label: string; value: string }) {
 
 /** The usage card's contents for one credit account. */
 export function UsageSummary({ usage }: { usage: AiUsageData }) {
+  // Every plan includes Foli AI (2026-11-27), so this is a place where it's turned off.
   if (!usage.aiIncluded) {
     return (
-      <p className="text-subheadline text-muted">
-        {withoutPurchaseHints(usage.blockedReason ?? "Foli AI isn't included here.")}{" "}
-        {canPurchaseHere() ? (
-          <AppLink href="/settings/billing" className="underline underline-offset-2 hover:text-heading">
-            See plans
-          </AppLink>
-        ) : null}
-      </p>
+      <p className="text-subheadline text-muted">{withoutPurchaseHints(usage.blockedReason ?? "Foli AI is turned off here.")}</p>
     );
   }
   const most = Math.max(1, ...usage.features.map((f) => f.credits));
@@ -159,6 +153,7 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
           <p className="text-subheadline text-muted">{usage.used ? "Nothing to show by day yet." : "No credits used yet this period."}</p>
         )}
         {usage.untrackedDays > 0 ? <p className="mt-2 text-footnote text-faint">{credits(usage.untrackedDays)} used before daily tracking started aren&apos;t in the chart.</p> : null}
+        {usage.ownKeyRequests > 0 ? <p className="mt-2 text-subheadline text-muted">{ownKeyLine(usage.ownKeyRequests)}</p> : null}
       </section>
     </div>
   );
@@ -197,7 +192,7 @@ export function AiUsageCard() {
             />
           ) : null}
           {!usage ? <IosText muted>Loading your usage…</IosText> : null}
-          {usage && !usage.aiIncluded ? <IosText muted>{withoutPurchaseHints(usage.blockedReason ?? "Foli AI isn't included here.")}</IosText> : null}
+          {usage && !usage.aiIncluded ? <IosText muted>{withoutPurchaseHints(usage.blockedReason ?? "Foli AI is turned off here.")}</IosText> : null}
           {usage?.aiIncluded ? (
             <>
               <IosRow label={usage.trialing ? "Trial credits" : "Monthly credits"} value={usage.allowance.toLocaleString()} />
@@ -221,6 +216,11 @@ export function AiUsageCard() {
             <div className="px-4 pb-3 pt-9">
               {usage.days.some((d) => d.credits > 0) ? <UsageChart days={usage.days} /> : <p className="-mt-6 text-body text-muted">{usage.used ? "Nothing to show by day yet." : "No credits used yet this period."}</p>}
             </div>
+          </IosSection>
+        ) : null}
+        {usage && usage.ownKeyRequests > 0 ? (
+          <IosSection>
+            <IosRow label="Your key" value={`${usage.ownKeyRequests.toLocaleString()} ${usage.ownKeyRequests === 1 ? "request" : "requests"}`} />
           </IosSection>
         ) : null}
         </Subscreen>
@@ -248,3 +248,6 @@ export function AiUsageCard() {
     </Card>
   );
 }
+
+/** Requests on the person's own AI key this period: no credits, so they're counted apart. */
+const ownKeyLine = (n: number) => `Your key: ${n.toLocaleString()} ${n === 1 ? "request" : "requests"} this period, no credits used.`;

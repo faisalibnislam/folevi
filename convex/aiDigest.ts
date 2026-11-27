@@ -181,7 +181,7 @@ export const due = internalMutation({
 type Skip = "off" | "plan" | "credits" | "access" | "busy" | "error";
 
 const SKIP_TITLES: Record<Exclude<Skip, "off" | "busy">, (f: string) => string> = {
-  plan: (f) => `Your ${f} digest was skipped: AI isn't part of your plan.`,
+  plan: (f) => `Your ${f} digest was skipped: Foli AI is turned off where it's saved.`,
   credits: (f) => `Your ${f} digest was skipped: you're out of AI credits.`,
   access: (f) => `Your ${f} digest was skipped: you can't add pages where it's saved anymore. Pick another place in Settings > Foli AI.`,
   error: (f) => `Your ${f} digest couldn't be written this time. It will try again next time.`,

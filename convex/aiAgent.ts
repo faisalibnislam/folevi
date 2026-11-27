@@ -23,6 +23,7 @@
 // front for the whole run and settled from what its model calls cost (ai.begin, metered), like every AI
 // request: never in a Core place, never with AI turned off. Note text, prompts and answers are never
 // logged; only events, counts and codes are.
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, internalQuery, type ActionCtx } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
@@ -48,7 +49,7 @@ import { addOp, OP_KINDS, vAgentOp, type AgentOp, type OpKind, type RunNote } fr
 import { compactContents, contentChars, CONTINUE_TEXT, isLongNote, LONG_BUDGET, mustWrapUp, STANDARD_BUDGET, stoppedText, WRAP_UP_RULE, type AgentBudget } from "./lib/ai/agentBudget";
 import { UNTRUSTED_RULE } from "./lib/ai/tools/untrusted";
 import { AllowedPages, PAGE_NOT_ALLOWED, readPage, searchWeb } from "./lib/ai/web";
-import { metered, PERSONA, type Settled } from "./ai";
+import { metered, PERSONA, type Settled, beginRequest } from "./ai";
 import { hybridSearch } from "./aiIndex";
 import { storedError } from "./aiChat";
 import { readForAgent, type FileForModel } from "./aiAttachments";
@@ -296,7 +297,7 @@ async function opening(ctx: ActionCtx, env: Env, question: string, o: { files?: 
  * answer, not thrown. A run that stops before it's done (its budget, or an error partway) keeps what it
  * proposed and says what's left, with Continue.
  */
-async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ status: "done" | "error" }> {
+async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">, ownKey?: OwnKey): Promise<{ status: "done" | "error" }> {
   await loadAiSettings(ctx);
   const turn = await ctx.runQuery(internal.aiChat.turn, { messageId });
   const prefs = await ctx.runQuery(internal.aiAgent.prefs, {});
@@ -325,7 +326,7 @@ async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ 
     files = (await ctx.runQuery(internal.aiAttachments.forTurn, { messageId })).files;
     await ctx.runMutation(internal.aiAgent.limit, {});
     // A run reads whatever notes it needs from where the conversation lives, so that place decides.
-    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, plan, feature: "agent" }));
+    ({ holdId } = await beginRequest(ctx, { scope: turn.scope, plan, feature: "agent" }, ownKey));
   } catch (e) {
     const error = storedError(e);
     console.warn(JSON.stringify({ event: "ai.agent_refused", code: error.code }));
@@ -462,31 +463,43 @@ export const prefs = internalQuery({
  * answer's proposed changes wait for approval.
  */
 export const send = action({
-  args: { scope: vScopeArg, conversationId: v.string(), text: v.string(), context: v.optional(vAiContext), attachments: v.optional(v.array(v.string())) },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    scope: vScopeArg, conversationId: v.string(), text: v.string(), context: v.optional(vAiContext), attachments: v.optional(v.array(v.string())),
+  },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages">; status: "done" | "error" }> => {
     await requireIdentity(ctx);
     const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "send", scope: args.scope, conversationId: args.conversationId, text: args.text, context: args.context, agent: true, attachments: args.attachments });
-    return { messageId, ...(await runAgent(ctx, messageId)) };
+    return { messageId, ...(await runAgent(ctx, messageId, args.ownKey)) };
   },
 });
 
 /** Has the agent answer the last message again. */
 export const regenerate = action({
-  args: { conversationId: v.string() },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    conversationId: v.string(),
+  },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages">; status: "done" | "error" }> => {
     await requireIdentity(ctx);
     const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "regenerate", conversationId: args.conversationId, agent: true });
-    return { messageId, ...(await runAgent(ctx, messageId)) };
+    return { messageId, ...(await runAgent(ctx, messageId, args.ownKey)) };
   },
 });
 
 /** Changes one of the person's messages, drops everything after it, and has the agent answer. */
 export const edit = action({
-  args: { conversationId: v.string(), messageId: v.id("aiMessages"), text: v.string() },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    conversationId: v.string(), messageId: v.id("aiMessages"), text: v.string(),
+  },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages">; status: "done" | "error" }> => {
     await requireIdentity(ctx);
     const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "edit", conversationId: args.conversationId, messageId: args.messageId, text: args.text, agent: true });
-    return { messageId, ...(await runAgent(ctx, messageId)) };
+    return { messageId, ...(await runAgent(ctx, messageId, args.ownKey)) };
   },
 });
 

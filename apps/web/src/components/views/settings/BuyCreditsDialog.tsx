@@ -13,7 +13,7 @@ import { CREDIT_PACKS, CREDIT_PACK_ORDER, PACK_VALID_MONTHS, formatPrice, type C
 export type CreditTarget = { kind: "personal" } | { kind: "workspace"; workspaceId: string };
 
 /**
- * Buying an AI credit pack (Pro and Pro AI): 500 or 1,000 credits, one-time, valid 12 months, used after
+ * Buying an AI credit pack (every plan, since 2026-11-27): 500 or 1,000 credits, one-time, valid 12 months, used after
  * the monthly credits. Opens Polar Checkout; in development without payments, adds a test pack instead.
  */
 export function BuyCreditsDialog({ open, onClose, target, name }: { open: boolean; onClose: () => void; target: CreditTarget; name: string }) {

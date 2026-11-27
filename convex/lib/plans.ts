@@ -11,13 +11,13 @@
 // Storage (lib/entitlements.ts):
 // - Free: 500 MB in total, shared by the owner's Personal (while it's on Free) and every free workspace they
 //   own. Every upload in those workspaces, by anyone, counts against the owner's 500 MB.
-// - Core / Pro / Pro AI: 10 GB / 10 GB / 50 GB per person. In a paid workspace each member's own uploads count against
-//   their own quota there; a guest's uploads count against the page owner's.
+// - Core / Pro / Pro AI: 5 GB / 10 GB / 25 GB per person (2026-11-27 prices). In a paid workspace each member's
+//   own uploads count against their own quota there; a guest's uploads count against the page owner's.
 //
-// AI credits (lib/credits.ts): 1 credit = $0.01 of Gemini cost. Monthly credits per person (Pro 180, Pro AI
-// 550; Free has AI only during the trial, then none), plus one-time packs (Pro and Pro AI only) that last 12 months and are used after the
-// monthly credits. Core has no AI at all: the server refuses every AI request in a Core Personal or a Core
-// workspace, for everyone there.
+// AI credits (lib/credits.ts): 1 credit = $0.01 of model cost. Monthly credits per person (Free 30, Core 0,
+// Pro 150, Pro AI 450), plus one-time packs on every plan that last 12 months and are used after the monthly
+// credits. Every plan includes Foli AI; people can also use their own AI key. Turning Foli AI off is a
+// setting (profiles.aiEnabled, workspaces.aiDisabled).
 
 import { isServerEdition } from "./edition";
 
@@ -43,11 +43,11 @@ export interface PlanEntitlements {
   storageRule: "shared_free" | "per_person";
   /** Devices signed in to one account at once (Personal plans only); null = unlimited or not applicable. */
   devices: number | null;
-  /** Whether the AI Assistant is part of the plan at all (every plan but Core); how much is the credits. */
+  /** Whether the AI Assistant can be used on the plan (every plan, since 2026-11-27); how much is the credits. */
   aiAssistant: boolean;
   /** AI credits per person per month (reset each billing period; Free: each calendar month, UTC). */
   monthlyCredits: number;
-  /** Whether credit packs can be bought (Pro and Pro AI). */
+  /** Whether credit packs can be bought (every plan, since 2026-11-27). */
   creditPacks: boolean;
   /** The hourly abuse limit (convex/lib/rateLimit.ts rules `ai` and `aiHigh`). The credits are the real limit. */
   aiFairUse: "standard" | "high";
@@ -87,11 +87,15 @@ export const sizeLabel = (bytes: number) => (bytes >= GB ? `${bytes / GB} GB` : 
 
 /** AI credits per person per month, per tier. */
 // Free has AI only during the trial (2026-10-11): after it, Foli AI needs Pro or Pro AI.
-export const MONTHLY_CREDITS: Record<PlanTier, number> = { free: 0, core: 0, pro: 180, pro_ai: 550 };
+export const MONTHLY_CREDITS: Record<PlanTier, number> = { free: 30, core: 0, pro: 150, pro_ai: 450 };
 /** Storage per tier: Free is the shared pool; paid tiers are per person. */
-export const STORAGE_BYTES: Record<PlanTier, number> = { free: 500 * MB, core: 10 * GB, pro: 10 * GB, pro_ai: 50 * GB };
-/** Tiers without the AI Assistant (the server refuses AI in their scope). */
-export const tierHasAi = (tier: PlanTier) => tier !== "core";
+export const STORAGE_BYTES: Record<PlanTier, number> = { free: 500 * MB, core: 5 * GB, pro: 10 * GB, pro_ai: 25 * GB };
+/**
+ * Every tier can use Foli AI (owner decision 2026-11-27, docs/PRICING_PLAN.md): Core has no included credits but
+ * works with credit packs and the person's own AI key. Turning Foli AI off is a setting (profiles.aiEnabled,
+ * workspaces.aiDisabled), not a plan.
+ */
+export const tierHasAi = (_tier: PlanTier) => true;
 
 const BASE: Pick<PlanEntitlements, "members" | "guests" | "versionHistoryDays" | "advancedPermissions" | "auditLog" | "workspaceAnalytics" | "securityControls" | "prioritySupport" | "externalSharing" | "exports"> = {
   members: null,
@@ -106,15 +110,15 @@ const BASE: Pick<PlanEntitlements, "members" | "guests" | "versionHistoryDays" |
   exports: true,
 };
 
-const tierEntitlements = (tier: PlanTier, scope: PlanScope): PlanEntitlements => ({
+const tierEntitlements = (tier: PlanTier, _scope: PlanScope): PlanEntitlements => ({
   ...BASE,
   storageBytes: STORAGE_BYTES[tier],
   storageRule: tier === "free" ? "shared_free" : "per_person",
-  // Free Personal works on 2 devices at once; every other plan (and every workspace plan) has no limit.
-  devices: scope === "personal" && tier === "free" ? 2 : null,
+  // No plan limits devices (the Free limit was removed 2026-11-27, docs/PRICING_PLAN.md).
+  devices: null,
   aiAssistant: tierHasAi(tier),
   monthlyCredits: MONTHLY_CREDITS[tier],
-  creditPacks: tier === "pro" || tier === "pro_ai",
+  creditPacks: true,
   aiFairUse: tier === "pro_ai" ? "high" : "standard",
 });
 
@@ -131,9 +135,9 @@ const plan = (id: CatalogPlanId, scope: PlanScope, tier: PlanTier, interval: Bil
 
 /** Prices in US cents (Team prices are per member seat). */
 export const PRICES: Record<Exclude<PlanTier, "free">, Record<BillingInterval, number>> = {
-  core: { month: 199, year: 1900 },
-  pro: { month: 499, year: 4900 },
-  pro_ai: { month: 1399, year: 15900 },
+  core: { month: 200, year: 2000 },
+  pro: { month: 400, year: 4000 },
+  pro_ai: { month: 1000, year: 10000 },
 };
 
 export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
@@ -187,10 +191,10 @@ export interface CreditPack {
   credits: number;
   priceCents: number;
 }
-/** One-time AI credit packs (Pro and Pro AI only): valid 12 months, used after the monthly credits. */
+/** One-time AI credit packs (every plan): valid 12 months, used after the monthly credits. */
 export const CREDIT_PACKS: Record<CreditPackId, CreditPack> = {
-  credits_500: { id: "credits_500", credits: 500, priceCents: 799 },
-  credits_1000: { id: "credits_1000", credits: 1000, priceCents: 1499 },
+  credits_500: { id: "credits_500", credits: 500, priceCents: 800 },
+  credits_1000: { id: "credits_1000", credits: 1000, priceCents: 1500 },
 };
 export const CREDIT_PACK_ORDER: CreditPackId[] = ["credits_500", "credits_1000"];
 /** How long bought (or granted) credits last. */
@@ -208,8 +212,8 @@ export const DAY_MS = 86_400_000;
 // How plans are shown (settings, pricing page, admin). Prices and limits come from the catalog above.
 // ---------------------------------------------------------------------------------------------------
 
-/** Where Folevi runs today (the Mac app isn't out yet and there's no iOS app). */
-export const AVAILABILITY = "On the web, Mac, iPhone and iPad";
+/** Where Folevi runs (Linux is in Beta). */
+export const AVAILABILITY = "On the web, Mac, iPhone, iPad, Android, Windows and Linux";
 
 export const TIER_NAMES: Record<PlanTier, string> = { free: "Free", core: "Core", pro: "Pro", pro_ai: "Pro AI" };
 
@@ -252,27 +256,27 @@ const personalCard = (tier: PersonalTier, blurb: string, features: string[]): Pe
 
 /** The four Personal plans, as cards. */
 export const PLANS: Record<PersonalTier, PersonalPlanCard> = {
-  free: personalCard("free", "Everything you need to write and organize.", [
+  free: personalCard("free", "Try Folevi Cloud for free.", [
     `${sizeLabel(STORAGE_BYTES.free)} storage, shared with the free workspaces you own`,
-    `Foli AI during your ${TRIAL_DAYS}-day trial`,
-    "Use on 2 devices",
+    `${MONTHLY_CREDITS.free} AI credits a month`,
+    "Unlimited devices",
     "Unlimited notes, folders and tasks",
     AVAILABILITY,
   ]),
-  core: personalCard("core", "More room, and no AI.", [
+  core: personalCard("core", "More room in Folevi Cloud.", [
     `${sizeLabel(STORAGE_BYTES.core)} storage`,
-    "No AI. Your notes stay yours: nothing is sent to an AI model",
+    "No AI credits included: buy credits when you want Foli AI",
     "Unlimited devices",
-    "Everything in Free, without AI",
+    "Everything in Free",
   ]),
-  pro: personalCard("pro", "More room, and AI for everyday writing.", [
+  pro: personalCard("pro", "More room, and Foli AI most days.", [
     `${sizeLabel(STORAGE_BYTES.pro)} storage`,
     `${MONTHLY_CREDITS.pro} AI credits a month`,
     "Unlimited devices",
     "Buy more AI credits when you need them",
-    "Everything in Core, with AI",
+    "Everything in Core",
   ]),
-  pro_ai: personalCard("pro_ai", "AI as much as you need, with the most room.", [
+  pro_ai: personalCard("pro_ai", "For people who use Foli AI all day.", [
     `${sizeLabel(STORAGE_BYTES.pro_ai)} storage`,
     `${MONTHLY_CREDITS.pro_ai} AI credits a month, the most of any plan`,
     "Unlimited devices",
@@ -322,21 +326,21 @@ const workspaceCard = (tier: WorkspaceTier, blurb: string, features: string[]): 
 export const WORKSPACE_PLANS: Record<WorkspaceTier, WorkspacePlanCard> = {
   free: workspaceCard("free", "For simple collaboration.", [
     `Uses the owner's free ${sizeLabel(STORAGE_BYTES.free)}`,
-    "No AI after members' trials",
+    "Members use their own AI credits",
     "Unlimited members and guests",
     "Shared notes, folders and tasks",
   ]),
-  core: workspaceCard("core", "More room for every member, and no AI.", [
+  core: workspaceCard("core", "More room for every member.", [
     `${sizeLabel(STORAGE_BYTES.core)} per member`,
-    "No AI for anyone in the workspace: nothing is sent to an AI model",
+    "No AI credits included: members buy credits when they want Foli AI",
     "Unlimited members, each billed; guests are free",
-    "Everything in Free, without AI",
+    "Everything in Free",
   ]),
   pro: workspaceCard("pro", "More room and AI for every member.", [
     `${sizeLabel(STORAGE_BYTES.pro)} per member`,
     `${MONTHLY_CREDITS.pro} AI credits per member a month`,
     "Unlimited members, each billed; guests are free",
-    "Everything in Core, with AI",
+    "Everything in Core",
   ]),
   pro_ai: workspaceCard("pro_ai", "AI as much as your team needs.", [
     `${sizeLabel(STORAGE_BYTES.pro_ai)} per member`,

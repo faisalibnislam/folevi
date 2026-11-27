@@ -6,8 +6,8 @@
 //     workspaces, and as a guest anywhere (a guest's AI comes from their own personal plan).
 //   Seat account (workspaceId set): a member's seat in a paid workspace (Pro, Pro AI), with that plan's
 //     monthly credits for that workspace only.
-// Core has no AI: every request in a Core Personal or a Core workspace is refused, for everyone there (and
-// a person on Core Personal has no credits to use in free workspaces or as a guest).
+// Every plan includes Foli AI (2026-11-27); Core has no monthly credits, only packs or the person's own key.
+// Turning Foli AI off (profiles.aiEnabled, workspaces.aiDisabled) refuses every request in that scope.
 //
 // Monthly credits reset each period: the billing period's months for paid plans (anchored on the period's
 // start), the calendar month (UTC) on Free, and the whole trial for the trial (TRIAL_CREDITS). Bought and
@@ -28,6 +28,7 @@ import type { RateRuleName } from "./rateLimit";
 import type { Scope } from "./scope";
 import { capabilitiesOf, priceOf, type TokenPrice } from "./ai/capabilities";
 import { recordFeatureUse, type AiFeature } from "./ai/usage";
+import type { AiProviderId } from "./ai/config";
 import { recordRefusal, refusalIn, type RefusalKind } from "./ai/safety";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -226,33 +227,33 @@ const isMember = async (ctx: Ctx, profileId: Id<"profiles">, workspaceId: Id<"wo
     .withIndex("by_workspace_profile", (q) => q.eq("workspaceId", workspaceId).eq("profileId", profileId))
     .unique()) !== null;
 
-export const CORE_PERSONAL = "AI isn't part of Core. Your notes stay yours: nothing is sent to an AI model. To use AI, switch to Pro or Pro AI in Settings → Plan & billing.";
-export const CORE_WORKSPACE = "This workspace is on Core, which doesn't include AI. Nothing here is sent to an AI model.";
-export const CORE_SHARED_PERSONAL = "This page's owner is on Core, which doesn't include AI. Nothing here is sent to an AI model.";
+export const AI_OFF_PERSONAL = "Foli AI is turned off in your settings. Nothing is sent to an AI model. Turn it on in Settings → Foli AI.";
+export const AI_OFF_WORKSPACE = "Foli AI is turned off in this workspace. Nothing here is sent to an AI model.";
+export const AI_OFF_SHARED_PERSONAL = "This page's owner turned Foli AI off. Nothing here is sent to an AI model.";
 
 /**
- * Whether content in `scope` may be sent to AI at all: never from a Core Personal or a Core workspace.
- * Returns the reason when not.
+ * Whether content in `scope` may be sent to AI at all: never from a Personal whose owner turned Foli AI off
+ * (profiles.aiEnabled === false) or from a workspace where it's turned off (workspaces.aiDisabled). Every
+ * plan includes Foli AI since 2026-11-27; this replaced the old Core block. Returns the reason when not.
  */
-export async function aiBlockedIn(ctx: Ctx, profileId: Id<"profiles">, scope: Scope, now = Date.now()): Promise<string | null> {
-  if (scope.kind === "workspace") return (await workspaceEntitlements(ctx, scope.workspaceId, now)).ai ? null : CORE_WORKSPACE;
-  if ((await personalEntitlements(ctx, scope.profileId, now)).ai) return null;
-  return scope.profileId === profileId ? CORE_PERSONAL : CORE_SHARED_PERSONAL;
+export async function aiBlockedIn(ctx: Ctx, profileId: Id<"profiles">, scope: Scope, _now = Date.now()): Promise<string | null> {
+  if (scope.kind === "workspace") return (await ctx.db.get(scope.workspaceId))?.aiDisabled === true ? AI_OFF_WORKSPACE : null;
+  if ((await ctx.db.get(scope.profileId))?.aiEnabled !== false) return null;
+  return scope.profileId === profileId ? AI_OFF_PERSONAL : AI_OFF_SHARED_PERSONAL;
 }
 
 export interface AiAccess {
   allowed: boolean;
-  /** Why not, in words for the person (Core). Running out of credits is checked when holding. */
+  /** Why not, in words for the person (Foli AI turned off). Running out of credits is checked when holding. */
   message: string | null;
   account: CreditAccount;
 }
 
 /**
  * Whose credits a request made in `scope` uses, and whether AI is allowed there at all:
- *   a Core scope: refused for everyone;
+ *   Foli AI turned off for the scope (its owner's setting, or the workspace's): refused for everyone;
  *   a paid workspace: a member's seat credits; a guest's own personal credits;
- *   a free workspace, someone else's Personal (a shared page), or their own Personal: personal credits,
- *     refused when their own personal plan is Core.
+ *   a free workspace, someone else's Personal (a shared page), or their own Personal: personal credits.
  */
 export async function aiAccountFor(ctx: Ctx, profile: Doc<"profiles">, scope: Scope, now = Date.now()): Promise<AiAccess> {
   const blocked = await aiBlockedIn(ctx, profile._id, scope, now);
@@ -260,9 +261,6 @@ export async function aiAccountFor(ctx: Ctx, profile: Doc<"profiles">, scope: Sc
   if (scope.kind === "workspace" && (await isMember(ctx, profile._id, scope.workspaceId))) account = await seatAccount(ctx, profile._id, scope.workspaceId, now);
   account ??= await personalAccount(ctx, profile._id, now);
   if (blocked) return { allowed: false, message: blocked, account };
-  if (account.kind === "personal" && !(await personalEntitlements(ctx, profile._id, now)).ai) {
-    return { allowed: false, message: scope.kind === "personal" ? CORE_PERSONAL : "Your personal plan is Core, which doesn't include AI, and AI here uses your personal credits. Switch to Pro or Pro AI in Settings → Plan & billing to use it.", account };
-  }
   return { allowed: true, message: null, account };
 }
 
@@ -332,12 +330,12 @@ export const dayLabel = (t: number) => new Date(t).toLocaleDateString("en-US", {
 
 /** The refusal when a request needs more credits than are left. */
 export function outOfCreditsMessage(account: CreditAccount, balance: CreditBalance, needed: number): string {
-  // Free has AI only during the trial: after it, there's nothing to wait for, only a plan with AI.
-  if (account.tier === "free" && !account.trialing && account.allowance <= 0 && balance.packCredits <= 0) {
-    return "Foli AI comes with Pro and Pro AI. Upgrade in Settings → Plan & billing.";
+  // No monthly credits (Core, or a free workspace seat) and no packs: credits can only be bought.
+  if (account.allowance <= 0 && balance.packCredits <= 0 && !account.trialing) {
+    return "There are no AI credits on this plan. Buy credits or upgrade in Settings → Plan & billing.";
   }
   const where = account.kind === "seat" ? " in this workspace" : "";
-  const when = account.trialing ? `Your trial ends on ${dayLabel(balance.resetsAt)}; after that, Foli AI comes with Pro and Pro AI.` : `They reset on ${dayLabel(balance.resetsAt)}.`;
+  const when = account.trialing ? `Your trial ends on ${dayLabel(balance.resetsAt)}; after that, Free has ${PLAN_CATALOG.personal_free.entitlements.monthlyCredits} AI credits a month.` : `They reset on ${dayLabel(balance.resetsAt)}.`;
   const next = account.canBuy ? "Buy more in Settings → Plan & billing." : account.kind === "seat" ? "" : "Upgrade for more in Settings → Plan & billing.";
   const head =
     balance.available <= 0
@@ -383,6 +381,24 @@ export async function holdCredits(ctx: MutationCtx, account: CreditAccount, scop
   });
 }
 
+/**
+ * A hold for a request on the person's own AI key (lib/ai/ownKey.ts): no credits set aside, and none
+ * charged when it settles. It marks the provider so `metered` refuses to run it without the key.
+ */
+export async function holdOwnKey(ctx: MutationCtx, account: CreditAccount, scope: Scope, provider: AiProviderId, now = Date.now(), feature?: AiFeature): Promise<Id<"aiCreditHolds">> {
+  return await ctx.db.insert("aiCreditHolds", {
+    profileId: account.profileId,
+    workspaceId: account.workspaceId,
+    scope: scope.kind,
+    scopeWorkspaceId: scope.kind === "workspace" ? scope.workspaceId : undefined,
+    credits: 0,
+    ...(feature ? { feature } : {}),
+    ownKey: provider,
+    createdAt: now,
+    expiresAt: now + HOLD_MS,
+  });
+}
+
 /** Takes `credits` from an account: monthly credits first, then packs oldest-expiring first. */
 export async function deductCredits(ctx: MutationCtx, account: CreditAccount, credits: number, now = Date.now()): Promise<{ fromMonthly: number; fromPacks: number; overrun: number }> {
   let left = Math.max(0, Math.round(credits));
@@ -406,6 +422,13 @@ export async function deductCredits(ctx: MutationCtx, account: CreditAccount, cr
   else await ctx.db.insert("aiCreditPeriods", { profileId: account.profileId, workspaceId: account.workspaceId, periodKey: account.period.key, periodStart: account.period.start, periodEnd: account.period.end, used: fromMonthly, ...(overrun ? { overrun } : {}), updatedAt: now });
   if (overrun) console.warn(JSON.stringify({ event: "ai.credit_overrun", credits: overrun }));
   return { fromMonthly, fromPacks, overrun };
+}
+
+/** Counts one own-key request in the account's period row (for the usage card's "Your key"). */
+async function recordOwnKeyUse(ctx: MutationCtx, account: CreditAccount, now: number): Promise<void> {
+  const row = await periodRow(ctx, account, account.period.key);
+  if (row) await ctx.db.patch(row._id, { ownKeyRequests: (row.ownKeyRequests ?? 0) + 1, updatedAt: now });
+  else await ctx.db.insert("aiCreditPeriods", { profileId: account.profileId, workspaceId: account.workspaceId, periodKey: account.period.key, periodStart: account.period.start, periodEnd: account.period.end, used: 0, ownKeyRequests: 1, updatedAt: now });
 }
 
 /** Counts a request against the scope it was made in (per person per day; no content). */
@@ -451,6 +474,16 @@ export async function settleHold(ctx: MutationCtx, holdId: Id<"aiCreditHolds">, 
   // A refusal is counted (never its text) and, when short, not charged (docs/AI_GUARDRAILS.md).
   const refusal = refusalIn(calls);
   if (refusal) await recordRefusal(ctx, hold.profileId, refusal.kind, hold.feature, now);
+  // The person's own key: never charged. Counted as "Your key" on the usage card, with its tokens.
+  if (hold.ownKey) {
+    if (!calls.length) return { credits: 0, overrun: 0 };
+    const account = await accountByKey(ctx, hold.profileId, hold.workspaceId, now);
+    await recordOwnKeyUse(ctx, account, now);
+    const tokensIn = calls.reduce((n, c) => n + c.promptTokens, 0);
+    const tokensOut = calls.reduce((n, c) => n + c.outputTokens + c.thoughtsTokens, 0);
+    await recordAiUsage(ctx, hold.profileId, { kind: hold.scope, workspaceId: hold.scopeWorkspaceId }, { credits: 0, tokensIn, tokensOut }, now);
+    return { credits: 0, overrun: 0 };
+  }
   const credits = creditsFor(billableCalls(calls));
   if (!credits) return { credits: 0, overrun: 0 };
   const account = await accountByKey(ctx, hold.profileId, hold.workspaceId, now);

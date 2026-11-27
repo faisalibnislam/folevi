@@ -13,7 +13,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 ## Next steps
 
 - Confirm `narrowDocumentText` finished (no `documents` row with `searchText` that also has a `documentText` row).
-- Own AI keys: sync them end-to-end encrypted for accounts with encryption on; run deep research inline (not scheduled) when it carries a key; `secretsReveal` in `apps/desktop/src-tauri/src/secrets.rs` and Android; a server owner switch to turn own keys off; the pricing branch's "Turn off Foli AI" must also stop own-key requests.
+- Own AI keys: sync them end-to-end encrypted for accounts with encryption on; run deep research inline (not scheduled) when it carries a key; a server owner switch to turn own keys off; the pricing branch's "Turn off Foli AI" must also stop own-key requests.
 - `migrations:backfillListStats` is optional and speeds up existing folders (the owner's OK first).
 
 Detail from before 2026-11-26 is in `handoff/archive/` (search it for this area's name); nothing there is kept up to date.

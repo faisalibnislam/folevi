@@ -401,9 +401,11 @@ key, the model (each provider's default is marked), Test key, and a switch to us
 the Mac and iPhone draw native cards (`SettingsOwnKey.swift`, `PhoneOwnKey.swift`) from the engine's `ownAiKey`
 settings query and `ownAiKey.*` runs.
 
-Where the key lives: in an app with `secrets.reveal` (the Mac app and the iPhone shell), the Keychain entries local
-mode already uses (`ai.anthropic`, `ai.openai`, `ai.google`). Anywhere else (a browser, Windows, Linux, Android) the
-page's IndexedDB, sealed with a non-extractable AES-GCM key; it is wiped on sign-out. Keys are per device for now:
+Where the key lives: in an app, the system store local mode already uses (`ai.anthropic`, `ai.openai`, `ai.google`),
+read back through `secrets.reveal` only for these names: the Keychain on the Mac and iPhone, Credential Manager or
+the Secret Service on Windows and Linux (`secrets.rs`, sealed under the app's key there), the Android Keystore in both
+Android apps (`SecretsPlugin.kt`). In a browser, the page's IndexedDB, sealed with a non-extractable AES-GCM key and
+wiped on sign-out. Keys are per device for now:
 syncing them end-to-end encrypted needs the account's E2EE key material, which only accounts with encryption on have
 (follow-up). Which provider is on and the model are in localStorage.
 

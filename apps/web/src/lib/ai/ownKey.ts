@@ -2,9 +2,10 @@
 // Foli AI on the person's own Anthropic, OpenAI or Google Gemini key, on any plan, with no credits.
 //
 // Where the key lives on this device:
-//   - In an app (the Mac app today): the system keychain, under the same names local mode uses (`ai.anthropic`,
-//     `ai.openai`, `ai.google`, lib/local/ai/catalog.ts). A host that can hand it back for Folevi Cloud requests
-//     has `secrets.reveal`; one that can't yet gets a copy in the page's store too.
+//   - In an app: the system store (Keychain on the Mac and iPhone, Credential Manager or the Secret Service on Windows
+//     and Linux, the Android Keystore), under the same names local mode uses (`ai.anthropic`, `ai.openai`,
+//     `ai.google`, lib/local/ai/catalog.ts), read back with `secrets.reveal`. A host from before `reveal` gets a
+//     copy in the page's store instead.
 //   - In a browser: IndexedDB, encrypted with an AES-GCM key the browser made and won't export. It keeps the
 //     key out of plain storage dumps; it can't stop a script running in this page, so keys never leave the
 //     device except with a request.

@@ -33,11 +33,11 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Which devices does Folevi work on?",
-    a: "Mac (a free download from folevi.com/mac), iPhone and iPad (free on the App Store), and any modern browser through the web app. There is no Android or Windows app; on those, use the web app.",
+    a: "Mac (a free download from folevi.com/mac), Windows and Linux (free downloads from folevi.com/downloads; Linux is in beta), iPhone and iPad (free on the App Store), and any modern browser through the web app. The Android app is coming soon to Google Play; until then, use the web app in your phone’s browser.",
   },
   {
     q: "Do I need an account?",
-    a: "Not in the Mac, iPhone and iPad apps. Choose Keep notes on my devices and your notes are files in a folder you pick, such as iCloud Drive, free forever. The web app, sharing and AI credits need a Folevi account.",
+    a: "Not in the Mac, Windows, Linux, iPhone and iPad apps. Choose Keep notes on my devices and your notes are files in a folder you pick, such as iCloud Drive, free forever. The web app, sharing and AI credits need a Folevi account.",
   },
   {
     q: "Does Folevi work offline?",

@@ -213,7 +213,7 @@ export const FEATURES: Feature[] = [
         title: "Saved on your device first",
         body: (
           <p>
-            Every edit goes into a queue on your device first: in the browser’s storage on the web, and on the device in the Mac, iPhone and iPad apps. Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
+            Every edit goes into a queue on your device first: in the browser’s storage on the web, and on the device in the Mac, Windows, Linux, iPhone and iPad apps. Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
           </p>
         ),
       },
@@ -259,7 +259,7 @@ export const FEATURES: Feature[] = [
         title: "Or keep notes on your devices",
         body: (
           <p>
-            The Mac, iPhone and iPad apps also work with no account. Your notes are files in a folder you pick, such as iCloud Drive, and your own cloud syncs them. See <Link href="/features/notes-on-your-devices">notes on your devices</Link>.
+            The Mac, Windows, Linux, iPhone and iPad apps also work with no account. Your notes are files in a folder you pick, such as iCloud Drive, and your own cloud syncs them. See <Link href="/features/notes-on-your-devices">notes on your devices</Link>.
           </p>
         ),
       },
@@ -280,11 +280,11 @@ export const FEATURES: Feature[] = [
     name: "Notes on your devices",
     summary: "Free forever, no account. Your notes are files in your own cloud.",
     title: "Free notes app with no account: Mac, iPhone, iPad",
-    description: "Use Folevi on Mac, iPhone and iPad with no account. Your notes are files in iCloud Drive, Dropbox, Google Drive or any folder, never on our servers.",
+    description: "Use Folevi on Mac, Windows, Linux, iPhone and iPad with no account. Your notes are files in iCloud Drive, Dropbox, Google Drive or any folder, never on our servers.",
     h1: "A notes app with no account, free forever",
     intro:
-      "The Folevi apps for Mac, iPhone and iPad work without an account. Choose Keep notes on my devices when the app opens, pick a place for your library, and start writing. Your notes are files in that place, and Folevi’s servers never see them.",
-    plans: "Free forever in the Mac, iPhone and iPad apps. No account.",
+      "The Folevi apps for Mac, Windows, Linux, iPhone and iPad work without an account. Choose Keep notes on my devices when the app opens, pick a place for your library, and start writing. Your notes are files in that place, and Folevi’s servers never see them.",
+    plans: "Free forever in the Mac, Windows, Linux, iPhone and iPad apps. No account.",
     updated: "2026-11-06",
     art: "art-13",
     visual: "folders",
@@ -339,7 +339,7 @@ export const FEATURES: Feature[] = [
       },
     ],
     faq: [
-      { q: "Is Folevi free without an account?", a: "Yes. The Mac, iPhone and iPad apps are free forever when you keep notes on your devices, with no account." },
+      { q: "Is Folevi free without an account?", a: "Yes. The Mac, Windows, Linux, iPhone and iPad apps are free forever when you keep notes on your devices, with no account." },
       { q: "Where are my notes stored?", a: "In the place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Each note is a file, with a small index beside them. Folevi’s servers never see them." },
       { q: "Do my notes sync between iPhone, iPad and Mac?", a: "Yes, through your own cloud. Put the library in iCloud Drive, Dropbox or Google Drive and open it on each device." },
       { q: "What doesn’t work without an account?", a: "Sharing, public pages, comments with others, workspaces, email-in, the web clipper, the API, AI credits and the web app need a Folevi account." },
@@ -661,7 +661,7 @@ export const FEATURES: Feature[] = [
         title: "Filter a list",
         body: (
           <p>
-            Every list of notes has a Filter notes field at the top: All notes, Bookmarks, Drafts, a folder, a tag, Archive, Trash and Templates. Type a few letters and the list narrows to the notes whose title or text match. The Folders and Tags pages have Filter folders and Filter tags. The fields are always in sight, on the web and in the apps for Mac, iPhone and iPad.
+            Every list of notes has a Filter notes field at the top: All notes, Bookmarks, Drafts, a folder, a tag, Archive, Trash and Templates. Type a few letters and the list narrows to the notes whose title or text match. The Folders and Tags pages have Filter folders and Filter tags. The fields are always in sight, on the web and in the apps for Mac, Windows, Linux, iPhone and iPad.
           </p>
         ),
       },
@@ -1514,7 +1514,7 @@ export const FEATURES: Feature[] = [
     title: "Security and privacy for your notes and workspace",
     description: "Folevi requires a verified email, offers two-step verification, encrypts data in transit and at rest, has optional end-to-end encryption and loads no trackers.",
     h1: "Private by default: how Folevi protects your notes",
-    intro: "Here is what protects your account and your notes in Folevi today. The Security page has the full details, including every subprocessor. If you’d rather your notes never reach our servers, the Mac, iPhone and iPad apps can keep them on your devices with no account.",
+    intro: "Here is what protects your account and your notes in Folevi today. The Security page has the full details, including every subprocessor. If you’d rather your notes never reach our servers, the Mac, Windows, Linux, iPhone and iPad apps can keep them on your devices with no account.",
     plans: "Every plan, including Free.",
     updated: "2026-11-18",
     art: "art-01",

@@ -61,7 +61,7 @@ export function SiteFooter() {
         <div>
           <Wordmark markSize={24} />
           <p className="mt-4 max-w-[34ch] text-[15px] leading-relaxed text-muted">
-            A digital workspace for notes, docs, tasks and databases, on the web, Mac, iPhone and iPad.
+            A digital workspace for notes, docs, tasks and databases, on the web, Mac, Windows, Linux, iPhone and iPad.
           </p>
           <p className="mt-5 text-[14px] text-muted">
             Support{" "}

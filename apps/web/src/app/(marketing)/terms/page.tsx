@@ -41,7 +41,7 @@ export default function TermsPage() {
           terms are an agreement between you and {OPERATOR.name}.
         </p>
         <p>
-          By creating an account or using Folevi (the website, the web app, and the Mac, iPhone and iPad apps), you agree to these terms and
+          By creating an account or using Folevi (the website, the web app, and the Mac, Windows, Linux, iPhone and iPad apps), you agree to these terms and
           to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organization, you confirm you’re
           allowed to accept these terms on its behalf.
         </p>

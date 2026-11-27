@@ -405,7 +405,7 @@ Where the key lives: in an app, the system store local mode already uses (`ai.an
 read back through `secrets.reveal` only for these names: the Keychain on the Mac and iPhone, Credential Manager or
 the Secret Service on Windows and Linux (`secrets.rs`, sealed under the app's key there), the Android Keystore in both
 Android apps (`SecretsPlugin.kt`). In a browser, the page's IndexedDB, sealed with a non-extractable AES-GCM key and
-wiped on sign-out. Which provider is on and the model are in localStorage, per device.
+wiped on sign-out. Which provider is on and the model are in localStorage.
 
 Syncing (`apps/web/src/lib/ai/ownKeySync.ts`, `convex/e2ee/accountRecords.ts`): for an account with encryption set
 up, each key is sealed on the device with the account master key (AMK `account/records`, context
@@ -413,7 +413,9 @@ up, each key is sealed on the device with the account master key (AMK `account/r
 server never opens. A device syncs when its encryption keys unlock (AccountGate starts it) and before a request
 that has no key yet: it opens a key saved elsewhere and keeps its own copy (memory only on a public computer), forgets
 one removed elsewhere (a removal leaves an empty row), and seals again a key only it has or one sealed before an
-encryption reset. An account without encryption keeps keys per device, since there is no key the server can't read
+encryption reset. Which provider and model Foli AI uses (or none) is one more record, `choice`, synced the same
+way: the newest change wins, so turning own keys on or off, or picking a model, reaches every device. An account
+without encryption keeps keys and the choice per device, since there is no key the server can't read
 to seal them with.
 
 On Folevi Cloud and Folevi Server the client adds `ownKey: { provider, apiKey, model }` to the AI action's arguments

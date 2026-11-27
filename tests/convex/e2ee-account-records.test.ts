@@ -42,6 +42,8 @@ describe("own AI keys sealed for the person's devices", () => {
     await expect(plain.as.mutation(api.e2ee.accountRecords.put, { kind: "aiKey", recordId: "openai", epoch: 1, sealed })).rejects.toThrow(/isn't set up/);
     await expect(a.as.mutation(api.e2ee.accountRecords.put, { kind: "aiKey", recordId: "openai", epoch: 2, sealed })).rejects.toThrow(/key changed/);
     await expect(a.as.mutation(api.e2ee.accountRecords.put, { kind: "aiKey", recordId: "auth.session", epoch: 1, sealed })).rejects.toThrow(/doesn't keep/);
+    // The provider and model in use is one more record.
+    await a.as.mutation(api.e2ee.accountRecords.put, { kind: "aiKey", recordId: "choice", epoch: 1, sealed: wire(await sealedKey(a, "choice")) });
     await expect(a.as.mutation(api.e2ee.accountRecords.put, { kind: "aiKey", recordId: "openai", epoch: 1, sealed: new ArrayBuffer(5000) })).rejects.toThrow(/too large/);
   });
 

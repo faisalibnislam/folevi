@@ -6,7 +6,7 @@
 import { useEffect, useId, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/lib/convex/api";
-import { OWN_KEY_INFO, OWN_KEY_PROVIDERS, cleanOwnKey, hasOwnKey, onOwnKeyChange, ownKeyChoice, ownKeyForRequest, removeOwnKey, saveOwnKey, setOwnKeyChoice, type OwnKeyProvider } from "@/lib/ai/ownKey";
+import { OWN_KEY_INFO, OWN_KEY_PROVIDERS, cleanOwnKey, hasOwnKey, onOwnKeyChange, ownKeyChoice, ownKeyForRequest, removeOwnKey, saveOwnKey, setOwnKeyChoice, syncOwnKeysNow, type OwnKeyProvider } from "@/lib/ai/ownKey";
 import { useOwnKeyChoice } from "@/components/ai/useAiAction";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -30,6 +30,11 @@ export function OwnKeyCard() {
   const switchDesc = useId();
   const info = OWN_KEY_INFO[provider];
   const on = choice?.provider === provider;
+
+  // What the person's other devices saved or turned on, before showing this one's.
+  useEffect(() => {
+    void syncOwnKeysNow();
+  }, []);
 
   useEffect(() => {
     let live = true;

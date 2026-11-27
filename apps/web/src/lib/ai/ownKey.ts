@@ -79,8 +79,8 @@ export function ownKeyChoice(): OwnKeyChoice | null {
   }
 }
 
-/** Turns Foli AI on the person's own key on (a provider and model) or off (null). */
-export function setOwnKeyChoice(choice: OwnKeyChoice | null): void {
+/** Sets the choice on this device only (another device's, from lib/ai/ownKeySync.ts). */
+function applyOwnKeyChoice(choice: OwnKeyChoice | null): void {
   try {
     if (choice) localStorage.setItem(CHOICE, JSON.stringify(choice));
     else localStorage.removeItem(CHOICE);
@@ -88,6 +88,20 @@ export function setOwnKeyChoice(choice: OwnKeyChoice | null): void {
     /* storage unavailable: the choice lasts for this page */
   }
   for (const l of listeners) l();
+}
+
+/**
+ * Turns Foli AI on the person's own key on (a provider and model) or off (null), here and, with encryption set
+ * up and unlocked, on the person's other devices.
+ */
+export function setOwnKeyChoice(choice: OwnKeyChoice | null): void {
+  applyOwnKeyChoice(choice);
+  void import("./ownKeySync")
+    .then((s) => {
+      s.markSaved("choice", Date.now());
+      return s.pushOwnKeyChoice(choice);
+    })
+    .catch(() => false);
 }
 
 /** Hears every change to the choice or the stored keys (Settings and the usage card redraw). */
@@ -197,10 +211,17 @@ const notify = () => {
 };
 
 /** What lib/ai/ownKeySync.ts reads and writes on this device. */
-const LOCAL = { providers: OWN_KEY_PROVIDERS, read: localRead, write: localWrite, forget: localForget };
+const LOCAL = { providers: OWN_KEY_PROVIDERS, read: localRead, write: localWrite, forget: localForget, choice: ownKeyChoice, applyChoice: applyOwnKeyChoice };
 
 /** The sync with the person's other devices, loaded only when it's needed (it brings the encryption code). */
 const sync = () => import("./ownKeySync");
+
+/** Brings this device in step with the person's other devices now (Settings opening, tests). Returns what changed. */
+export async function syncOwnKeysNow(): Promise<number> {
+  const n = await (await sync()).syncOwnKeys(LOCAL).catch(() => 0);
+  if (n) notify();
+  return n;
+}
 
 /** Keeps this device's keys in step with the person's other devices while encryption is unlocked. */
 export async function startOwnKeySync(): Promise<void> {

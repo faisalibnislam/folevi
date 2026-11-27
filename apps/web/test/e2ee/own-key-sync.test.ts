@@ -8,7 +8,7 @@ import { resetKeyRingForTests } from "@/lib/e2ee/keys/keyring";
 import { memoryKeyStore } from "@/lib/e2ee/keys/keystore";
 import { setPassphraseCostsForTests } from "@/lib/e2ee/keys/passphrase";
 import { resetKeySessionForTests, sessionImpl } from "@/lib/e2ee/keys/session";
-import { clearPageOwnKeys, hasOwnKey, ownKeyForRequest, removeOwnKey, saveOwnKey, setOwnKeyChoice, startOwnKeySync } from "@/lib/ai/ownKey";
+import { clearPageOwnKeys, hasOwnKey, ownKeyForRequest, removeOwnKey, saveOwnKey, setOwnKeyChoice, startOwnKeySync, syncOwnKeysNow, ownKeyChoice } from "@/lib/ai/ownKey";
 import { FakeKeysServer } from "./keysFakeServer";
 
 const KEY = "sk-ant-api03-SYNCTEST-0000000000000000";
@@ -81,6 +81,36 @@ describe("own AI keys follow the person to their devices", () => {
     await startOwnKeySync();
     for (let i = 0; i < 50 && !fake.accountRecords.length; i++) await tick();
     expect(fake.accountRecords.map((r) => r.recordId)).toEqual(["gemini"]);
+  });
+
+  test("the provider and model in use follow too, and turning it off reaches the other devices", async () => {
+    const fake = new FakeKeysServer();
+    await signIn(fake, "p1");
+    await setup.createAccount();
+    await saveOwnKey("anthropic", KEY);
+    setOwnKeyChoice({ provider: "anthropic", model: "claude-opus-5-5" });
+    const choiceRow = () => fake.accountRecords.find((r) => r.recordId === "choice");
+    for (let i = 0; i < 50 && !choiceRow(); i++) await tick();
+    const row = choiceRow()!;
+    const plain = await openRecord(sessionImpl().accountKeys().records, ctx.accountRecord("p1", "aiKey", "choice"), new Uint8Array(row.sealed!));
+    expect(JSON.parse(new TextDecoder().decode(plain))).toEqual({ choice: { provider: "anthropic", model: "claude-opus-5-5" } });
+
+    // Another device: nothing chosen there until it syncs, then the same provider, model and key.
+    await anotherDevice();
+    expect(ownKeyChoice()).toBeNull();
+    expect(await syncOwnKeysNow()).toBe(2);
+    expect(ownKeyChoice()).toEqual({ provider: "anthropic", model: "claude-opus-5-5" });
+    expect(await ownKeyForRequest()).toEqual({ provider: "anthropic", apiKey: KEY, model: "claude-opus-5-5" });
+
+    // Turned off on the first device later: off here at the next sync, the key kept.
+    const before = row.updatedAt;
+    setOwnKeyChoice(null);
+    for (let i = 0; i < 50 && choiceRow()!.updatedAt === before; i++) await tick();
+    localStorage.setItem("folevi:own-ai-key", JSON.stringify({ provider: "anthropic", model: "claude-opus-5-5" }));
+    localStorage.setItem("folevi:own-ai-key-at", JSON.stringify({ anthropic: 1, choice: before }));
+    await syncOwnKeysNow();
+    expect(ownKeyChoice()).toBeNull();
+    expect(await hasOwnKey("anthropic")).toBe(true);
   });
 
   test("without encryption a key stays on this device", async () => {

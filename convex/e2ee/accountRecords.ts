@@ -1,6 +1,7 @@
 // A person's own sealed records (docs/E2EE_DESIGN.md §3, "Account record"): sealed on a device with the account
 // master key, kept here so their other devices can open them, never opened by the server. Today these are the
-// person's own Foli AI keys (kind "aiKey", one record per provider: lib/ai/ownKey.ts on the client,
+// person's own Foli AI keys (kind "aiKey", one record per provider and one for the provider and model in use:
+// lib/ai/ownKey.ts on the client,
 // convex/lib/ai/ownKey.ts for how a request uses one). Only the owner reads or writes their rows.
 import { v } from "convex/values";
 import { query } from "../_generated/server";
@@ -12,8 +13,8 @@ import { consume } from "../lib/rateLimit";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 const vKind = v.literal("aiKey");
-/** One record per provider. */
-const AI_KEY_RECORDS = new Set(["anthropic", "openai", "gemini"]);
+/** One record per provider, and "choice": which provider and model Foli AI uses (or none). */
+const AI_KEY_RECORDS = new Set(["anthropic", "openai", "gemini", "choice"]);
 /** A sealed key is small: the envelope, the key and its model. */
 const MAX_SEALED = 4096;
 

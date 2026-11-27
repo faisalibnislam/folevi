@@ -178,6 +178,8 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "aiSharing:*": "aiServer",
   "aiSuggestions:*": "aiServer",
   "aiAttachments:*": "aiServer",
+  // "Test key" for Folevi Cloud's own-key card: a local library tests keys on the device (localAi.testKey).
+  "ai:testOwnKey": "aiServer",
   // The graph's suggestions read the server's embeddings; the graph itself (links only) is planned for L3.
   "aiGraph:duplicates": "aiServer",
   "aiGraph:contradictions": "aiServer",

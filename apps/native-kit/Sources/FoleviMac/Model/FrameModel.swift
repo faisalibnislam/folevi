@@ -170,6 +170,11 @@ public final class FrameModel {
     public let folders: ValueStore<FoldersTreeValue>
     public let sync: ValueStore<SyncStatusValue>
     public let places: ValueStore<PlacesValue>
+    /// The sidebar's layout (its items on the sidebar or under More, in this person's order), watched once the
+    /// sidebar or Customize sidebar first asks.
+    @ObservationIgnored public private(set) lazy var sidebarLayout = SidebarLayoutStore(client: client) { [weak self] message in
+        self?.toast(message, tone: .error)
+    }
 
     /// What the note page said about each note it showed (titles, star, access), by id.
     public private(set) var noteMeta: [String: NoteMeta] = [:]

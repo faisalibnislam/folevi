@@ -3,8 +3,10 @@
 // (SidebarRow, SidebarHeading) with quiet monochrome symbols:
 //
 //   the place and account switcher; New note; Home, Work with Foli AI, Foli DNA (and its saved views), Bookmarks (and
-//   the first bookmarked notes), Drafts, All notes, Tasks, Calendar, Reviews, Shared with Me, Vault, Changes,
-//   Templates; Folders (the tree, sorting, New folder); Tags; Archive and Trash. No footer (the owner, 2026-11-18):
+//   the first bookmarked notes), Drafts, All notes, Tasks, Calendar, Reviews, Vault, and More (Shared with Me,
+//   Changes, Templates, then Customize), in the person's own layout (SidebarLayout.swift: any item but Home and
+//   Drafts can go under More, and they're in any order; the owner, 2026-11-27); Folders (the tree, sorting, New
+//   folder); Tags; Archive and Trash. No footer (the owner, 2026-11-18):
 //   the sync status is in the title bar by the bell, and Settings and Help are the menu bar's (Folevi > Settings,
 //   ⌘, and the Help menu).
 //
@@ -72,28 +74,42 @@ extension WebSidebar {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.automatic)
+            // A right click on the sidebar's empty space (or a row with no menu of its own): Customize sidebar.
+            .webContextMenu { [model] in [SidebarCustomize.entry(model)] }
     }
 
     // MARK: destinations
 
+    /// The app's own items (SidebarLayout.swift): those on the sidebar in this person's order, then More with the
+    /// rest and Customize. Each shows only where it's available here (SidebarItemID.available).
     private var macDestinations: some View {
-        let caps = model.session.value?.capabilities
-        let home = model.home.value
-        let count = { (id: HomeRow.Id) -> Int? in home?.rows.first { $0.id == id }?.count }
-        let starred = home?.starred.rows ?? []
+        let sections = macSections()
         return VStack(alignment: .leading, spacing: 0) {
-            macItem(.home, symbol: "house", title: "Home")
-            if caps?.ai ?? false {
-                macItem(.web("/ai"), symbol: "sparkles", title: "Work with Foli AI")
+            ForEach(sections.onSidebar, id: \.self) { id in macPlace(id, level: 0) }
+            macMore(sections)
+        }
+    }
+
+    /// What the sidebar lists now: its items, More's, and whether More is open.
+    func macSections() -> SidebarSections {
+        SidebarSections(slots: model.sidebarLayout.slots, available: { $0.available(in: model) }, selected: { isSelected($0.route) }, toggled: moreOpen)
+    }
+
+    /// One of the app's own items, with what belongs under it (Foli DNA's saved views, the first bookmarked notes),
+    /// and its right-click menu (Move to More, Customize sidebar).
+    @ViewBuilder
+    private func macPlace(_ id: SidebarItemID, level: Int) -> some View {
+        let home = model.home.value
+        let count = { (row: HomeRow.Id) -> Int? in home?.rows.first { $0.id == row }?.count }
+        switch id {
+        case .dna:
+            placeRow(id, level: level)
+            DnaSidebarViews(model: model, indent: 0) { v in
+                AnyView(macItem(.web("/graph?view=\(v.id)"), symbol: id.symbol, title: v.name, level: level + 1))
             }
-            // Foli DNA (/graph), where this place has it, and its saved views under it.
-            if caps?.graph ?? false {
-                macItem(.web("/graph"), symbol: "point.3.connected.trianglepath.dotted", title: "Foli DNA")
-                DnaSidebarViews(model: model, indent: 0) { v in
-                    AnyView(macItem(.web("/graph?view=\(v.id)"), symbol: "point.3.connected.trianglepath.dotted", title: v.name, level: 1))
-                }
-            }
-            macItem(.notes(.starred), symbol: "bookmark", title: "Bookmarks")
+        case .bookmarks:
+            let starred = home?.starred.rows ?? []
+            placeRow(id, level: level)
                 .overlay(alignment: .trailing) {
                     if !starred.isEmpty {
                         disclosure(open: starredOpen, label: "bookmarked notes") {
@@ -104,29 +120,78 @@ extension WebSidebar {
                 }
             if starredOpen, !starred.isEmpty {
                 ForEach(starred.prefix(Self.limit), id: \.id) { note in
-                    macItem(.note(note.id), symbol: "doc.text", title: note.title.isEmpty ? "Untitled" : note.title, level: 1, newTab: true)
+                    macItem(.note(note.id), symbol: "doc.text", title: note.title.isEmpty ? "Untitled" : note.title, level: level + 1, newTab: true)
                 }
                 .transition(.opacity)
             }
-            macItem(.notes(.unsorted), symbol: "tray", title: "Drafts", count: count(.drafts))
-            macItem(.notes(.all), symbol: "doc.on.doc", title: "All notes")
-            macItem(.tasks(.today), symbol: "checkmark.square", title: "Tasks", count: tasks.value?.today)
-            macItem(.calendar(nil), symbol: "calendar", title: "Calendar")
-            // Listed once there's something to study, and while Reviews is open (Sidebar.tsx).
-            if (count(.reviews) ?? 0) > 0 || model.route.tabKey == FrameRoute.web("/review").tabKey {
-                macItem(.web("/review"), symbol: "rectangle.stack", title: "Reviews", count: count(.reviews))
-            }
-            if caps?.sharing ?? false {
+        case .drafts: placeRow(id, level: level, count: count(.drafts))
+        case .tasks: placeRow(id, level: level, count: tasks.value?.today)
+        case .reviews: placeRow(id, level: level, count: count(.reviews))
+        case .changes: placeRow(id, level: level, count: count(.changes))
+        default: placeRow(id, level: level)
+        }
+    }
+
+    private func placeRow(_ id: SidebarItemID, level: Int, count: Int? = nil) -> some View {
+        Group {
+            if id == .shared {
                 // (The web's row icon: share-2.)
-                macItem(.shared, title: "Shared with Me") {
-                    WebIconView(.share2, size: 17).foregroundStyle(isSelected(.shared) ? MacLook.Colors.label : MacLook.Colors.secondary)
+                macItem(id.route, title: id.title, level: level, count: count) {
+                    WebIconView(.share2, size: 17).foregroundStyle(isSelected(id.route) ? MacLook.Colors.label : MacLook.Colors.secondary)
+                }
+            } else {
+                macItem(id.route, symbol: id.symbol, title: id.title, level: level, count: count)
+            }
+        }
+        .webContextMenu { [model] in SidebarCustomize.menu(model, id) }
+        .accessibilityAction(named: id.locked ? "Customize sidebar" : (model.sidebarLayout.slots.first { $0.id == id }?.more ?? false) ? "Move to sidebar" : "Move to More") {
+            let store = model.sidebarLayout
+            if id.locked { SidebarCustomize.present(model); return }
+            let more = store.slots.first { $0.id == id }?.more ?? false
+            store.save(SidebarLayout.move(store.slots, id, more: !more))
+            SidebarCustomize.announce(more ? "\(id.title) moved to the sidebar" : "\(id.title) moved to More")
+        }
+    }
+
+    /// More (the owner, 2026-11-27): closed until opened and then as last left; it opens by itself for the page
+    /// you're on when that page's item is under it. Its items, then Customize, which opens Customize sidebar.
+    private func macMore(_ sections: SidebarSections) -> some View {
+        let activeInMore = sections.activeInMore
+        let open = sections.moreOpen
+        return VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(MacLook.animation(reduceMotion)) { moreOpen = !open }
+            } label: {
+                SidebarRow("More", symbol: "ellipsis.circle") {
+                    MacSymbol("chevron.right", size: 11, weight: .semibold)
+                        .rotationEffect(.degrees(open ? 90 : 0))
+                        .frame(width: 16)
                 }
             }
-            // The Vault where there's one for this person (vault.summary; a library's own Vault too, plan 5.6).
-            VaultSidebarRow(model: model) { macItem(.web("/vault"), symbol: "lock", title: "Vault") }
-            if caps?.changes ?? false { macItem(.changes, symbol: "plus.forwardslash.minus", title: "Changes", count: count(.changes)) }
-            macItem(.notes(.templates), symbol: "rectangle.3.group", title: "Templates")
+            .buttonStyle(SidebarRowButtonStyle())
+            .webContextMenu { [model] in [SidebarCustomize.entry(model)] }
+            .accessibilityLabel("More")
+            .accessibilityValue(open ? "Expanded" : "Collapsed")
+            .accessibilityHint(open ? "Hides the items under More" : "Shows the items under More")
+            .accessibilityAction(named: "Customize sidebar") { SidebarCustomize.present(model) }
+            if open {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(sections.underMore, id: \.self) { id in macPlace(id, level: 1) }
+                    Button { SidebarCustomize.present(model) } label: {
+                        SidebarRow("Customize", symbol: "slider.horizontal.3", level: 1)
+                    }
+                    .buttonStyle(SidebarRowButtonStyle())
+                    .webContextMenu { [model] in [SidebarCustomize.entry(model)] }
+                    .accessibilityLabel("Customize sidebar")
+                    .accessibilityHint("Choose which items show on the sidebar and their order")
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("More")
+                .transition(.opacity)
+            }
         }
+        // (Opened for the page you're on, it stays open after, as the web's does.)
+        .onChange(of: activeInMore, initial: true) { _, inMore in if inMore && !moreOpen { moreOpen = true } }
     }
 
     private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }

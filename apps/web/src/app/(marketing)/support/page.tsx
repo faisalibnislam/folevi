@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SupportForm } from "@/components/support/SupportForm";
 import { FaqSection } from "@/components/marketing/parts";
 import { pageMetadata, type FaqItem } from "@/components/marketing/seo";
-import { SECURITY_EMAIL, SUPPORT_EMAIL, WEB_APP_URL } from "@/components/marketing/site";
+import { OPERATOR, OPERATOR_ADDRESS, SECURITY_EMAIL, SUPPORT_EMAIL, WEB_APP_URL } from "@/components/marketing/site";
 import { Eyebrow, container, cx } from "@/components/marketing/ui";
 import { Float, Hand, Mark } from "@/components/marketing/fun";
 import { MentionPiece } from "@/components/marketing/pieces";
@@ -119,6 +119,18 @@ const elsewhere: Array<{ title: string; body: React.ReactNode }> = [
       <a className="mk-link" href={`mailto:${SECURITY_EMAIL}`}>
         {SECURITY_EMAIL}
       </a>
+    ),
+  },
+  {
+    title: "By mail",
+    body: (
+      <>
+        Folevi is operated by{" "}
+        <a className="mk-link" href={OPERATOR.url}>
+          {OPERATOR.name}
+        </a>
+        , {OPERATOR_ADDRESS}.
+      </>
     ),
   },
 ];

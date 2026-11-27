@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, openShare, pick, showFolders, waitForSaved } from "./helpers";
+import { newPerson, openShare, pick, showFolders, waitForSaved, openMore } from "./helpers";
 
 // A key pressed right after the click that focuses a note goes where the click put the caret, not to the start
 // of the note (the browser says where the caret went a moment after the click; CaretAfterClick in plugins.ts).
@@ -32,6 +32,7 @@ test("typing straight after clicking into a shared note that just opened lands a
 
   const body = guest.page.getByRole("textbox", { name: "Document body" });
   for (let i = 0; i < 4; i++) {
+    await openMore(guest.page);
     await guest.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Shared with Me" }).click();
     await guest.page.getByRole("listitem").filter({ hasText: /Click then type/ }).getByRole("link").click();
     await expect(body).toHaveAttribute("contenteditable", "true");

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DocShell } from "@/components/marketing/DocShell";
 import { pageMetadata } from "@/components/marketing/seo";
-import { SECURITY_EMAIL } from "@/components/marketing/site";
+import { OPERATOR, OPERATOR_ADDRESS, SECURITY_EMAIL } from "@/components/marketing/site";
 import { PACK_VALID_MONTHS, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 import { PageFrame } from "@/components/marketing/cards";
@@ -32,10 +32,14 @@ export default function TermsPage() {
   return (
     <PageFrame>
       <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
-        <DraftNotice updated="November 18, 2026" />
+        <DraftNotice updated="November 27, 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
+        <p>
+          Folevi is operated by <a href={OPERATOR.url}>{OPERATOR.name}</a> (“we” and “us” in these terms), {OPERATOR_ADDRESS}. These
+          terms are an agreement between you and {OPERATOR.name}.
+        </p>
         <p>
           By creating an account or using Folevi (the website, the web app, and the Mac, iPhone and iPad apps), you agree to these terms and
           to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organization, you confirm you’re
@@ -200,7 +204,8 @@ export default function TermsPage() {
 
         <h2 id="contact">Contact</h2>
         <p>
-          Questions about these terms can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>.
+          Questions about these terms can be sent to <a href={`mailto:${SECURITY_EMAIL}`}>{SECURITY_EMAIL}</a>, or by mail to{" "}
+          {OPERATOR.name}, {OPERATOR_ADDRESS}.
         </p>
       </DocShell>
     </PageFrame>

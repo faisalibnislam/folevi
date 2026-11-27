@@ -3336,6 +3336,17 @@ export default defineSchema({
   }).index("by_profile_scope", ["profileId", "scopeKey"]),
 
   /**
+   * One person's sidebar layout (convex/sidebarLayout.ts): their order of the app's own sidebar items and which of
+   * them sit under More. Item ids only (apps/web/src/lib/app/sidebarLayout.ts); no row = the default layout.
+   */
+  sidebarLayouts: defineTable({
+    profileId: v.id("profiles"),
+    order: v.array(v.string()),
+    more: v.array(v.string()),
+    updatedAt: v.number(),
+  }).index("by_profile", ["profileId"]),
+
+  /**
    * One person's spelling and prediction settings and their personal dictionary (convex/spelling.ts): the same
    * on every device they sign in on. Settings left unset mean on (spell check, prediction) and the browser's
    * English. Words from end-to-end encrypted notes never come here (the apps keep those on the device).

@@ -43,7 +43,7 @@ export default function PrivacyPage() {
           <li>We collect what we need to run Folevi for you: your account details and the content you put in it.</li>
           <li>Your content is private by default. We don’t sell it, rent it, or use it for advertising.</li>
           <li>This website has no third-party trackers or advertising scripts.</li>
-          <li>Foli AI, the AI assistant, is optional. When you use it, your request and the notes it needs are sent to Google’s Gemini API to answer. Nothing is sent while it’s off.</li>
+          <li>Foli AI, the AI assistant, is optional. When you use it, your request and the notes it needs are sent to the AI provider that answers that kind of request (Google, OpenAI or Anthropic). Nothing is sent while it’s off.</li>
           <li>You can export everything and delete your account at any time (if you own a workspace other people use, you transfer or delete it first).</li>
         </ul>
 
@@ -97,9 +97,10 @@ export default function PrivacyPage() {
 
         <h2 id="ai">Foli AI, the AI assistant</h2>
         <p>
-          Foli AI, Folevi’s AI assistant (asking questions of your notes, writing and summarizing), is powered by Google’s Gemini API. It is
-          on by default for plans that include it, and you can turn it off in Settings → Account; while it’s off, nothing is
-          sent to Google.
+          Foli AI, Folevi’s AI assistant (asking questions of your notes, writing and summarizing), is powered by AI models from Google (the Gemini API),
+          OpenAI and Anthropic. We choose which provider answers each kind of request, such as writing, summarizing or asking
+          about your notes; search across your notes and turning speech into text always use Google. It is on by default for plans
+          that include it, and you can turn it off in Settings → Account; while it’s off, nothing is sent to any of them.
         </p>
         <ul>
           <li>
@@ -116,8 +117,8 @@ export default function PrivacyPage() {
             short-lived counters for fair-use limits. Your prompts and notes are not logged.
           </li>
           <li>
-            We use Google’s paid Gemini API service, under which Google does not use your requests or notes to train or
-            improve its models. AI can make mistakes, so check answers before relying on them.
+            We use each provider’s paid API service (Google’s Gemini API, the OpenAI API and the Anthropic API), under which
+            they do not use your requests or notes to train or improve their models. AI can make mistakes, so check answers before relying on them.
           </li>
         </ul>
 
@@ -144,7 +145,7 @@ export default function PrivacyPage() {
         <h2 id="share">Who we share it with</h2>
         <p>
           We use a small number of service providers to run Folevi. They cover our database and backend, web hosting, email, the AI
-          assistant (Google’s Gemini API) and payments (Polar). Each processes data only to provide its service to us. They are listed, with what each handles, on the{" "}
+          assistant (Google, OpenAI and Anthropic) and payments (Polar). Each processes data only to provide its service to us. They are listed, with what each handles, on the{" "}
           <Link href="/security#subprocessors">Security</Link> page.
         </p>
         <p>

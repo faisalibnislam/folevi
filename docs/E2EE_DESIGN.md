@@ -338,7 +338,7 @@ confirms the exact output of `scopeKey` and uses the public ids, never Convex `_
 | Folder name | `folder/<scope>/<folderId>` | SK "space/meta" |
 | Tag name | `tag/<scope>/<tagId>` | SK "space/meta" |
 | Space record | `record/<scope>/<kind>/<recordId>` | SK "space/meta" |
-| Account record | `record/account/<profileId>/<kind>/<recordId>` | AMK "account/records" |
+| Account record (`e2eeAccountRecords`; today the person's own AI keys, kind `aiKey`) | `record/account/<profileId>/<kind>/<recordId>` | AMK "account/records" |
 | Inbox item | `inbox/<scope>/<inboxId>` | space inbox X25519 (FLS1) |
 
 Records under a note (collections, found text, study schedules) are sealed with the note key, not the space

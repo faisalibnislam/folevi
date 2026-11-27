@@ -351,7 +351,7 @@ export function ownAiKeyValue() {
   return {
     loaded: ownStored !== null,
     description:
-      "Use Foli AI with your own Anthropic, OpenAI or Google Gemini key. It works on every plan and uses no AI credits; your provider bills you. The key stays on this device and is sent with each Foli AI request. Our server uses it for that request and never saves or logs it. Scheduled digests, routines and deep research still use credits.",
+      "Use Foli AI with your own Anthropic, OpenAI or Google Gemini key. It works on every plan and uses no AI credits; your provider bills you. The key is kept on this device and sent with each Foli AI request. Our server uses it for that request and never saves or logs it. With encryption on in Settings, Privacy, the key also reaches your other devices, end-to-end encrypted. Scheduled digests, routines and deep research still use credits.",
     on: choice !== null,
     provider: choice?.provider ?? null,
     model: choice?.model ?? null,

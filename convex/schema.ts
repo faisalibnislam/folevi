@@ -2682,6 +2682,23 @@ export default defineSchema({
     // Wraps of superseded epochs are kept 30 days, then swept (e2ee.keys.sweep).
     .index("by_status_superseded", ["status", "supersededAt"]),
 
+  /**
+   * A person's own sealed records, sealed with their account master key (AMK "account/records", context
+   * `record/account/<profileId>/<kind>/<recordId>`, docs/E2EE_DESIGN.md §3): today only their own Foli AI keys
+   * (kind "aiKey", one per provider, lib/ai/ownKey.ts), so their devices share them. The server never opens them.
+   * A removed record keeps its row with no content (`deletedAt`), so other devices forget their copy too.
+   */
+  e2eeAccountRecords: defineTable({
+    profileId: v.id("profiles"),
+    kind: v.literal("aiKey"),
+    recordId: v.string(),
+    /** The AMK epoch it was sealed under (a reset makes it unreadable; devices seal it again). */
+    epoch: v.number(),
+    sealed: v.optional(v.bytes()),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()),
+  }).index("by_profile", ["profileId", "kind", "recordId"]),
+
   /** The account master key, wrapped for each way in (a trusted device, the recovery key, a passkey, the passphrase). */
   e2eeAccountWraps: defineTable({
     profileId: v.id("profiles"),

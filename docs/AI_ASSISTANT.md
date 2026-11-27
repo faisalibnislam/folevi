@@ -405,9 +405,16 @@ Where the key lives: in an app, the system store local mode already uses (`ai.an
 read back through `secrets.reveal` only for these names: the Keychain on the Mac and iPhone, Credential Manager or
 the Secret Service on Windows and Linux (`secrets.rs`, sealed under the app's key there), the Android Keystore in both
 Android apps (`SecretsPlugin.kt`). In a browser, the page's IndexedDB, sealed with a non-extractable AES-GCM key and
-wiped on sign-out. Keys are per device for now:
-syncing them end-to-end encrypted needs the account's E2EE key material, which only accounts with encryption on have
-(follow-up). Which provider is on and the model are in localStorage.
+wiped on sign-out. Which provider is on and the model are in localStorage, per device.
+
+Syncing (`apps/web/src/lib/ai/ownKeySync.ts`, `convex/e2ee/accountRecords.ts`): for an account with encryption set
+up, each key is sealed on the device with the account master key (AMK `account/records`, context
+`record/account/<profileId>/aiKey/<provider>`, docs/E2EE_DESIGN.md §3) and stored in `e2eeAccountRecords`, which the
+server never opens. A device syncs when its encryption keys unlock (AccountGate starts it) and before a request
+that has no key yet: it opens a key saved elsewhere and keeps its own copy (memory only on a public computer), forgets
+one removed elsewhere (a removal leaves an empty row), and seals again a key only it has or one sealed before an
+encryption reset. An account without encryption keeps keys per device, since there is no key the server can't read
+to seal them with.
 
 On Folevi Cloud and Folevi Server the client adds `ownKey: { provider, apiKey, model }` to the AI action's arguments
 (`useAiAction` on the web, `commandsAi.ts` in the engine). The server uses it for that request only:

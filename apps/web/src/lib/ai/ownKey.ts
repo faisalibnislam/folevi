@@ -10,6 +10,9 @@
 //     key out of plain storage dumps; it can't stop a script running in this page, so keys never leave the
 //     device except with a request.
 //
+// For an account with encryption set up, the keys also go to the person's other devices sealed with their account
+// master key (lib/ai/ownKeySync.ts); without encryption a key stays on the device it was saved on.
+//
 // On Folevi Cloud the key goes with each AI request (an action's `ownKey` argument, over TLS) and the server
 // uses it for that request only (convex/lib/ai/ownKey.ts). Which provider is on and the model picked are kept
 // on this device (localStorage); the key is never shown again once saved.
@@ -159,6 +162,7 @@ export async function clearPageOwnKeys(): Promise<void> {
   });
   try {
     localStorage.removeItem(CHOICE);
+    localStorage.removeItem("folevi:own-ai-key-at");
   } catch {
     /* storage unavailable */
   }
@@ -168,39 +172,83 @@ export async function clearPageOwnKeys(): Promise<void> {
 // Saving, checking and using a key
 // ---------------------------------------------------------------------------------------------------
 
-/** Saves a key on this device (the keychain in an app; the page's store where the app can't hand it back). */
-export async function saveOwnKey(provider: OwnKeyProvider, key: string): Promise<void> {
+// This device's copy: the keychain in an app that can hand it back, else the page's store.
+
+async function localWrite(provider: OwnKeyProvider, key: string): Promise<void> {
   const secrets = shell()?.secrets;
   if (secrets) await secrets.set(OWN_KEY_INFO[provider].secret, key);
   if (!secrets?.reveal) await pageSet(provider, key);
-  for (const l of listeners) l();
 }
 
-export async function removeOwnKey(provider: OwnKeyProvider): Promise<void> {
+async function localForget(provider: OwnKeyProvider): Promise<void> {
   const secrets = shell()?.secrets;
   if (secrets) await secrets.delete(OWN_KEY_INFO[provider].secret);
   await pageDelete(provider);
-  if (ownKeyChoice()?.provider === provider) setOwnKeyChoice(null);
-  for (const l of listeners) l();
 }
 
-export async function hasOwnKey(provider: OwnKeyProvider): Promise<boolean> {
-  const secrets = shell()?.secrets;
-  if (secrets?.reveal) return await secrets.has(OWN_KEY_INFO[provider].secret);
-  return (await pageGet(provider)) !== null;
-}
-
-async function readKey(provider: OwnKeyProvider): Promise<string | null> {
+async function localRead(provider: OwnKeyProvider): Promise<string | null> {
   const secrets = shell()?.secrets;
   if (secrets?.reveal) return await secrets.reveal(OWN_KEY_INFO[provider].secret);
   return await pageGet(provider);
 }
 
-/** The key, provider and model to send with a Folevi Cloud request, when the person turned their own key on. */
+const notify = () => {
+  for (const l of listeners) l();
+};
+
+/** What lib/ai/ownKeySync.ts reads and writes on this device. */
+const LOCAL = { providers: OWN_KEY_PROVIDERS, read: localRead, write: localWrite, forget: localForget };
+
+/** The sync with the person's other devices, loaded only when it's needed (it brings the encryption code). */
+const sync = () => import("./ownKeySync");
+
+/** Keeps this device's keys in step with the person's other devices while encryption is unlocked. */
+export async function startOwnKeySync(): Promise<void> {
+  (await sync()).watchOwnKeySync(LOCAL, notify);
+}
+
+/**
+ * Saves a key on this device, and, for an account with encryption set up and unlocked, sealed for the
+ * person's other devices (lib/ai/ownKeySync.ts). Without encryption it stays on this device.
+ */
+export async function saveOwnKey(provider: OwnKeyProvider, key: string): Promise<void> {
+  await localWrite(provider, key);
+  const s = await sync();
+  s.markSaved(provider, Date.now());
+  notify();
+  await s.pushOwnKey(provider, key).catch(() => false);
+}
+
+/** Removes a key from this device and from the person's other devices. */
+export async function removeOwnKey(provider: OwnKeyProvider): Promise<void> {
+  await localForget(provider);
+  const s = await sync();
+  s.markSaved(provider, null);
+  await s.removeSyncedKey(provider);
+  if (ownKeyChoice()?.provider === provider) setOwnKeyChoice(null);
+  notify();
+}
+
+async function readKey(provider: OwnKeyProvider): Promise<string | null> {
+  return (await localRead(provider)) ?? (await sync()).memoryKey(provider);
+}
+
+export async function hasOwnKey(provider: OwnKeyProvider): Promise<boolean> {
+  return (await readKey(provider).catch(() => null)) !== null;
+}
+
+/**
+ * The key, provider and model to send with a Folevi Cloud request, when the person turned their own key on.
+ * A key saved on another device that hasn't reached this one yet is fetched first.
+ */
 export async function ownKeyForRequest(choice = ownKeyChoice()): Promise<OwnKeyArg | null> {
   if (!choice) return null;
   try {
-    const apiKey = await readKey(choice.provider);
+    let apiKey = await readKey(choice.provider);
+    if (!apiKey && (await (await sync()).syncOwnKeys(LOCAL).catch(() => 0))) {
+      notify();
+      apiKey = await readKey(choice.provider);
+    }
     return apiKey ? { provider: choice.provider, apiKey, model: choice.model } : null;
   } catch {
     return null;

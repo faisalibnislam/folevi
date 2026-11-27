@@ -1166,12 +1166,11 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- **New pricing (branch `claude/pricing-2026-11-27`), left for the owner:** review the terms page wording
-  (`apps/web/src/app/(marketing)/terms/page.tsx`, plan and AI paragraphs), then push and open the PR. Before the
-  deploy, change the prices on the EXISTING Polar products (not new ones; webhooks match by product id). Right
-  after the deploy run `npx convex run --deployment <prod> migrations:keepOldTerms '{"paidBefore": <deploy ms>}'`,
-  then move existing Polar subscriptions to the new prices at renewal. Ship app builds for the Mac and iPhone
-  string changes.
+- **New pricing (PR 173), left for the owner:** review the terms page wording
+  (`apps/web/src/app/(marketing)/terms/page.tsx`, plan and AI paragraphs). Set the new prices in Polar (Admin →
+  Billing setup shows what Polar should have). Folevi has no paying users yet (owner, 2026-11-27), so the
+  `keepOldTerms` backfill and moving old subscriptions are not needed. Ship Mac and iPhone builds for the string
+  changes.
 - **Security audit 2026-11-26, left for the owner** (branch `claude/security-audit-2026-11-26`):
   - Push the branch, open the PR and merge once CI is green (see Current state: the repo is public). After the
     merge, deploy Connect (`services/connect`) and ship new Folevi Server packages and app builds: the folevid

@@ -75,12 +75,8 @@ and makes it available on Free too.
 
 ### Existing subscribers
 
-The new prices are lower but so is the storage, so nobody should lose room they already use. Recommendation:
-existing subscribers move to the new, lower price at their next renewal and keep today's storage and credits
-(10 GB / 10 GB / 50 GB, 0 / 180 / 550 credits) for as long as they stay on that plan. If someone changes plan,
-they get the new plan's amounts. In Polar the prices change on the existing products (same ids, so webhooks
-keep matching old subscriptions), and each existing subscription is moved to the new price at renewal. The
-old storage and credits are kept in `subscriptions.keptTerms`, written by `migrations:keepOldTerms`.
+Folevi has no paying users yet (owner, 2026-11-27), so nobody needs to keep old terms and the backfill is
+not run. The `keptTerms` support stays in the code in case it is ever needed.
 
 ### Trial
 

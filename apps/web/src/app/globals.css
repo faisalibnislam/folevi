@@ -1126,6 +1126,9 @@
 @media (prefers-reduced-motion: reduce) { .iphone-small-title { transform: none; } }
 /* Caption caps: grouped list headers, the place above Home's title (§2.2). */
 .ui-caption-caps { font-size: var(--type-footnote); line-height: var(--type-footnote-leading); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-muted); }
+/* Column mode (NoteColumns): the area behind the note list and round the open note is the shell's grey moved 35%
+   toward the page surface, lighter than the sidebar beside it, in light and dark (the owner, 28 November 2026). */
+[data-note-columns] { background: color-mix(in oklab, var(--glass-canvas) 65%, var(--color-surface)); }
 /* Icons: every line icon (lucide) draws its lines at one width on screen (--control-icon-stroke: 1.25 px, 1.5 px on touch), whatever its size or the stroke width it was
    given, so no icon looks heavier or lighter than its neighbours (the owner, 28 November 2026). Before, each icon's
    2 (or 1.5) unit stroke was scaled with its size and came out anywhere from 0.9 to 1.33 px. */

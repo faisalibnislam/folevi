@@ -2992,6 +2992,56 @@ data class SettingsAskResult(
     val answer: String,
 )
 
+/**
+ * `home.stats` (revision 37): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
+ * `todayStart` is local midnight (ms), so the week's last bar is this person's today.
+ */
+@Serializable
+data class HomeStatsArgs(
+    val space: SpaceRef? = null,
+    val todayStart: Long? = null,
+)
+
+@Serializable
+data class HomeStatsValue(
+    val notes: Long,
+    val words: Long,
+    val images: Long,
+    val folders: Long,
+    val tasksDone: Long,
+    val tasksOpen: Long,
+    /** Notes made on each of the last 7 days, oldest first; the last is today. */
+    val week: List<Long>,
+    /** Counting stopped at 5,000 rows of a kind. */
+    val capped: Boolean,
+)
+
+/** One person's Home blocks: their order and the hidden ones (block ids as homeLayout.ts names them). */
+@Serializable
+data class HomeLayout(
+    val order: List<String>,
+    val hidden: List<String>,
+)
+
+/** `home.prefs` (revision 37): this person's Home layout (null: the default) and pinned note (homePrefs.get). */
+@Serializable
+data class HomePrefsValue(
+    val layout: HomeLayout?,
+    val pinnedNote: String?,
+)
+
+/** `home.setLayout` (revision 37): saves the layout (homePrefs.setLayout); null puts Home back to its default. */
+@Serializable
+data class HomeSetLayoutArgs(
+    val layout: HomeLayout?,
+)
+
+/** `home.setPinnedNote` (revision 37): the note the Pinned note block shows (homePrefs.setPinnedNote), or null. */
+@Serializable
+data class HomeSetPinnedNoteArgs(
+    val noteId: String?,
+)
+
 /** R8.6: a macOS banner's action. */
 @Serializable
 data class NotificationActArgs(

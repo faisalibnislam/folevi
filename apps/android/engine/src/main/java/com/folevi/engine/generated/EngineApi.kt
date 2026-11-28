@@ -20,9 +20,9 @@ object EngineContract {
     /** The envelope's major version (`v` on every message to the engine). */
     const val PROTOCOL_VERSION = 1
     /** Bumps with every added view, command, editor command, event or field. */
-    const val REVISION = 36
+    const val REVISION = 37
     /** FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current. */
-    const val SCHEMA_HASH = "0f42d5e5"
+    const val SCHEMA_HASH = "188af74b"
     /** The handler name the engine posts batches to (`window.foleviEngineHost` on Android). */
     const val MESSAGE_HANDLER = "foleviEngine"
     /** The global the host calls (`__foleviEngine.handle(json)`). */
@@ -104,6 +104,8 @@ enum class ViewName(val value: String) {
     @SerialName("e2ee.state") E2EE_STATE("e2ee.state"),
     @SerialName("note.style") NOTE_STYLE("note.style"),
     @SerialName("tags.index") TAGS_INDEX("tags.index"),
+    @SerialName("home.stats") HOME_STATS("home.stats"),
+    @SerialName("home.prefs") HOME_PREFS("home.prefs"),
     ;
 
     companion object {
@@ -279,6 +281,8 @@ enum class CommandName(val value: String) {
     @SerialName("folder.setSidebarOrder") FOLDER_SET_SIDEBAR_ORDER("folder.setSidebarOrder"),
     @SerialName("inbox.open") INBOX_OPEN("inbox.open"),
     @SerialName("ai.settingsSearch") AI_SETTINGS_SEARCH("ai.settingsSearch"),
+    @SerialName("home.setLayout") HOME_SET_LAYOUT("home.setLayout"),
+    @SerialName("home.setPinnedNote") HOME_SET_PINNED_NOTE("home.setPinnedNote"),
     ;
 
     companion object {
@@ -433,6 +437,8 @@ object Views {
     fun vaultShares(vaultId: String, itemId: String): ViewSpec<VaultItemIdArgs, VaultSharesValue> = ViewSpec("vault.shares", VaultItemIdArgs(vaultId = vaultId, itemId = itemId), VaultItemIdArgs.serializer(), VaultSharesValue.serializer())
     fun e2eeState(): ViewSpec<EmptyArgs, E2eeStateValue> = ViewSpec("e2ee.state", EmptyArgs, EmptyArgs.serializer(), E2eeStateValue.serializer())
     fun noteStyle(id: String): ViewSpec<NoteIdArgs, NoteStyleValue> = ViewSpec("note.style", NoteIdArgs(id = id), NoteIdArgs.serializer(), NoteStyleValue.serializer())
+    fun homeStats(space: SpaceRef? = null, todayStart: Long? = null): ViewSpec<HomeStatsArgs, HomeStatsValue> = ViewSpec("home.stats", HomeStatsArgs(space = space, todayStart = todayStart), HomeStatsArgs.serializer(), HomeStatsValue.serializer())
+    fun homePrefs(): ViewSpec<EmptyArgs, HomePrefsValue> = ViewSpec("home.prefs", EmptyArgs, EmptyArgs.serializer(), HomePrefsValue.serializer())
 }
 
 /** List views (the spec's result type is the row). */
@@ -596,6 +602,8 @@ object Commands {
     fun workspaceCreate(name: String): CommandSpec<WorkspaceCreateArgs, WorkspaceCreateResult> = CommandSpec("workspace.create", WorkspaceCreateArgs(name = name), WorkspaceCreateArgs.serializer(), WorkspaceCreateResult.serializer())
     fun inboxOpen(space: SpaceRef? = null): CommandSpec<InboxOpenArgs, InboxOpenResult> = CommandSpec("inbox.open", InboxOpenArgs(space = space), InboxOpenArgs.serializer(), InboxOpenResult.serializer())
     fun aiSettingsSearch(space: SpaceRef? = null, query: String, options: List<SettingsAskOption>): CommandSpec<SettingsAskArgs, SettingsAskResult> = CommandSpec("ai.settingsSearch", SettingsAskArgs(space = space, query = query, options = options), SettingsAskArgs.serializer(), SettingsAskResult.serializer())
+    fun homeSetLayout(layout: HomeLayout? = null): CommandSpec<HomeSetLayoutArgs, OkResult> = CommandSpec("home.setLayout", HomeSetLayoutArgs(layout = layout), HomeSetLayoutArgs.serializer(), OkResult.serializer())
+    fun homeSetPinnedNote(noteId: String? = null): CommandSpec<HomeSetPinnedNoteArgs, OkResult> = CommandSpec("home.setPinnedNote", HomeSetPinnedNoteArgs(noteId = noteId), HomeSetPinnedNoteArgs.serializer(), OkResult.serializer())
 }
 
 /** Editor commands. */
@@ -697,6 +705,8 @@ object EngineCatalog {
         "vault.shares" to VaultItemIdArgs.serializer(),
         "e2ee.state" to EmptyArgs.serializer(),
         "note.style" to NoteIdArgs.serializer(),
+        "home.stats" to HomeStatsArgs.serializer(),
+        "home.prefs" to EmptyArgs.serializer(),
     )
     val viewValues: Map<String, KSerializer<*>> = mapOf(
         "session" to SessionValue.serializer(),
@@ -761,6 +771,8 @@ object EngineCatalog {
         "vault.shares" to VaultSharesValue.serializer(),
         "e2ee.state" to E2eeStateValue.serializer(),
         "note.style" to NoteStyleValue.serializer(),
+        "home.stats" to HomeStatsValue.serializer(),
+        "home.prefs" to HomePrefsValue.serializer(),
     )
     val listArgs: Map<String, KSerializer<*>> = mapOf(
         "notes.list" to NotesListArgs.serializer(),
@@ -923,6 +935,8 @@ object EngineCatalog {
         "workspace.create" to WorkspaceCreateArgs.serializer(),
         "inbox.open" to InboxOpenArgs.serializer(),
         "ai.settingsSearch" to SettingsAskArgs.serializer(),
+        "home.setLayout" to HomeSetLayoutArgs.serializer(),
+        "home.setPinnedNote" to HomeSetPinnedNoteArgs.serializer(),
     )
     val commandResults: Map<String, KSerializer<*>> = mapOf(
         "space.switch" to SpaceSwitchResult.serializer(),
@@ -1079,6 +1093,8 @@ object EngineCatalog {
         "workspace.create" to WorkspaceCreateResult.serializer(),
         "inbox.open" to InboxOpenResult.serializer(),
         "ai.settingsSearch" to SettingsAskResult.serializer(),
+        "home.setLayout" to OkResult.serializer(),
+        "home.setPinnedNote" to OkResult.serializer(),
     )
     val editorArgs: Map<String, KSerializer<*>> = mapOf(
         "note.prepare" to NotePrepareArgs.serializer(),

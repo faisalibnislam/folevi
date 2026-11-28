@@ -1,0 +1,24 @@
+{
+  "kind": "command",
+  "name": "home.setLayout",
+  "description": "Customize: Foli DNA taken off Home (revision 37).",
+  "args": {
+    "layout": {
+      "order": [
+        "recent",
+        "bookmarks",
+        "folders",
+        "stats",
+        "dna",
+        "today",
+        "tasks"
+      ],
+      "hidden": [
+        "dna"
+      ]
+    }
+  },
+  "result": {
+    "ok": true
+  }
+}

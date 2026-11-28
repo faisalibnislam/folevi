@@ -10,7 +10,7 @@ import { QuerySource, type Signal, type Snapshot } from "./live";
 import { folderCardOf, folderTree } from "./rows";
 import { entriesOf, engineSignal, marksOf, outboxSignal, requireSpace, source, type LiveValue, type ValueViewDef } from "./views";
 import { bool, nullableId, num, oneOf, only, optionalId, text } from "./validate";
-import { fnv1a, type ChangesValue, type FolderChip, type NotificationRow, type SearchArgs, type SearchHit, type SearchValue, type SharedRow, type ViewName } from "./protocol";
+import { fnv1a, type ChangesValue, type HomePrefsValue, type HomeStatsValue, type FolderChip, type NotificationRow, type SearchArgs, type SearchHit, type SearchValue, type SharedRow, type ViewName } from "./protocol";
 
 type Args = Record<string, unknown>;
 
@@ -79,6 +79,40 @@ const tagsIndex: ValueViewDef = {
         return { value: { tags }, stale: i.stale, error: null };
       },
     };
+  },
+};
+
+// ---- home.stats, home.prefs (revision 37): Home's At a glance and this person's Home layout
+
+const BLOCK_ID = /^[a-z][a-z0-9-]{0,39}$/;
+
+const homeStats: ValueViewDef = {
+  kind: "value",
+  parse: (args) => {
+    only(args, ["space", "todayStart"]);
+    const out: Args = {};
+    const space = optionalId(args, "space");
+    if (space !== undefined) out.space = space;
+    if (args.todayStart !== undefined) out.todayStart = num(args, "todayStart", { min: 0 });
+    return out;
+  },
+  create: (ctx, args) => {
+    const space = requireSpace(ctx.deps(), args.space as string | undefined);
+    const todayStart = args.todayStart as number | undefined;
+    const stats = source<HomeStatsValue>(ctx, api.homeStats.get, { scope: space.scope, ...(todayStart !== undefined ? { todayStart } : {}) }, space.scope);
+    return single(ctx, stats, (s) => ({ notes: s.notes, words: s.words, images: s.images, folders: s.folders, tasksDone: s.tasksDone, tasksOpen: s.tasksOpen, week: s.week.slice(0, 7), capped: s.capped }), [engineSignal(ctx)]);
+  },
+};
+
+const homePrefs: ValueViewDef = {
+  kind: "value",
+  parse: noArgs,
+  create: (ctx) => {
+    const prefs = source<HomePrefsValue>(ctx, api.homePrefs.get, {}, null);
+    return single(ctx, prefs, (p) => ({
+      layout: p.layout ? { order: p.layout.order.filter((b) => BLOCK_ID.test(b)), hidden: p.layout.hidden.filter((b) => BLOCK_ID.test(b)) } : null,
+      pinnedNote: p.pinnedNote ?? null,
+    }), [engineSignal(ctx)]);
   },
 };
 
@@ -368,6 +402,8 @@ export const MORE_VALUE_VIEWS = {
   "templates.builtIn": templatesBuiltIn,
   "folders.cards": foldersCards,
   "tags.index": tagsIndex,
+  "home.stats": homeStats,
+  "home.prefs": homePrefs,
   "shared.list": sharedList,
   changes,
   "notifications.list": notificationsList,

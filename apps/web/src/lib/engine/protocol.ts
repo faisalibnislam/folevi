@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 36;
+export const CONTRACT_REVISION = 37;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2401,6 +2401,50 @@ export interface SettingsAskResult {
   answer: string;
 }
 
+/**
+ * `home.stats` (revision 37): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
+ * `todayStart` is local midnight (ms), so the week's last bar is this person's today.
+ */
+export interface HomeStatsArgs {
+  space?: SpaceRef;
+  todayStart?: number;
+}
+
+export interface HomeStatsValue {
+  notes: number;
+  words: number;
+  images: number;
+  folders: number;
+  tasksDone: number;
+  tasksOpen: number;
+  /** Notes made on each of the last 7 days, oldest first; the last is today. */
+  week: number[];
+  /** Counting stopped at 5,000 rows of a kind. */
+  capped: boolean;
+}
+
+/** One person's Home blocks: their order and the hidden ones (block ids as homeLayout.ts names them). */
+export interface HomeLayout {
+  order: string[];
+  hidden: string[];
+}
+
+/** `home.prefs` (revision 37): this person's Home layout (null: the default) and pinned note (homePrefs.get). */
+export interface HomePrefsValue {
+  layout: HomeLayout | null;
+  pinnedNote: string | null;
+}
+
+/** `home.setLayout` (revision 37): saves the layout (homePrefs.setLayout); null puts Home back to its default. */
+export interface HomeSetLayoutArgs {
+  layout: HomeLayout | null;
+}
+
+/** `home.setPinnedNote` (revision 37): the note the Pinned note block shows (homePrefs.setPinnedNote), or null. */
+export interface HomeSetPinnedNoteArgs {
+  noteId: string | null;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Revision 8: the Mac frame's R8.5 to R8.9, research, the agent's changes, the profile picture
 // ---------------------------------------------------------------------------------------------------------------
@@ -4091,6 +4135,8 @@ export interface ViewMap {
   "vault.shares": { args: VaultItemIdArgs; value: VaultSharesValue };
   "e2ee.state": { args: EmptyArgs; value: E2eeStateValue };
   "note.style": { args: NoteIdArgs; value: NoteStyleValue };
+  "home.stats": { args: HomeStatsArgs; value: HomeStatsValue };
+  "home.prefs": { args: EmptyArgs; value: HomePrefsValue };
 }
 
 export interface ListViewMap {
@@ -4291,6 +4337,8 @@ export interface CommandMap {
   "workspace.create": { args: WorkspaceCreateArgs; result: WorkspaceCreateResult };
   "inbox.open": { args: InboxOpenArgs; result: InboxOpenResult };
   "ai.settingsSearch": { args: SettingsAskArgs; result: SettingsAskResult };
+  "home.setLayout": { args: HomeSetLayoutArgs; result: OkResult };
+  "home.setPinnedNote": { args: HomeSetPinnedNoteArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -4362,7 +4410,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "graph.views", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares", "e2ee.state", "note.style", "tags.index"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "graph.views", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares", "e2ee.state", "note.style", "tags.index", "home.stats", "home.prefs"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -4519,6 +4567,8 @@ const commandNames = [
   "folder.setSidebarOrder",
   "inbox.open",
   "ai.settingsSearch",
+  "home.setLayout",
+  "home.setPinnedNote",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

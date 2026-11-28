@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "home.setPinnedNote",
+  "description": "The Pinned note block shows this note (revision 37).",
+  "args": {
+    "noteId": "doc_00001"
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "home.setLayout",
+  "description": "Customize's Reset: the default Home again (revision 37).",
+  "args": {
+    "layout": null
+  },
+  "result": {
+    "ok": true
+  }
+}

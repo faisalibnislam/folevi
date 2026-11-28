@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "0f42d5e5"
+        "schemaHash": "188af74b"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 36,
+        "revision": 37,
         "build": "dev",
-        "schemaHash": "0f42d5e5",
+        "schemaHash": "188af74b",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -96,7 +96,9 @@
           "vault.shares",
           "e2ee.state",
           "note.style",
-          "tags.index"
+          "tags.index",
+          "home.stats",
+          "home.prefs"
         ],
         "listViews": [
           "notes.list"
@@ -255,7 +257,9 @@
           "workspace.create",
           "folder.setSidebarOrder",
           "inbox.open",
-          "ai.settingsSearch"
+          "ai.settingsSearch",
+          "home.setLayout",
+          "home.setPinnedNote"
         ],
         "editorCommands": [
           "note.prepare",

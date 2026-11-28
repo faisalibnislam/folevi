@@ -5,7 +5,7 @@ import { BridgeHost } from "@/lib/engine/host";
 import { resetNoteHost } from "@/lib/engine/noteHost";
 import { resetGates } from "@/lib/engine/gates";
 import { applyDiff, emptyNativeList, nativeRows } from "@/lib/engine/diff";
-import type { ChangesValue, FolderCardsValue, NotificationsValue, Reply, SearchValue, SharedValue } from "@/lib/engine/protocol";
+import type { ChangesValue, FolderCardsValue, HomePrefsValue, HomeStatsValue, NotificationsValue, Reply, SearchValue, SharedValue } from "@/lib/engine/protocol";
 import { Posts, pagedList, rig, summary, type Rig } from "./fakes";
 
 const PLACE = "acct:user_1";
@@ -57,6 +57,26 @@ afterEach(() => {
 });
 
 describe("views", () => {
+  it("home.stats and home.prefs: Home's At a glance and this person's layout (revision 37)", async () => {
+    r.client.answer("homeStats:get", { notes: 3, words: 476, images: 1, folders: 2, tasksDone: 4, tasksOpen: 2, week: [0, 1, 0, 0, 0, 0, 2], capped: false });
+    const stats = (await query("home.stats", { todayStart: 1764266400000 })) as HomeStatsValue;
+    expect(stats).toEqual({ notes: 3, words: 476, images: 1, folders: 2, tasksDone: 4, tasksOpen: 2, week: [0, 1, 0, 0, 0, 0, 2], capped: false });
+    r.client.answer("homePrefs:get", { layout: { order: ["dna", "recent", "Bad id"], hidden: ["stats"] }, pinnedNote: null });
+    const prefs = (await query("home.prefs")) as HomePrefsValue;
+    expect(prefs).toEqual({ layout: { order: ["dna", "recent"], hidden: ["stats"] }, pinnedNote: null });
+    expect((await errorOf({ kind: "query", place: PLACE, name: "home.stats", args: { todayStart: "today" } })).code).toBe("invalid_args");
+  });
+
+  it("home.setLayout and home.setPinnedNote go to homePrefs (revision 37)", async () => {
+    await command("home.setLayout", { layout: { order: ["recent", "recent", "dna"], hidden: ["dna"] } });
+    expect(r.client.mutations.at(-1)).toMatchObject({ name: "homePrefs:setLayout", args: { layout: { order: ["recent", "dna"], hidden: ["dna"] } } });
+    await command("home.setLayout", { layout: null });
+    expect(r.client.mutations.at(-1)).toMatchObject({ name: "homePrefs:setLayout", args: { layout: null } });
+    await command("home.setPinnedNote", { noteId: "doc_1" });
+    expect(r.client.mutations.at(-1)).toMatchObject({ name: "homePrefs:setPinnedNote", args: { documentId: "doc_1" } });
+    expect((await errorOf({ kind: "command", place: PLACE, name: "home.setLayout", args: { layout: { order: ["Not ok"], hidden: [] } } })).code).toBe("invalid_args");
+  });
+
   it("folders.cards: a folder's subfolders with their counts and previews", async () => {
     const v = (await query("folders.cards", { parentId: "f1" })) as FolderCardsValue;
     expect(v.folders).toEqual([expect.objectContaining({ id: "f2", noteCount: 5, childCount: 1, previews: [{ title: "Kyoto", excerpt: "Temples", cover: { kind: "none" }, createdAt: 0 }] })]);

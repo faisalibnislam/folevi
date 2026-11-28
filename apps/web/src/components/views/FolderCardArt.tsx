@@ -1,3 +1,4 @@
+import { useId, type CSSProperties } from "react";
 import type { DocumentCover } from "@folevi/editor-schema";
 import { MoreHorizontal } from "lucide-react";
 import { folderHex } from "@/lib/folderColors";
@@ -46,9 +47,31 @@ export const FOLDER_FRONT_TOP = 45;
 const BACK_PATH = "M0 0H43.3C50 0 52 3.2 54 8C56 13.2 58.7 16 65.3 16H94.8Q100 16 100 22.24V100H0Z";
 /** Where the back's body starts beside the tab, as a share of the back's height (BACK_PATH's 16 of 100). */
 const BACK_BODY_TOP = 0.16;
-/** The back's and the subfolders' box: rounded like the front, masked to BACK_PATH. */
-const BACK_BOX = "absolute bottom-0 rounded-folder";
-const BACK_MASK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='${BACK_PATH}'/></svg>`)}") 0 0 / 100% 100% no-repeat`;
+/** The back's and the subfolders' box: rounded like the front (its corners clip the drawn outline). */
+const BACK_BOX = "absolute bottom-0 overflow-hidden rounded-folder";
+
+/**
+ * The back or a subfolder behind it: BACK_PATH drawn as an inline SVG stretched to the box, filled with its gradient
+ * (globals.css .fcb-1/.fcb-2). It was a CSS mask of the same path, but some Chrome builds rasterised that mask so the
+ * body's rounded top-right corner came out square on cards at certain pixel positions (the owner, 28 November 2026);
+ * an SVG shape is drawn as vectors at any size and position.
+ */
+function BackShape({ kind, style, className = "" }: { kind: "back" | "sub"; style: CSSProperties; className?: string }) {
+  const id = useId().replace(/:/g, "");
+  return (
+    <div data-fc={kind} className={`${BACK_BOX} ${className}`} style={style}>
+      <svg aria-hidden className="absolute inset-0 size-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0.5" y2="1">
+            <stop offset="0" className="fcb-1" />
+            <stop offset="1" className="fcb-2" />
+          </linearGradient>
+        </defs>
+        <path d={BACK_PATH} fill={`url(#${id})`} />
+      </svg>
+    </div>
+  );
+}
 /** The front's fine grain, so the frost reads as a material and not a flat tint. */
 const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(#n)'/></svg>`)}")`;
 
@@ -180,14 +203,9 @@ export function FolderCardArt({
       {/* subfolders stacked behind, and the back with its tab: one 85% layer, so a subfolder's outline doesn't show through the back */}
       <div className="absolute inset-0 opacity-85">
         {kids.map((hex, i) => (
-          <div
-            key={i}
-            data-fc="sub"
-            className={BACK_BOX}
-            style={{ top: `${stack.tops[i]}%`, left: `${stack.insets[i]}%`, right: `${stack.insets[i]}%`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fs" as string]: toneOf(hex) }}
-          />
+          <BackShape key={i} kind="sub" style={{ top: `${stack.tops[i]}%`, left: `${stack.insets[i]}%`, right: `${stack.insets[i]}%`, ["--fs" as string]: toneOf(hex) }} />
         ))}
-        <div data-fc="back" className={`${BACK_BOX} inset-x-0`} style={{ top: `${stack.back}%`, mask: BACK_MASK, WebkitMask: BACK_MASK }} />
+        <BackShape kind="back" className="inset-x-0" style={{ top: `${stack.back}%` }} />
       </div>
       {/* the notes inside, the newest in front */}
       {[...shown].reverse().map((p, i) => (

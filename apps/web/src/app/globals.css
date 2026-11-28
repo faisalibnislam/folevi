@@ -1126,6 +1126,19 @@
 @media (prefers-reduced-motion: reduce) { .iphone-small-title { transform: none; } }
 /* Caption caps: grouped list headers, the place above Home's title (§2.2). */
 .ui-caption-caps { font-size: var(--type-footnote); line-height: var(--type-footnote-leading); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-muted); }
+/* Lists: the list view of the Folders page and of every note list (the owner, 28 November 2026). No card round
+   them: the rows sit on the page between hairlines. One hierarchy: the name in the serif at Headline size
+   (as a folder card's name), everything else at Footnote in the muted ink with even figures, and a small caps
+   header naming the columns. A row lights up on hover, as a sidebar row does. */
+@layer components {
+  .ui-list-head { display: flex; align-items: center; gap: 12px; padding: 0 12px 8px; font-size: var(--type-caption-2); line-height: var(--type-caption-2-leading); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .ui-list { border-top: 1px solid var(--color-line); }
+  .ui-list > li { border-bottom: 1px solid var(--color-line); }
+  .ui-list-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border-radius: var(--radius-chip); transition: background-color 120ms; }
+  .ui-list-row:hover { background: var(--glass-hover); }
+  .ui-list-name { font-family: var(--font-serif); font-size: var(--type-headline); line-height: var(--type-headline-leading); font-weight: 600; color: var(--color-heading); }
+  .ui-list-meta { font-size: var(--type-footnote); line-height: var(--type-footnote-leading); font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
+}
 /* Nothing fades the content out above the floating tab bar: it scrolls under the bar at full strength, and the
    bar's capsules are glass a little more opaque than the rest (the page's colour at 72 %) so they read over it. */
 :root[data-iphone] .iphone-tab-pill { --liquid-fill: rgb(255 255 255 / 0.72); }

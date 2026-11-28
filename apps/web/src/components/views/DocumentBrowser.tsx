@@ -771,13 +771,23 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             }
           />
         ) : layout === "list" ? (
-          <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
+          <>
+          <div className="ui-list-head" aria-hidden>
+            <span className="w-3 flex-none" />
+            <span className="w-4 flex-none" />
+            <span className="min-w-0 flex-1">Name</span>
+            <span className="w-32 flex-none text-right sm:w-40">Folder</span>
+            <span className="hidden w-28 flex-none sm:block">Tags</span>
+            <span className="w-28 flex-none text-right">{view === "trash" ? "Deleted" : "Edited"}</span>
+            <span className="w-8 flex-none" />
+          </div>
+          <ul className="ui-list">
             {shown.map((d) => {
               const on = selection.selected.has(d.id);
               return (
                 <li
                   key={d.id}
-                  className={`group flex items-center gap-3 px-4 py-2.5 ${on ? "bg-[var(--glass-active)]" : "hover:bg-[var(--glass-hover)]"} ${dropTarget === d.id ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
+                  className={`ui-list-row group my-0.5 ${on ? "!bg-[var(--glass-active)]" : ""} ${dropTarget === d.id ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
                   {...cardProps(d)}
                 >
                   <DocDragHandle ids={on ? selection.selectedIds : [d.id]} />
@@ -788,21 +798,22 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   ) : (
                     <FileText size={16} aria-hidden className="flex-none text-muted" />
                   )}
-                  <AppLink href={`/d/${d.id}`} className="min-w-0 flex-1 truncate font-medium outline-none focus-visible:underline">
+                  <AppLink href={`/d/${d.id}`} className="ui-list-name min-w-0 flex-1 truncate outline-none focus-visible:underline">
                     {d.title || "Untitled"}
                     {on ? <span className="sr-only"> (selected)</span> : null}
                   </AppLink>
                   {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
                   {/* Fixed columns (folder, tags, time), so they line up from row to row. */}
                   <span className="flex w-32 flex-none justify-end sm:w-40">{d.kind !== "template" ? <FolderBadge folder={d.homeFolder} className="!max-w-full" /> : null}</span>
-                  <span className="hidden w-28 flex-none truncate text-footnote text-muted sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
-                  <span className="w-28 flex-none text-right text-footnote text-faint">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}</span>
+                  <span className="ui-list-meta hidden w-28 flex-none truncate sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
+                  <span className="ui-list-meta w-28 flex-none text-right">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}</span>
                   {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} /> : null}
                   <DocMenu {...menuProps(d)} />
                 </li>
               );
             })}
           </ul>
+          </>
         ) : (
           <ul className={`grid gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)] ${layout === "compact" ? (cardScale < 1 ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5") : "grid-cols-[repeat(auto-fill,minmax(var(--note-card-min),1fr))]"}`}>
             {cards.map((d) => {
@@ -886,7 +897,7 @@ function DocDragHandle({ ids }: { ids: string[] }) {
         startNoteDrag(e, ids);
       }}
       aria-hidden
-      className="cursor-grab text-faint opacity-0 group-hover:opacity-100"
+      className="w-3 flex-none cursor-grab overflow-hidden text-center text-faint opacity-0 group-hover:opacity-100"
     >
       ⋮⋮
     </span>

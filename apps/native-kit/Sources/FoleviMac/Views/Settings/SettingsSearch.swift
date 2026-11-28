@@ -3,10 +3,14 @@
 // their words and a few words people look for them by ("dark mode" finds Theme). A result names the category it
 // opens and the card or row it scrolls to (SettingsAnchor), which shows a highlight for a moment.
 //
+// The matching is the web's (FoleviScreens SettingsMatch); Ask Foli AI sends `askOptions` (ai.settingsSearch).
+//
 // Kept beside the sections it describes: a card renamed there is renamed here (SettingsSearchTests checks that every
 // category the window lists has entries, and that the matching is right).
 #if os(macOS) || os(iOS)
 import Foundation
+import FoleviEngine
+import FoleviScreens
 
 /// One thing Settings' search can find.
 public struct SettingsSearchEntry: Hashable, Sendable {
@@ -132,27 +136,57 @@ public enum SettingsSearch {
         card("workspace-data", "Export", ["export", "zip", "download", "backup"], anchor: "export"),
     ]
 
-    /// The results for `query` among the categories listed (in their order), each entry once. A category whose name
-    /// matches comes first among its own. Every word typed must match the label, a keyword or the category's name.
+    /// The results for `query` among the categories listed, each entry once, by category (the best match's first,
+    /// else in list order) and the best first within one. A category whose name matches comes first among its own. As the web's (settingsSearch.ts): most
+    /// of the words typed must start a word of the label, a keyword or the category's name, filler words left out,
+    /// so a question finds what a keyword does ("how do I turn on dark mode" finds Theme).
     public static func results(_ query: String, categories: [(id: String, title: String)], local: Bool, entries: [SettingsSearchEntry] = entries) -> [SettingsSearchResult] {
-        let words = query.lowercased().split(whereSeparator: { $0.isWhitespace }).map(String.init)
-        guard !words.isEmpty else { return [] }
-        var out: [SettingsSearchResult] = []
+        let terms = SettingsMatch.terms(query)
+        guard !terms.isEmpty else { return [] }
+        // Each category's results and its best score: the categories with the best match come first.
+        var groups: [(results: [SettingsSearchResult], best: Int)] = []
         for c in categories {
-            let name = c.title.lowercased()
-            if words.allSatisfy({ name.contains($0) }) {
-                out.append(SettingsSearchResult(entry: SettingsSearchEntry(section: c.id, label: c.title), category: c.title))
+            // (A word that only names the category lists the category, not each card in it.)
+            if SettingsMatch.all(terms, in: c.title) {
+                groups.append(([SettingsSearchResult(entry: SettingsSearchEntry(section: c.id, label: c.title), category: c.title)], Int.max))
+                continue
             }
+            let name = words(c.title)
             var seen: Set<String> = []
+            var found: [(result: SettingsSearchResult, score: Int)] = []
             for e in entries where e.section == c.id && (e.local == nil || e.local == local) {
-                let hay = ([e.label.lowercased(), name] + e.keywords).joined(separator: " ")
-                guard words.allSatisfy({ hay.contains($0) }), seen.insert(e.label).inserted else { continue }
-                // (A word that only names the category lists the category, not each card in it.)
-                if words.allSatisfy({ name.contains($0) }) { continue }
-                out.append(SettingsSearchResult(entry: e, category: c.title))
+                guard let score = SettingsMatch.score(terms, title: words(e.label), other: name + e.keywords.flatMap(words)), seen.insert(e.label).inserted else { continue }
+                found.append((SettingsSearchResult(entry: e, category: c.title), score))
+            }
+            guard let best = found.map(\.score).max() else { continue }
+            // (Stable: equal scores keep the page's order.)
+            groups.append((found.enumerated().sorted { ($0.element.score, -$0.offset) > ($1.element.score, -$1.offset) }.map(\.element.result), best))
+        }
+        return groups.enumerated().sorted { ($0.element.best, -$0.offset) > ($1.element.best, -$1.offset) }.flatMap(\.element.results)
+    }
+
+    /// A text's words for matching, a hyphenated word also in its parts ("two-step": "two-step", "two", "step").
+    static func words(_ text: String) -> [String] {
+        SettingsMatch.words(text).flatMap { w in w.contains("-") ? [w] + w.split(separator: "-").map(String.init) : [w] }
+    }
+
+    /// What Foli AI may pick from: every entry of the categories listed, keyed "<section>/<label>", with its
+    /// category's name (the web sends its index the same way).
+    public static func askOptions(categories: [(id: String, title: String)], local: Bool, entries: [SettingsSearchEntry] = entries) -> [SettingsAskOption] {
+        var seen: Set<String> = []
+        return categories.flatMap { c in
+            entries.filter { $0.section == c.id && ($0.local == nil || $0.local == local) }.compactMap { e in
+                let key = "\(e.section)/\(e.label)"
+                return seen.insert(key).inserted ? SettingsAskOption(key: key, title: e.label, section: c.title) : nil
             }
         }
-        return out
+    }
+
+    /// The entry a Foli AI pick names, as a result.
+    public static func result(forKey key: String, categories: [(id: String, title: String)], local: Bool, entries: [SettingsSearchEntry] = entries) -> SettingsSearchResult? {
+        guard let e = entries.first(where: { "\($0.section)/\($0.label)" == key && ($0.local == nil || $0.local == local) }),
+              let c = categories.first(where: { $0.id == e.section }) else { return nil }
+        return SettingsSearchResult(entry: e, category: c.title)
     }
 }
 #endif

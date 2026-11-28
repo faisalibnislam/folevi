@@ -193,20 +193,22 @@ public final class MacSettingsModel {
         return "Something went wrong. Try again."
     }
 
-    /// The sections in their groups, as SettingsView.tsx lists them for this mode and role.
+    /// The sections in their groups, as SettingsView.tsx lists them for this mode and role: Account, Security, App
+    /// and Data (the owner, 28 November 2026: "divide you into more categories"), then the open workspace's.
     var groups: [(label: String, items: [MacSettingsSection])] {
         var you: [MacSettingsSection] = isLocal
             ? [.library, .ai, .appearance, .writing, .data, .desktop]
-            : [.account, .ai, .billing, .security, .privacy, .devices, .connectedApps, .appearance, .writing, .notifications, .sync, .data, .desktop]
+            : [.account, .billing, .devices, .security, .privacy, .ai, .appearance, .writing, .notifications, .connectedApps, .sync, .data, .desktop]
         // (The Mac app's own settings: the menu bar icon, the global Quick Add key. An iPad has none of them.)
         #if os(iOS)
         you.removeAll { $0 == .desktop }
         #endif
-        // The device's own lock, with Security (as the iPhone lists it); a library's lock is in Library already.
-        if frame.host?.frameDeviceLock != nil, !isLocal {
-            you.insert(.thisDevice, at: (you.firstIndex(of: .security) ?? you.count - 1) + 1)
+        // The device's own lock, with this device's data; a library's lock is in Library already.
+        if frame.host?.frameDeviceLock != nil, !isLocal { you.append(.thisDevice) }
+        var out: [(String, [MacSettingsSection])] = Self.youGroups.compactMap { g in
+            let items = you.filter { g.ids.contains($0) }
+            return items.isEmpty ? nil : (g.label, items)
         }
-        var out: [(String, [MacSettingsSection])] = [("You", you)]
         if let w = workspace, !isLocal {
             var items: [MacSettingsSection] = [.workspace, .members, .workspacePrivacy]
             if w.canManage { items.append(contentsOf: [.workspaceGuests]) }
@@ -217,6 +219,20 @@ public final class MacSettingsModel {
         }
         return out
     }
+
+    /// How "You" is grouped (SettingsView.tsx YOU_GROUPS), in this order.
+    static let youGroups: [(label: String, ids: Set<MacSettingsSection>)] = [
+        ("Account", [.library, .account, .billing, .devices]),
+        ("Security", [.security, .privacy]),
+        ("App", [.ai, .appearance, .writing, .notifications]),
+        ("Data", [.connectedApps, .sync, .data, .desktop, .thisDevice]),
+    ]
+
+    /// Foli AI is on (Settings' search offers Ask Foli AI): an account's, while the plan includes it and it's on.
+    var aiOn: Bool { !isLocal && (session?.capabilities.ai ?? false) }
+
+    /// Create a workspace is offered: in Personal, with an account whose plan has workspaces.
+    var canCreateWorkspace: Bool { !isLocal && workspace == nil && (session?.capabilities.workspaces ?? false) }
 
     var canManageBilling: Bool { workspace?.role == "owner" }
 
@@ -319,7 +335,8 @@ struct SettingsInItsWindow: View {
     private func open() { model.frame.host?.frameOpenSettings(section: section.rawValue) }
 }
 
-/// The list of sections (the web's `nav[aria-label="Settings sections"]`): You, the workspace's, Support.
+/// The list of sections (the web's `nav[aria-label="Settings sections"]`): Account, Security, App, Data, the
+/// workspace's (or Create a workspace), Support.
 struct SettingsNav: View {
     let model: MacSettingsModel
     let current: MacSettingsSection
@@ -333,6 +350,12 @@ struct SettingsNav: View {
                     ForEach(g.items, id: \.self) { s in
                         item(s.label, icon: s.icon, active: s == current) { model.frame.open(.web("/settings/\(s.rawValue)")) }
                     }
+                }
+            }
+            if model.canCreateWorkspace {
+                // A plain row under its own Workspace heading, like the sections (the owner, 28 November 2026).
+                group("Workspace") {
+                    item("Create a workspace", icon: .plus, active: false) { FrameDialogs.newWorkspace(model.frame) }
                 }
             }
             group("Support") {

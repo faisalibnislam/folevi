@@ -188,9 +188,14 @@ struct SettingsWindowTests {
         let appearance = SettingsSearch.results("appearance", categories: cats, local: false)
         #expect(appearance.count == 1)
         #expect(appearance.first?.entry.anchor == nil)
-        // Every word must match.
+        // Most words must match (the web's rule): a stray word still finds the rest, two strays find nothing.
         #expect(SettingsSearch.results("two step", categories: cats, local: false).map(\.entry.label) == ["Two-step verification"])
-        #expect(SettingsSearch.results("theme zzz", categories: cats, local: false).isEmpty)
+        #expect(SettingsSearch.results("theme zzz", categories: cats, local: false).first?.entry.anchor == SettingsAnchor.card("Theme"))
+        #expect(SettingsSearch.results("zzz qqq", categories: cats, local: false).isEmpty)
+        // A question finds what its keywords do, filler words left out.
+        #expect(SettingsSearch.results("how do I turn on dark mode", categories: cats, local: false).first?.entry.anchor == SettingsAnchor.card("Theme"))
+        let mail = cats + [("notifications", "Notifications")]
+        #expect(SettingsSearch.results("stop emails about comments", categories: mail, local: false).contains { $0.entry.label == "Email delivery" })
         // A library's Foli AI has keys; an account's doesn't.
         #expect(!SettingsSearch.results("api key", categories: cats, local: true).isEmpty)
         #expect(SettingsSearch.results("your own keys", categories: cats, local: false).isEmpty)
@@ -216,10 +221,11 @@ struct SettingsWindowTests {
         state.onSelect = { opened.append($0) }
         state.selection = "desktop"
         state.query = "notifications"
-        // The category, then Mac notifications in General... in list order: General's row first.
+        // The category its name matches first, then Mac notifications in General.
         let results = state.results
-        #expect(results.map(\.entry.section) == ["desktop", "notifications"])
+        #expect(results.map(\.entry.section) == ["notifications", "desktop"])
         state.moveActive(1)
+        state.moveActive(-1)
         state.openActive()
         #expect(state.selection == "notifications")
         #expect(opened == ["notifications"])
@@ -235,6 +241,88 @@ struct SettingsWindowTests {
         #expect(state.selection == "notifications")
         state.moveSelection(-5)
         #expect(state.selection == "desktop")
+    }
+
+    @Test func groupsSplitYouIntoAccountSecurityAppAndData() async {
+        let frame = FrameModel(client: SettingsFixtureEngine(local: false).client())
+        defer { frame.stop() }
+        await eventually("session") { frame.session.value != nil }
+        let model = MacSettingsModel(frame: frame)
+        let labels = model.groups.map(\.label)
+        #expect(Array(labels.prefix(4)) == ["Account", "Security", "App", "Data"])
+        #expect(!labels.contains("You"))
+        #expect(model.groups.first { $0.label == "Account" }?.items == [.account, .billing, .devices])
+        #expect(model.groups.first { $0.label == "Security" }?.items == [.security, .privacy])
+        #expect(model.groups.first { $0.label == "App" }?.items == [.ai, .appearance, .writing, .notifications])
+        #expect(model.groups.first { $0.label == "Data" }?.items == [.connectedApps, .sync, .data, .desktop])
+        // The window: General alone at the top, the groups under their headings, then Support.
+        let window = MacSettingsCategories.groups(model)
+        #expect(window.first?.label == nil)
+        #expect(window.first?.items.map(\.id) == ["desktop"])
+        #expect(Array(window.dropFirst().prefix(4).map(\.label)) == ["Account", "Security", "App", "Data"])
+        #expect(window.first { $0.label == "Data" }?.items.map(\.id).contains("desktop") == false)
+        if model.canCreateWorkspace {
+            #expect(window.first { $0.label == "Workspace" }?.items.map(\.id) == [MacSettingsCategories.createWorkspace])
+        }
+    }
+
+    @Test func createWorkspaceRowOpensThePrompt() {
+        let state = MacSettingsState()
+        state.groups = [MacSettingsGroup(label: "Workspace", items: [MacSettingsCategory(id: MacSettingsCategories.createWorkspace, title: "Create a workspace", symbol: "plus", action: true)])]
+        state.selection = "appearance"
+        var created = 0
+        var acted: [String] = []
+        state.onCreateWorkspace = { created += 1 }
+        state.onAction = { acted.append($0) }
+        state.select(MacSettingsCategories.createWorkspace)
+        #expect(created == 1)
+        #expect(acted.isEmpty)
+        #expect(state.selection == "appearance")
+    }
+
+    @Test func askFoliAIIsTheLastRowAndReturnAsksWhenNothingMatches() async {
+        let state = MacSettingsState()
+        state.groups = [MacSettingsGroup(label: "App", items: [
+            MacSettingsCategory(id: "appearance", title: "Appearance", symbol: "paintpalette"),
+            MacSettingsCategory(id: "notifications", title: "Notifications", symbol: "bell"),
+        ])]
+        state.selection = "appearance"
+        var sent: [(String, [SettingsAskOption])] = []
+        state.onAsk = { q, o in
+            sent.append((q, o))
+            return SettingsAskResult(keys: ["notifications/Email delivery", "nowhere/Made up"], answer: "Turn off comment emails under Email delivery.")
+        }
+        // Foli AI off: no row.
+        state.query = "qqq zzz"
+        #expect(state.askIndex == nil)
+        state.aiOn = true
+        // Nothing matches: Ask Foli AI is the only row, and Return asks.
+        #expect(state.results.isEmpty)
+        #expect(state.askIndex == 0)
+        state.openActive()
+        await eventually("answer") { !state.ask.busy && state.ask.shows(state.query) }
+        #expect(sent.first?.0 == "qqq zzz")
+        #expect(sent.first?.1.contains { $0.key == "appearance/Theme" && $0.section == "Appearance" } == true)
+        #expect(state.ask.answer == "Turn off comment emails under Email delivery.")
+        // Only offered keys come back, as results that open their card.
+        #expect(state.askPicks.map(\.entry.label) == ["Email delivery"])
+        #expect(state.askIndex == nil, "no Ask row while its answer shows")
+        state.open(state.askPicks[0])
+        #expect(state.selection == "notifications")
+        #expect(state.highlight == SettingsAnchor.card("Email delivery"))
+        // Matches: Ask Foli AI after them; the arrows reach it.
+        state.query = "theme"
+        #expect(state.askIndex == state.results.count)
+        state.moveActive(5)
+        #expect(state.activeResult == state.results.count)
+    }
+
+    @Test func askFoliAIErrorsAreSaidPlainly() async {
+        let ask = SettingsAsk()
+        await ask.ask("dark", options: []) { _, _ in throw EngineFailure.engine(EngineError(code: "ai_unavailable", message: "Foli AI isn't set up on this server yet.")) }
+        #expect(ask.error == "Foli AI isn't set up on this server yet.")
+        #expect(ask.shows("dark "))
+        #expect(!ask.busy)
     }
 
     @Test func actionRowsActWithoutOpeningAPage() {

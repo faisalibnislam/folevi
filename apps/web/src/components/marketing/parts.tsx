@@ -148,7 +148,7 @@ export function LinkCard({
     <div
       id={id}
       className={cx(
-        "mk-card group relative flex h-full scroll-mt-24 flex-col hover:shadow-(--shadow-pop)",
+        "mk-card group relative flex h-full scroll-mt-24 flex-col hover:shadow-[var(--shadow-edge),var(--shadow-lifted)]",
         wide && "lg:flex-row",
         cover ? "overflow-hidden" : "p-5 sm:p-6",
         className,

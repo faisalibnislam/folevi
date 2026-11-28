@@ -105,7 +105,7 @@ function PadTabs() {
           <X size={12} className="flex-none text-faint" aria-hidden="true" />
         </span>
       </span>
-      <span className="grid size-12 flex-none place-items-center rounded-capsule bg-(--color-heading) text-(--color-canvas) shadow-[0_2px_8px_rgb(0_0_0/0.18)]">
+      <span className="grid size-12 flex-none place-items-center rounded-capsule bg-(--color-heading) text-(--color-canvas) shadow-[var(--shadow-raised)]">
         <Plus size={20} strokeWidth={2.4} aria-hidden="true" />
       </span>
     </div>
@@ -131,7 +131,7 @@ function PadCard({ note }: { note: (typeof NOTES)[number] }) {
 
 export function IpadPicture() {
   return (
-    <div className="rounded-float bg-[#111113] p-[14px] shadow-[0_30px_60px_-20px_rgb(0_0_0/0.45),0_0_0_1px_rgb(255_255_255/0.08)_inset]" style={{ width: PAD_W, height: PAD_H }}>
+    <div className="rounded-float bg-[#111113] p-[14px] shadow-[0_0_0_1px_rgb(255_255_255/0.08)_inset,var(--shadow-overlay)]" style={{ width: PAD_W, height: PAD_H }}>
       <div className="mk-app flex h-full flex-col rounded-sheet! shadow-none!" style={{ ["--app-art" as string]: artThumb(artById("art-30")), fontFamily: SYSTEM_FONT }}>
         <div className="mk-app-ambient" />
         <div className="flex h-7 flex-none items-center justify-between px-6 pt-1 text-[12px] font-semibold text-(--color-heading)">
@@ -199,7 +199,7 @@ function PhoneTabBar() {
 
 export function IphonePicture() {
   return (
-    <div className="mk-phone bg-[#111113] p-2.5 shadow-[0_48px_96px_-32px_rgb(0_0_0/0.5),0_0_0_2px_rgb(255_255_255/0.08)_inset]" style={{ width: PHONE_W, height: PHONE_H }}>
+    <div className="mk-phone bg-[#111113] p-2.5 shadow-[0_0_0_2px_rgb(255_255_255/0.08)_inset,var(--shadow-overlay)]" style={{ width: PHONE_W, height: PHONE_H }}>
       <div className="mk-phone-screen relative h-full overflow-hidden bg-(--color-surface) text-(--color-heading)" style={{ fontFamily: SYSTEM_FONT }}>
         {/* The status bar, with the Dynamic Island. */}
         <div className="relative flex h-[68px] items-center justify-between px-11 pt-2 text-[20px] font-semibold">

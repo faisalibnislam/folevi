@@ -73,7 +73,7 @@ export function CatchUpDemo() {
               take();
               void brief(plain);
             }}
-            className={`inline-flex h-10 items-center gap-2 rounded-control bg-(--glass-active) px-4 text-[14px] font-semibold text-(--color-heading) shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] transition-transform hover:-translate-y-px ${pressed ? "scale-95" : ""}`}
+            className={`inline-flex h-10 items-center gap-2 rounded-control bg-(--glass-active) px-4 text-[14px] font-semibold text-(--color-heading) shadow-[var(--glass-edge),var(--shadow-raised)] transition-transform hover:-translate-y-px ${pressed ? "scale-95" : ""}`}
           >
             <AiIcon size={15} /> Catch me up
           </button>

@@ -17,7 +17,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 - One shadow hierarchy (2026-11-28, `docs/SHADOWS.md`): an edge plus a level (`raised`, `resting`, `lifted`, `floating`, `overlay`) from the tokens, on the web and native. `test/shadow-scale.test.ts` fails on raw drop shadows.
 
 ## Next steps
-- Shadows: move the website (`marketing.css`) onto the levels; run `pnpm styles:gen` so `WebStyles.swift` picks up the new values.
+- Shadows: PR 190's Home shadows go onto the levels when it merges `main` (`docs/SHADOWS.md`, Not done yet).
 - Spell check and prediction: not yet tried in the native builds (Mac, iPhone, Windows) or on devices.
 
 - Spell check: a native Settings row for Writing on the Mac and iPhone/iPad; try it in each app's build.

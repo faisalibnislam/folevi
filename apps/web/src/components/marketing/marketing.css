@@ -34,10 +34,6 @@
   --shadow-hairline: 0 0 0 1px rgba(0, 0, 0, 0.07);
   --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
   --shadow-primary: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.12), 0 4px 12px -4px rgb(0 0 0 / 0.25);
-  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 14px 32px -14px rgba(0, 0, 0, 0.18);
-  --shadow-sheet: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.06), 0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 28px 64px -28px rgba(0, 0, 0, 0.24);
-  --shadow-pop: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.06), 0 24px 48px -12px rgba(0, 0, 0, 0.22);
-  --shadow-lift: 0 0 0 1px rgba(0, 0, 0, 0.07), 0 10px 24px -6px rgba(0, 0, 0, 0.16), 0 40px 80px -30px rgba(0, 0, 0, 0.28);
   /* Marketing-only surfaces, both neutral. */
   --mk-well: #F5F5F7;
   --mk-hair: var(--color-line);
@@ -80,10 +76,6 @@
   --shadow-hairline: 0 0 0 1px rgba(255, 255, 255, 0.07);
   --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
   --shadow-primary: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px -4px rgb(0 0 0 / 0.5);
-  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
-  --shadow-sheet: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 28px 64px -24px rgba(0, 0, 0, 0.75);
-  --shadow-pop: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(255, 255, 255, 0.1), 0 24px 48px -12px rgba(0, 0, 0, 0.7);
-  --shadow-lift: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 10px 24px -6px rgba(0, 0, 0, 0.6), 0 40px 80px -30px rgba(0, 0, 0, 0.8);
   --mk-well: #17171A;
   --cover-art-tint: rgb(0 0 0 / 0.18);
 }
@@ -365,7 +357,7 @@
 .mk-card {
   background: var(--color-surface);
   border-radius: var(--radius-container);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-edge), var(--shadow-resting);
 }
 /* A quiet grey well for grouped content (the app's canvas grey, without the glass). */
 .mk-panel {
@@ -441,7 +433,7 @@
 .mk-seg-item[data-active="true"] {
   color: var(--color-heading);
   background: var(--color-surface-raised);
-  box-shadow: var(--shadow-control), 0 1px 3px rgb(0 0 0 / 0.06);
+  box-shadow: var(--shadow-control), var(--shadow-raised);
 }
 
 /* Glass (menus drawn in the Mac menu bar illustration) --------------------------------------------- */
@@ -449,7 +441,7 @@
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
   backdrop-filter: blur(28px) saturate(1.8);
-  box-shadow: var(--glass-edge), var(--shadow-pop);
+  box-shadow: var(--glass-edge), var(--shadow-floating);
 }
 @media (prefers-reduced-transparency: reduce) {
   .mk-glass { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -497,7 +489,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   overflow: clip;
   border-radius: var(--radius-container);
   background: var(--glass-canvas);
-  box-shadow: var(--shadow-lift);
+  box-shadow: var(--shadow-edge), var(--shadow-overlay);
   font-size: 13px;
   line-height: 1.45;
   color: var(--color-ink);
@@ -530,7 +522,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
   backdrop-filter: blur(28px) saturate(1.8);
-  box-shadow: var(--glass-edge), var(--shadow-pop);
+  box-shadow: var(--glass-edge), var(--shadow-floating);
 }
 /* The dock floats over the note's text, so it is nearly opaque. */
 .mk-app-pop.mk-app-dock { background: color-mix(in oklab, var(--color-surface-raised) 94%, transparent); }
@@ -548,7 +540,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   background: var(--glass-active);
   color: var(--color-heading);
   font-weight: 600;
-  box-shadow: var(--glass-edge), 0 1px 3px rgb(0 0 0 / 0.06);
+  box-shadow: var(--glass-edge), var(--shadow-raised);
 }
 .mk-app-tab {
   display: flex;
@@ -566,7 +558,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   color: var(--color-heading);
   font-weight: 600;
   background: var(--color-surface-raised);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent), var(--shadow-raised);
 }
 .mk-app-dock-on {
   background: var(--color-accent);
@@ -595,7 +587,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   background: var(--n-paper);
   color: var(--n-ink);
   border-radius: var(--radius-control);
-  box-shadow: var(--shadow-sheet);
+  box-shadow: var(--shadow-edge), var(--shadow-overlay);
   transition: background-color var(--motion-page, 320ms) var(--mk-ease), color var(--motion-page, 320ms) var(--mk-ease);
 }
 :root[data-theme="dark"] .mk-note {
@@ -647,14 +639,14 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   border-radius: var(--radius-control);
   background: var(--n-paper);
   color: var(--n-ink);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-edge), var(--shadow-resting);
 }
 .mk-notecard-spine { background: var(--note-art, none) center / cover no-repeat; transition: filter 200ms var(--mk-ease); }
 /* Hover, as the app's note cards: the card lifts a little, its shadow deepens and its theme image brightens. */
 .mk-notecard { transition: transform 200ms var(--mk-ease), box-shadow 200ms var(--mk-ease); }
 .mk-notecard:hover {
   transform: translateY(-3px);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--n-ink) 10%, transparent), 0 6px 12px -6px rgb(20 20 30 / 0.16), 0 22px 36px -18px rgb(20 20 30 / 0.28);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--n-ink) 10%, transparent), var(--shadow-lifted);
 }
 .mk-notecard:hover .mk-notecard-spine { filter: saturate(1.15) brightness(1.06); }
 @media (prefers-reduced-motion: reduce) { .mk-notecard, .mk-notecard-spine { transition: none; } .mk-notecard:hover { transform: none; } }
@@ -736,7 +728,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   position: relative;
   border-radius: var(--radius-panel);
   background: var(--color-surface);
-  box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.04), 0 18px 40px -26px rgb(20 20 40 / 0.2);
+  box-shadow: inset 0 0 0 1px var(--mk-hair), var(--shadow-resting);
 }
 /* The dark card's own text, glass and frame (the page around it stays light). */
 .mk-dark {
@@ -749,14 +741,14 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
 }
 .mk-box.mk-dark {
   background: var(--color-canvas);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.2), 0 24px 48px -24px rgb(0 0 0 / 0.55);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), var(--shadow-resting);
 }
 .mk-dark .mk-btn-primary:hover { filter: brightness(0.92); }
 /* A card in the site theme's paper, as the hero note's page is (the theme picked on Home): every page's
    header, and a few sections between white ones. Its wells and stages keep their own colours. */
 .mk-box.mk-tint {
   background: var(--art-paper, var(--color-surface));
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--art-ink, #000) 9%, transparent), 0 1px 2px rgb(0 0 0 / 0.04), 0 18px 40px -26px rgb(20 20 40 / 0.2);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--art-ink, #000) 9%, transparent), var(--shadow-resting);
   transition: background-color var(--motion-page, 320ms) var(--mk-ease);
 }
 .mk-tint .mk-lede, .mk-tint .text-muted { color: color-mix(in oklab, var(--art-ink, var(--color-ink-muted)) 72%, var(--art-paper, #fff)); }
@@ -764,11 +756,11 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
    light while the page's headings turned near-white, so the header headline vanished. */
 :root[data-theme="dark"] .mk-box.mk-tint {
   background: var(--art-paper-dark, var(--color-surface));
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--art-ink-dark, #fff) 12%, transparent), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--art-ink-dark, #fff) 12%, transparent), var(--shadow-resting);
 }
 :root[data-theme="dark"] .mk-tint .mk-lede, :root[data-theme="dark"] .mk-tint .text-muted { color: color-mix(in oklab, var(--art-ink-dark, var(--color-ink-muted)) 72%, var(--art-paper-dark, #000)); }
 
-:root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
+:root[data-theme="dark"] .mk-box { box-shadow: inset 0 0 0 1px var(--mk-hair), var(--shadow-resting); }
 @media (min-width: 640px) { .mk-box { border-radius: var(--radius-container); } }
 
 /* On Home, the grey wells inside the cards (the section pictures, the Recent notes panel, the security note)
@@ -811,7 +803,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   display: block;
   border-radius: var(--radius-control);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-edge), var(--shadow-resting);
   color: var(--color-ink);
   text-align: start;
 }
@@ -857,7 +849,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   border-radius: var(--radius-control);
   background-size: cover;
   background-position: center;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 8px 18px -10px rgb(0 0 0 / 0.35);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), var(--shadow-resting);
   transform-origin: 50% 120%;
 }
 /* The same note in both of the app's themes (their chrome colours, fixed, whatever the site's theme). */
@@ -869,8 +861,8 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   border-radius: var(--radius-control);
   text-align: start;
 }
-.mk-mini-theme[data-mini-theme="light"] { color: #18181B; background: #FFFFFF; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 8px 20px -12px rgb(0 0 0 / 0.3); }
-.mk-mini-theme[data-mini-theme="dark"] { color: #F2F2F3; background: #1C1C1E; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 20px -12px rgb(0 0 0 / 0.6); }
+.mk-mini-theme[data-mini-theme="light"] { color: #18181B; background: #FFFFFF; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), var(--shadow-resting); }
+.mk-mini-theme[data-mini-theme="dark"] { color: #F2F2F3; background: #1C1C1E; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), var(--shadow-resting); }
 .mk-mini-theme[data-mini-theme="light"] .mk-mini-theme-check { color: #FFFFFF; }
 .mk-mini-theme[data-mini-theme="dark"] .mk-mini-theme-check { color: #1C1C1E; }
 @media (prefers-reduced-motion: reduce) {
@@ -911,7 +903,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
 .mk-hero-note {
   border-radius: var(--radius-panel);
   margin-inline: auto;
-  box-shadow: var(--shadow-lift);
+  box-shadow: var(--shadow-edge), var(--shadow-lifted);
 }
 .mk-hero-cover {
   position: relative;
@@ -1004,7 +996,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
   backdrop-filter: blur(28px) saturate(1.8);
-  box-shadow: var(--glass-edge), var(--shadow-pop);
+  box-shadow: var(--glass-edge), var(--shadow-floating);
 }
 :root[data-theme="dark"] .mk-hero-actions {
   --n-accent: var(--art-accent-dark, var(--color-heading));
@@ -1048,7 +1040,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   background: rgb(255 255 255 / 0.2);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
   backdrop-filter: blur(14px) saturate(1.4);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28), 0 6px 20px rgb(0 0 0 / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28), var(--shadow-floating);
 }
 .mk-hero-theme {
   width: 28px;
@@ -1061,7 +1053,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   transition: transform var(--motion-fast, 140ms) var(--mk-ease), box-shadow var(--motion-fast, 140ms) var(--mk-ease);
 }
 .mk-hero-theme:hover { transform: translateY(-1px) scale(1.06); box-shadow: 0 0 0 2px rgb(255 255 255 / 0.7); }
-.mk-hero-theme[aria-checked="true"] { box-shadow: 0 0 0 2px #fff, 0 2px 8px rgb(0 0 0 / 0.25); }
+.mk-hero-theme[aria-checked="true"] { box-shadow: 0 0 0 2px #fff, var(--shadow-raised); }
 .mk-hero-theme:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (min-width: 640px) {
   .mk-hero-themes { top: 20px; right: 20px; }
@@ -1176,7 +1168,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   padding: 6px 20px;
   border-radius: var(--radius-control);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-edge), var(--shadow-resting);
 }
 
 .mk-table { width: 100%; border-collapse: collapse; }
@@ -1334,13 +1326,13 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   color: var(--color-heading);
   background: var(--color-surface-raised);
   /* The app's soft popover shadow, no outline. */
-  box-shadow: var(--shadow-pop);
+  box-shadow: var(--shadow-edge), var(--shadow-raised);
   transition: rotate 260ms cubic-bezier(0.3, 1.6, 0.5, 1), scale 260ms cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 .mk-sticker[data-tone="violet"] {
   color: #fff;
   background: var(--mk-violet-strong);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(0 0 0 / 0.1), 0 10px 24px -10px color-mix(in oklab, var(--mk-violet-strong) 70%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), var(--shadow-raised);
 }
 .mk-sticker[data-tone="ink"] { color: var(--color-canvas); background: var(--color-heading); box-shadow: var(--shadow-primary); }
 .mk-sticker-icon { display: inline-flex; }
@@ -1364,7 +1356,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   30% { translate: 420% 0; opacity: 1; }
   31%, 100% { translate: 420% 0; opacity: 0; }
 }
-.mk-sticker[data-shine][data-tone="violet"] { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 1px 2px rgb(0 0 0 / 0.12), 0 8px 26px -6px color-mix(in oklab, var(--mk-violet) 75%, transparent); }
+.mk-sticker[data-shine][data-tone="violet"] { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), var(--shadow-raised); }
 .mk-motion .mk-sticker:hover { rotate: calc(var(--r, -6deg) * -0.6); scale: 1.06; }
 
 /* Floating pieces: placed by their parent, bobbing gently; MarketingMotion adds the scroll drift. */
@@ -1433,7 +1425,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   background: var(--who);
   text-shadow: none;
   white-space: nowrap;
-  box-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.3);
+  box-shadow: var(--shadow-raised);
 }
 }
 
@@ -1443,7 +1435,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
 .mk-stage .mk-app-pop,
 .mk-mini-stage .mk-app-pop,
 .mk-stage .mk-app {
-  box-shadow: var(--glass-edge), 0 1px 2px rgb(0 0 0 / 0.06), 0 10px 24px -12px rgb(0 0 0 / 0.28);
+  box-shadow: var(--glass-edge), var(--shadow-overlay);
 }
 }
 
@@ -1457,7 +1449,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
 .mk-mac-window {
   --mk-mac-r: 12px;
   border-radius: var(--mk-mac-r, var(--radius-container));
-  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.35), 0 0 0 1px rgb(0 0 0 / 0.1);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.1), var(--shadow-overlay);
 }
 .mk-phone { --mk-phone-r: 15% / 7%; border-radius: var(--mk-phone-r, var(--radius-container)); }
 .mk-phone-screen { --mk-phone-screen-r: 13.5% / 6.2%; border-radius: var(--mk-phone-screen-r, var(--radius-container)); }
@@ -1467,12 +1459,12 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   background: rgb(255 255 255 / 0.62);
   -webkit-backdrop-filter: blur(10px) saturate(1.8);
   backdrop-filter: blur(10px) saturate(1.8);
-  box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.9), inset 0 0 0 0.5px rgb(0 0 0 / 0.06), 0 8px 24px -6px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.06);
+  box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.9), inset 0 0 0 0.5px rgb(0 0 0 / 0.06), var(--shadow-floating);
 }
 /* The apps page's iPhone (product/TouchDevices.tsx) follows the page's theme. */
 :root[data-theme="dark"] .mk-ios-glass-auto {
   background: rgb(44 44 48 / 0.62);
-  box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.16), inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 8px 24px -6px rgb(0 0 0 / 0.5);
+  box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.16), inset 0 0 0 0.5px rgb(255 255 255 / 0.08), var(--shadow-floating);
 }
 @media (prefers-reduced-transparency: reduce) {
   .mk-ios-glass { background: rgb(246 246 248); -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -1486,9 +1478,9 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
    bar here with a lift shadow. Each platform is a tone step on hover and a filled step for the one in view. */
 .mk-downloads-bar {
   background: var(--color-surface-raised);
-  box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.06), 0 14px 32px -12px rgb(20 20 40 / 0.28);
+  box-shadow: inset 0 0 0 1px var(--mk-hair), var(--shadow-floating);
 }
-:root[data-theme="dark"] .mk-downloads-bar { box-shadow: inset 0 0 0 1px var(--mk-hair), 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 36px -12px rgb(0 0 0 / 0.7); }
+:root[data-theme="dark"] .mk-downloads-bar { box-shadow: inset 0 0 0 1px var(--mk-hair), var(--shadow-floating); }
 .mk-downloads-bar-link {
   color: var(--color-ink-muted);
   transition: background-color 160ms var(--mk-ease), color 160ms var(--mk-ease), transform 160ms var(--mk-ease);

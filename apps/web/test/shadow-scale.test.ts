@@ -19,9 +19,8 @@ function files(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-// Not the app: the website keeps its own scale for now (marketing.css), and the share images are drawn without
-// CSS (Satori takes no variables).
-const OUTSIDE = [/^components\/marketing\//, /^app\/\(marketing\)\//, /opengraph-image\.tsx$/, /\/og\.tsx$/, /cardImage\.tsx$/];
+// The share images are drawn without CSS (Satori takes no variables).
+const OUTSIDE = [/opengraph-image\.tsx$/, /\/og\.tsx$/, /cardImage\.tsx$/];
 // Drawing inside the note and folder art, not elevation: the folder's front lip over the notes in its pocket, a
 // note's paper peeking out of a folder (sized in cqw with the art) and the bookmark ribbon's drop.
 const ART = [

@@ -45,8 +45,7 @@ strength) in both themes.
   `shadow-scale.test.ts`.
 - Rings, inset lines, focus rings and 1px lines without blur are edges and are fine.
 - Exceptions, listed in the test: drawing inside the folder and note art (the folder front's lip, a note's paper
-  peeking out of a folder, the bookmark ribbon), the website (`components/marketing`, which still has its own
-  scale) and the share images (Satori can't read CSS variables).
+  peeking out of a folder, the bookmark ribbon) and the share images (Satori can't read CSS variables).
 - Native code uses the same tokens: `.foleviShadow(.floating, radius:)` (edge plus level) or `.nativeShadow(.raised)`
   (drop only; `NativeShadow.card` is `resting`). Don't write `.shadow(color:radius:)` with numbers.
 
@@ -83,7 +82,9 @@ Same role, different values (now one level each):
 
 ## Platforms
 
-- Web: `apps/web/src/app/globals.css` and the components. Windows and Linux (`apps/desktop`) show the web UI, so they
+- Web: `apps/web/src/app/globals.css` and the components. The website (`components/marketing`) uses the same
+  levels: cards `resting` (`lifted` on hover), its product pictures and device frames `overlay`, its glass bars
+  `floating`. Its own copy of the old scale is gone. Windows and Linux (`apps/desktop`) show the web UI, so they
   get the same shadows with no extra work.
 - Folevi for Mac and iPad's web frame keeps its 0.5px rings (`--shadow-edge` is a 0.5px ring under
   `[data-mac-native]`), with drops from the levels.
@@ -92,10 +93,10 @@ Same role, different values (now one level each):
 
 ## Not done yet
 
-- The website (`components/marketing/marketing.css`) keeps its own scale and about 40 one-off shadows.
-- `apps/native-kit/Sources/FoleviDesign/Generated/WebStyles.swift` holds shadows read from the web by
-  `pnpm styles:gen`. It still has the old values until someone runs `pnpm styles:gen` against a dev server
-  (it isn't checked in CI).
-- PR 190 (Home: capture field, Today card, DNA map, summary card) adds its own shadows on another branch. When it
-  lands, they should use `resting` (cards, capture field) and `lifted` (hover); the guard test will flag them.
+- `apps/native-kit/Sources/FoleviDesign/Generated/WebStyles.swift` has the new shadow values (`pnpm styles:gen`,
+  shadows only). The rest of that file is older than the web (font sizes, heights); a full `pnpm styles:gen` would
+  bring it up to date and should be checked against the Mac and iPhone apps on its own.
+- PR 190 (Home: capture field, Today card, DNA map, summary card) adds about 15 one-off shadows on its own branch.
+  After it merges `main`, `shadow-scale.test.ts` lists them; they become `resting` (cards, capture field), `lifted`
+  (hover), `raised` (small controls) and `floating` (the row arrows).
 - SwiftUI's `.shadow` has no spread, so native drops are a little wider than the web's.

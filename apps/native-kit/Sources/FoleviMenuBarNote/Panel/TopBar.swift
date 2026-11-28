@@ -164,7 +164,7 @@ struct DestinationButton: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.primary)
         .onHover { hovering = $0 }
         .quickGlass(.regular.interactive(), in: Capsule())
         .background(MenuAnchorView(anchor: anchor))

@@ -58,11 +58,11 @@ export function MenuBarComposer() {
     navigate(`/float/${encodeURIComponent(id)}?panel=1&new=${into}`, { replace: true });
   };
 
-  // The same paper and title as a new note in the panel (DocumentView's fb-sheet and DocumentHeader), white to the
-  // panel's edges as the note is, so the empty page is a new note in every way but one: it isn't made until
-  // something is written.
+  // The same page, paper, title and first line as a new note (DocumentView's #doc-scroll, fb-page, fb-sheet and
+  // DocumentHeader), so the float page's rules (globals.css) lay it out exactly as the note that replaces it: the
+  // empty page is a new note in every way but one, it isn't made until something is written.
   return (
-    <div className="relative h-full overflow-y-auto px-3 pb-28 pt-8" data-font={style.font} data-width={style.width} style={{ background: "var(--color-surface)" }}>
+    <div id="doc-scroll" className="fb-page relative h-full overflow-y-auto" data-font={style.font} data-width={style.width} style={{ background: "var(--color-surface-sunken)" }}>
       <article className="fb-sheet ui-sheet relative mx-auto" data-background={style.background} {...sheet} data-separator={style.separator} style={{ ...sheet.style, maxWidth: "calc(var(--editor-width) + 8rem)" }}>
         <div className="h-10" aria-hidden />
         <div className="px-5 sm:px-16">

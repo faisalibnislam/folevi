@@ -22,10 +22,10 @@ export type HomeBlock = {
 export const HOME_BLOCKS: readonly HomeBlock[] = [
   { id: "recent", label: "Recent notes" },
   { id: "bookmarks", label: "Bookmarks" },
+  { id: "folders", label: "Recent folders" },
   { id: "today", label: "Today", pair: "main" },
   { id: "tasks", label: "My tasks", pair: "main" },
   { id: "dna", label: "Foli DNA", pair: "side" },
-  { id: "folders", label: "Recent folders" },
   { id: "shared", label: "Shared with me", hiddenByDefault: true },
   { id: "pinned", label: "Pinned note", hiddenByDefault: true },
   { id: "templates", label: "Templates", hiddenByDefault: true },

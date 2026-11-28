@@ -6,16 +6,16 @@ const ids = (saved: Parameters<typeof arrangeHome>[0]) => arrangeHome(saved).map
 
 describe("Home layout", () => {
   test("no saved layout: the default order, the optional blocks off until added", () => {
-    expect(ids(null)).toEqual(["recent", "bookmarks", "today", "tasks", "dna", "folders", "(shared)", "(pinned)", "(templates)"]);
+    expect(ids(null)).toEqual(["recent", "bookmarks", "folders", "today", "tasks", "dna", "(shared)", "(pinned)", "(templates)"]);
   });
 
   test("a saved order is kept; unknown ids (the earlier designs' too) go; missing blocks take their default place", () => {
-    expect(ids({ order: ["folders", "nope", "tasks", "folders", "scratch", "summary"], hidden: ["bookmarks"] })).toEqual(["recent", "(bookmarks)", "today", "folders", "(shared)", "(pinned)", "(templates)", "tasks", "dna"]);
+    expect(ids({ order: ["folders", "nope", "tasks", "folders", "scratch", "summary"], hidden: ["bookmarks"] })).toEqual(["recent", "(bookmarks)", "folders", "today", "tasks", "dna", "(shared)", "(pinned)", "(templates)"]);
   });
 
   test("moving a block skips hidden ones", () => {
     const moved = moveHomeBlock({ order: [], hidden: ["today"] }, "tasks", -1);
-    expect(moved.order.slice(0, 4)).toEqual(["recent", "tasks", "today", "bookmarks"]);
+    expect(moved.order.slice(0, 4)).toEqual(["recent", "bookmarks", "tasks", "today"]);
     expect(moved.hidden).toEqual(expect.arrayContaining(["today", "shared", "pinned", "templates"]));
     expect(moveHomeBlock(null, "recent", -1).order[0]).toBe("recent");
   });
@@ -30,11 +30,11 @@ describe("Home layout", () => {
   test("Today and My tasks sit beside Foli DNA while they follow each other", () => {
     const rows = (saved: Parameters<typeof arrangeHome>[0]) =>
       homeRows(arrangeHome(saved).filter((r) => !r.hidden)).map((row) => (row.kind === "one" ? row.item.block.id : `${row.main.map((r) => r.block.id).join("+")} | ${row.side.map((r) => r.block.id).join("+")}`));
-    expect(rows(null)).toEqual(["recent", "bookmarks", "today+tasks | dna", "folders"]);
-    // Foli DNA moved past Recent folders: each on its own row.
-    expect(rows(moveHomeBlock(null, "dna", 1))).toEqual(["recent", "bookmarks", "today", "tasks", "folders", "dna"]);
+    expect(rows(null)).toEqual(["recent", "bookmarks", "folders", "today+tasks | dna"]);
+    // Recent folders moved to the end: the pair stays together above it.
+    expect(rows({ order: ["recent", "bookmarks", "today", "tasks", "dna", "folders"], hidden: [] })).toEqual(["recent", "bookmarks", "today+tasks | dna", "folders"]);
     // Today taken off Home: My tasks alone beside Foli DNA.
-    expect(rows(setHomeBlockHidden(null, "today", true))).toEqual(["recent", "bookmarks", "tasks | dna", "folders"]);
+    expect(rows(setHomeBlockHidden(null, "today", true))).toEqual(["recent", "bookmarks", "folders", "tasks | dna"]);
   });
 
   test("the Today card's Up next tag", () => {

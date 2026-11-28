@@ -194,7 +194,7 @@ function PinnedNote({ id, choices, pin }: { id: string | null; choices: Summary[
 /**
  * Home (the owner's design version 19): a top line (the date, Customize), the opening (the greeting, the Foli AI
  * summary while Foli AI is on, the capture field), then this person's sections (lib/app/homeLayout.ts): Recent notes,
- * Bookmarks, Today and My tasks beside Foli DNA, Recent folders, and the ones they add (Shared with me, Pinned note,
+ * Bookmarks, Recent folders, Today and My tasks beside Foli DNA, and the ones they add (Shared with me, Pinned note,
  * Templates). Each section is a serif title over a hairline with See all; Today and the DNA map are the only tiles.
  */
 export function HomeDashboard() {

@@ -264,7 +264,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
                           href={`/settings/${s.id}`}
                           aria-current={active ? "page" : undefined}
                           className={`group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-body outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
-                            active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
+                            active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),var(--shadow-raised)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
                           }`}
                         >
                           <Icon size={16} aria-hidden className={`flex-none transition-colors ${active ? "text-heading" : "text-muted group-hover:text-heading"}`} />

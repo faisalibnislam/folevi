@@ -300,7 +300,7 @@
   border: 0; border-radius: var(--radius-panel);
   background: var(--glass-pop);
   -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
-  box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
+  box-shadow: var(--glass-edge), var(--shadow-floating);
 }
 .fb-whiteboard-box[data-full] .fb-wb-spacer { flex: none; width: 4px; }
 /* The Mac app: clear of the window's buttons, and the bar's own empty stretches drag the window. */

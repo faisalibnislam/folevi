@@ -160,7 +160,7 @@ function NoteCarousel({ docs, label, recent, allCards }: { docs: Summary[] | und
   // coloured overlay, so the fade matches whatever is behind it (the glass panel, a note's artwork).
   const fadeMask = `linear-gradient(to right, ${edges.start ? "#000" : "transparent"} 0, #000 64px, #000 calc(100% - 64px), ${edges.end ? "#000" : "transparent"} 100%)`;
   // The arrows sit in the page's side margin, beside the row (over the cards only on phones, where there's no margin).
-  const arrow = "absolute top-[calc(50%-10px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-chip bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform,background-color] hover:scale-105 hover:bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_6%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  const arrow = "absolute top-[calc(50%-10px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-chip bg-surface text-heading shadow-[var(--shadow-edge),var(--shadow-floating)] transition-[opacity,transform,background-color] hover:scale-105 hover:bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_6%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
   return (
     <div className="relative">
       <ul
@@ -202,7 +202,7 @@ function TodaysReviews() {
   if (!today?.hasCards) return null;
   const waiting = today.due + today.new;
   return (
-    <section aria-labelledby="home-reviews" className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-container bg-[var(--glass-active)] px-5 py-4 shadow-[var(--glass-edge),var(--glass-shadow)]">
+    <section aria-labelledby="home-reviews" className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-container bg-[var(--glass-active)] px-5 py-4 shadow-[var(--glass-edge),var(--shadow-resting)]">
       <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
         <Layers size={17} strokeWidth={1.9} />
       </span>

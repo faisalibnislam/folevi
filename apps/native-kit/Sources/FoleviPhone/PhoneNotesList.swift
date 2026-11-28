@@ -364,7 +364,7 @@ public struct PhoneNotesListScreen: View {
                             .phoneZoomSource(row.id)
                             .modifier(PhoneWiggle(on: arranging && !held, clockwise: at.isMultiple(of: 2)))
                             .scaleEffect(held && !WebMotion.reduced ? 1.06 : 1)
-                            .shadow(color: .black.opacity(held ? 0.22 : 0), radius: held ? 18 : 0, y: held ? 10 : 0)
+                            .nativeShadow(held ? .lifted : nil)
                             .offset(liftOffset(row.id))
                             .zIndex(held ? 1 : 0)
                             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.grid)) } action: {
@@ -655,7 +655,7 @@ struct PhoneSelectMark: View {
             }
         }
         .frame(width: 28, height: 28)
-        .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+        .nativeShadow(.raised)
         .animation(.easeOut(duration: 0.15), value: on)
     }
 }

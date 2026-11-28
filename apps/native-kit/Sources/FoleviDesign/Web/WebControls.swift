@@ -177,7 +177,7 @@ public struct WebSlider: View {
                 RoundedRectangle(cornerRadius: 5, style: .circular)
                     .fill(webColor("color-surface-raised", scheme, .white))
                     .overlay(RoundedRectangle(cornerRadius: 5, style: .circular).strokeBorder(over || dragging ? accent : webColor("color-line", scheme), lineWidth: over || dragging ? 1.5 : 1))
-                    .shadow(color: .black.opacity(0.16), radius: 2, y: 1)
+                    .nativeShadow(.raised)
                     .overlay {
                         if focused {
                             RoundedRectangle(cornerRadius: 7, style: .circular).strokeBorder(webColor("color-focus", scheme), lineWidth: 2).padding(-3)

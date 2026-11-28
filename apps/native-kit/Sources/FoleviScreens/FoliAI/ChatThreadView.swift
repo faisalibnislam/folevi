@@ -144,7 +144,7 @@ public struct FoliThreadView: View {
                             .padding(.horizontal, 14).frame(minHeight: 36)
                             .foregroundStyle(Folevi.color.ink)
                             .background(Capsule().fill(Folevi.color.surfaceRaised))
-                            .foleviShadow(.pop, radius: 18)
+                            .foleviShadow(.floating, radius: 18)
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)

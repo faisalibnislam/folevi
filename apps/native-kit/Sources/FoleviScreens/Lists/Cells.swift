@@ -58,7 +58,7 @@ struct SelectMark: View {
             if on { Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)).foregroundStyle(Folevi.color.canvas) }
         }
         .frame(width: 26, height: 26)
-        .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+        .nativeShadow(.raised)
         .accessibilityHidden(true)
     }
 }

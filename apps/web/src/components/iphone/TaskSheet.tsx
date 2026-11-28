@@ -289,7 +289,7 @@ export function Segmented<T extends string>({ label, value, options, onChange }:
     <div role="radiogroup" aria-label={label} className="relative flex min-h-9 rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] p-0.5">
       <span
         aria-hidden
-        className="absolute inset-y-0.5 left-0.5 rounded-capsule bg-canvas shadow-[0_3px_8px_rgb(0_0_0/0.12),0_0_0_0.5px_rgb(0_0_0/0.04)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:bg-raised"
+        className="absolute inset-y-0.5 left-0.5 rounded-capsule bg-canvas shadow-[0_0_0_0.5px_rgb(0_0_0/0.04),var(--shadow-raised)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:bg-raised"
         style={{ width: `calc((100% - 4px) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
       />
       {options.map((o) => (

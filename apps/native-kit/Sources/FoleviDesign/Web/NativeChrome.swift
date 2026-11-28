@@ -335,56 +335,43 @@ public extension View {
 
 // MARK: - The Mac's shadows
 
-/// The four shadows of Folevi for Mac's native look (the owner, 2026-11-18: "shadows are inconsistent ... I prefer
-/// less shadows"). Every shadow was its own numbers, from 5% to 25% and 1 to 28 pt. Each is now one of these, all
-/// of them light; a surface is told apart by its hairline edge first and its shadow second.
+/// The shadows of Folevi for Mac's native look: the app's one elevation scale (packages/design-tokens shadow,
+/// docs/SHADOWS.md; the owner, 2026-11-18: "I prefer less shadows", then 2026-11-28: one consistent hierarchy). A
+/// surface is told apart by its hairline edge first and its shadow second; the edge is the caller's.
 public enum NativeShadow: Sendable {
     /// A chosen pill in its track, a knob: just enough to lift it off the track.
     case raised
     /// Content sitting on the page: a thumbnail, a picture of a tab.
     case card
-    /// A control or tip floating over content: a tab being dragged, a card under the pointer, a tooltip.
+    /// A card under the pointer, a tab being dragged.
+    case lifted
+    /// A control or tip floating over content: a tooltip, a popover, the note's bar.
     case floating
-    /// A surface over the window: a dialog, a popover, the floating chat.
+    /// A surface over the window: a dialog, the floating chat.
     case overlay
 
-    public var opacity: Double {
+    public var pair: ShadowPair {
         switch self {
-        case .raised: 0.12
-        case .card: 0.05
-        case .floating: 0.09
-        case .overlay: 0.13
+        case .raised: FoleviTokens.Shadow.raised
+        case .card: FoleviTokens.Shadow.resting
+        case .lifted: FoleviTokens.Shadow.lifted
+        case .floating: FoleviTokens.Shadow.floating
+        case .overlay: FoleviTokens.Shadow.overlay
         }
     }
-    public var radius: CGFloat {
-        switch self {
-        case .raised: 1.5
-        case .card: 4
-        case .floating: 9
-        case .overlay: 20
-        }
-    }
-    public var y: CGFloat {
-        switch self {
-        case .raised: 0.5
-        case .card: 1.5
-        case .floating: 4
-        case .overlay: 9
-        }
-    }
-    /// Black at the level's strength; a dark window needs more of it to show at all.
-    public func color(_ scheme: ColorScheme) -> Color { Color.black.opacity(min(0.5, opacity * (scheme == .dark ? 2.4 : 1))) }
 }
 
 struct NativeShadowModifier: ViewModifier {
     let level: NativeShadow?
     @Environment(\.colorScheme) private var scheme
     func body(content: Content) -> some View {
-        if let level {
-            content.shadow(color: level.color(scheme), radius: level.radius, y: level.y)
-        } else {
-            content.shadow(color: .clear, radius: 0)
-        }
+        // Always two layers (the levels each have two), clear for none, so a change of level animates.
+        let layers = level?.pair.resolve(scheme) ?? []
+        let a = layers.count > 0 ? layers[0] : nil
+        let b = layers.count > 1 ? layers[1] : nil
+        content
+            .shadow(color: a?.color.color ?? .clear, radius: (a?.blur ?? 0) / 2, x: a?.x ?? 0, y: a?.y ?? 0)
+            .shadow(color: b?.color.color ?? .clear, radius: (b?.blur ?? 0) / 2, x: b?.x ?? 0, y: b?.y ?? 0)
     }
 }
 

@@ -82,7 +82,7 @@ public struct CatchUpCardView: View {
         }
         .padding(18)
         .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).fill(Folevi.color.surfaceRaised))
-        .foleviShadow(.card, radius: FoleviTokens.Radius.container)
+        .foleviShadow(.resting, radius: FoleviTokens.Radius.container)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("catch-up-card")
     }

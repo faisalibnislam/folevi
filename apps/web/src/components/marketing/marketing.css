@@ -256,7 +256,7 @@
     overscroll-behavior: contain;
     /* The page panel is the outer frame (18); the note inside it is 14, so the inner corner is never rounder. */
     border-radius: var(--radius-container);
-    box-shadow: var(--glass-edge), var(--glass-shadow);
+    box-shadow: var(--glass-edge), var(--shadow-resting);
   }
 }
 /* The navigation drawer on narrow screens slides in from the left. */
@@ -524,7 +524,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   background: var(--glass-sidebar);
   -webkit-backdrop-filter: blur(30px) saturate(1.8);
   backdrop-filter: blur(30px) saturate(1.8);
-  box-shadow: var(--glass-edge), var(--glass-shadow);
+  box-shadow: var(--glass-edge), var(--shadow-resting);
 }
 .mk-app-pop {
   background: var(--glass-pop);
@@ -538,7 +538,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   background: var(--glass-content);
   -webkit-backdrop-filter: blur(30px) saturate(1.4);
   backdrop-filter: blur(30px) saturate(1.4);
-  box-shadow: var(--glass-edge), var(--glass-shadow);
+  box-shadow: var(--glass-edge), var(--shadow-resting);
 }
 @media (prefers-reduced-transparency: reduce) {
   .mk-app-glass, .mk-app-pop, .mk-app-content { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -580,7 +580,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   overflow: hidden;
   border-radius: var(--radius-panel);
   background: var(--note-art, var(--color-surface-sunken)) center / cover no-repeat;
-  box-shadow: var(--glass-edge), var(--glass-shadow);
+  box-shadow: var(--glass-edge), var(--shadow-resting);
 }
 /* A note's sheet, coloured by its theme (editor.css: .fb-sheet[data-sheet="art"][data-text="art"]). */
 .mk-note {

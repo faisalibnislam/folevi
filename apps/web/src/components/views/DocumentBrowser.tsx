@@ -732,7 +732,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   aria-label={`New page from ${t.name}`}
                   onClick={() => void createDocument({ title: t.name, templateId: t.key })}
                   data-card-row=""
-                  className="flex items-start gap-3 ui-card rounded-control p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
+                  className="flex items-start gap-3 ui-card rounded-control p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-edge),var(--shadow-floating)]"
                 >
                   <TemplateTile name={t.icon} />
                   <span>
@@ -814,7 +814,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   {...cardProps(d)}
                 >
                   {layout === "compact" ? (
-                    <AppLink href={`/d/${d.id}`} data-card-row="" className="block h-28 rounded-chip shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus">
+                    <AppLink href={`/d/${d.id}`} data-card-row="" className="block h-28 rounded-chip shadow-[var(--shadow-edge),var(--shadow-resting)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-edge),var(--shadow-floating)] focus-visible:ring-2 focus-visible:ring-focus">
                       <DocumentCardPreview
                         title={d.title}
                         style={d.style}

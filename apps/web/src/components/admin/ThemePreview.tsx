@@ -47,7 +47,7 @@ export function ThemePreview({ theme, dark }: { theme: PreviewTheme; dark: boole
   const titleOnCover = p.tone === "deep" ? "#ffffff" : ink;
   return (
     <div className="overflow-hidden rounded-panel p-4" style={{ background: theme.image ? `${theme.image} center / cover no-repeat` : "var(--color-surface-sunken)" }}>
-      <article className="overflow-hidden rounded-control shadow-[var(--shadow-sheet)]" style={{ background: paper, color: ink }}>
+      <article className="overflow-hidden rounded-control shadow-[var(--shadow-edge),var(--shadow-overlay)]" style={{ background: paper, color: ink }}>
         <div className="relative h-24" style={{ background: theme.image ? `${theme.image} center / cover no-repeat` : "transparent" }}>
           <h3 className="absolute bottom-2 left-5 right-5 truncate text-title-1 font-semibold leading-tight" style={{ fontFamily: titleFont(d, fonts), color: titleOnCover, textShadow: p.tone === "deep" ? "0 1px 14px rgb(0 0 0 / 0.4)" : undefined }}>
             {theme.name || "Untitled theme"}

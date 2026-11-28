@@ -127,7 +127,7 @@ struct DnaTimelineBar: View {
                         Circle().fill(moreVar("color-surface", scheme)).overlay(Circle().stroke(moreVar("color-heading", scheme), lineWidth: 2))
                             .overlay { if focused { Circle().stroke(moreVar("color-focus", scheme), lineWidth: 2).padding(-4) } }
                             .frame(width: 14, height: 14).scaleEffect(overTrack ? 1.1 : 1)
-                            .shadow(color: .black.opacity(NativeShadow.raised.opacity), radius: NativeShadow.raised.radius, y: NativeShadow.raised.y)
+                            .nativeShadow(.raised)
                             .position(x: x, y: mid)
                     }
                     .animation(glide, value: at)

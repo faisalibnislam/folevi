@@ -48,11 +48,11 @@
 .st-note {
   position: absolute; display: flex; flex-direction: column; padding: 12px 12px 8px;
   border-radius: var(--radius-tiny); background: var(--st-paper); color: var(--color-ink);
-  box-shadow: 0 1px 1px rgb(0 0 0 / 0.05), 0 8px 16px -10px rgb(0 0 0 / 0.32);
+  box-shadow: var(--shadow-resting);
   cursor: move; outline: none; overflow: hidden;
   transition: box-shadow 140ms;
 }
-.st-note[data-selected] { box-shadow: 0 0 0 2px var(--st-select), 0 10px 22px -10px rgb(0 0 0 / 0.38); }
+.st-note[data-selected] { box-shadow: 0 0 0 2px var(--st-select), var(--shadow-lifted); }
 .st-note:focus-visible { box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-focus); }
 .st-note-text {
   flex: 1; min-height: 0; overflow: hidden; font-weight: 500; line-height: 1.3; letter-spacing: -0.006em;
@@ -96,7 +96,7 @@
   position: absolute; z-index: 2; margin: 0; padding: 12px 12px 36px; border: 0; outline: none; resize: none;
   border-radius: var(--radius-tiny); background: var(--st-paper); color: var(--color-ink);
   font-family: var(--font-sans); font-weight: 500; line-height: 1.3; letter-spacing: -0.006em; white-space: pre-wrap;
-  box-shadow: 0 0 0 2px var(--color-focus), 0 10px 22px -10px rgb(0 0 0 / 0.38);
+  box-shadow: 0 0 0 2px var(--color-focus), var(--shadow-lifted);
   caret-color: var(--color-ink); user-select: text; -webkit-user-select: text;
 }
 .st-label-input {
@@ -110,7 +110,7 @@
   position: absolute; z-index: 3; display: flex; align-items: center; gap: 2px; padding: 4px;
   border-radius: var(--radius-panel); background: var(--glass-pop);
   -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
-  box-shadow: var(--glass-edge), 0 6px 20px -8px rgb(0 0 0 / 0.18);
+  box-shadow: var(--glass-edge), var(--shadow-floating);
   font: 500 var(--type-subheadline)/1 var(--font-sans); color: var(--color-ink);
 }
 .st-bar-zoom { right: 10px; bottom: 10px; }

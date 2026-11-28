@@ -20,7 +20,7 @@ export function SelectionMarquee({ rect }: { rect: CSSProperties | null }) {
 /** The check on a selected card's corner (the card also gets a ring, or a folder card a wash). */
 export function SelectedCheck() {
   return (
-    <span aria-hidden className="pointer-events-none absolute -left-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-chip bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.2)]">
+    <span aria-hidden className="pointer-events-none absolute -left-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-chip bg-heading text-canvas shadow-[var(--shadow-raised)]">
       <Check size={14} strokeWidth={3} />
     </span>
   );

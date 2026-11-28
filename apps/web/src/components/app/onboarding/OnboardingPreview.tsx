@@ -248,14 +248,14 @@ function Home({ pages, art, ai, compact }: { pages: StarterPage[]; art: CoverArt
   return (
     <div className="ob-content absolute inset-0 overflow-hidden rounded-panel px-8 pt-7">
       <p className="ui-display text-large-title leading-none">Home</p>
-      <div className={`mt-4 flex h-9 w-fit items-center gap-2 rounded-control bg-[var(--glass-active)] px-3.5 text-subheadline font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] transition-opacity duration-500 ${ai ? "" : "opacity-0"}`}>
+      <div className={`mt-4 flex h-9 w-fit items-center gap-2 rounded-control bg-[var(--glass-active)] px-3.5 text-subheadline font-semibold text-heading shadow-[var(--glass-edge),var(--shadow-raised)] transition-opacity duration-500 ${ai ? "" : "opacity-0"}`}>
         <AiIcon size={14} /> Catch me up
       </div>
       <p className="ui-caps mt-6 text-footnote">Recent notes</p>
       <ul className={`mt-2.5 grid gap-3 ${cols === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
         {pages.slice(0, cols * 2 - 1).map((page, i) => (
           <li key={page.template} className="ob-arrive h-[132px]" style={{ ["--i" as string]: i % 2 }}>
-            <div className="ob-note flex h-full flex-col rounded-control px-4 py-3.5 shadow-[var(--shadow-card)]">
+            <div className="ob-note flex h-full flex-col rounded-control px-4 py-3.5 shadow-[var(--shadow-edge),var(--shadow-resting)]">
               <div className="flex items-center gap-2">
                 <TemplateTile name={page.icon} size={24} iconSize={13} className="!rounded-chip" />
                 <span className="text-footnote text-muted">Just now</span>
@@ -267,7 +267,7 @@ function Home({ pages, art, ai, compact }: { pages: StarterPage[]; art: CoverArt
           </li>
         ))}
         <li className="h-[132px]">
-          <div className="ob-note grid h-full grid-cols-[14px_minmax(0,1fr)] overflow-hidden rounded-control shadow-[var(--shadow-card)]" style={noteVars(art)}>
+          <div className="ob-note grid h-full grid-cols-[14px_minmax(0,1fr)] overflow-hidden rounded-control shadow-[var(--shadow-edge),var(--shadow-resting)]" style={noteVars(art)}>
             <span className="transition-[background] duration-500" style={{ background: art ? `${artThumb(art.id)} center / cover no-repeat` : "var(--color-surface-sunken)" }} />
             <div className="min-w-0 px-4 py-3.5">
               <p className="ob-note-h truncate text-body">Welcome to Folevi</p>
@@ -278,7 +278,7 @@ function Home({ pages, art, ai, compact }: { pages: StarterPage[]; art: CoverArt
         </li>
         {seeds.map((title) => (
           <li key={title} className="h-[132px]">
-            <div className="ob-note flex h-full flex-col rounded-control px-4 py-3.5 shadow-[var(--shadow-card)]">
+            <div className="ob-note flex h-full flex-col rounded-control px-4 py-3.5 shadow-[var(--shadow-edge),var(--shadow-resting)]">
               <p className="ob-note-h line-clamp-2 text-body leading-snug">{title}</p>
               <span className="mt-auto block h-1.5 w-4/5 rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />
               <span className="mt-1.5 block h-1.5 w-3/5 rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]" />

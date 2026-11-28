@@ -273,16 +273,15 @@ radius or more sits clear of the curve and takes its own role's token.
 values, Tailwind's own sizes, raw CSS values, inline numbers). Nesting is checked in the browser on the
 app's views and every website page at desktop and phone widths.
 
-Shadows (`--shadow-*` / `FoleviShadow.*`), each a stack of layers:
+Shadows (`--shadow-*` / `FoleviShadow.*` / `NativeShadow.*`): one hierarchy, written as an edge plus a level
+(`docs/SHADOWS.md`; `apps/web/test/shadow-scale.test.ts` fails on anything else).
 
-- `hairline`: a 1px ring instead of borders on light surfaces.
-- `control`: inner top highlight + ring + tiny cast shadow: secondary buttons, active nav pill,
-  segmented thumb, tiles.
-- `primary`: inner top highlight, inner bottom shade, cast glow: primary (cocoa) buttons.
-- `card`: inner rim + ring + soft drop: cards, inspector panel, tiles on hover.
-- `sheet`: the document page lifted off the canvas.
-- `pop`: menus, popovers, the command palette, dialogs.
-- `lift`: an item being dragged.
+- Edges, no elevation: `hairline` (a 1px ring), `edge` (a solid surface's top sheen and ring), `control` and
+  `primary` (button skins).
+- Levels, drops only, each deeper than the last: `raised` (a control off its track: chosen segment, active tab,
+  knob), `resting` (cards, the page, glass panels), `lifted` (a card under the pointer or dragged), `floating`
+  (menus, popovers, tooltips, toasts, toolbars, the Ask Foli AI button) and `overlay` (dialogs, sheets, the command
+  palette). Flat is an edge with no drop.
 
 Buttons are deliberately light on skeuomorphism: `primary` and `control` shadows are faint (a soft
 1–3px cast and a barely visible top highlight). Primary button fill: `accent` with at most a 4% lighter

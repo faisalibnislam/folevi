@@ -95,7 +95,7 @@ function PdfPages({ bytes }: { bytes: Uint8Array }) {
           const canvas = document.createElement("canvas");
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
-          canvas.className = "mx-auto mb-3 block w-full max-w-full rounded-tiny bg-white shadow-sm";
+          canvas.className = "mx-auto mb-3 block w-full max-w-full rounded-tiny bg-white shadow-[var(--shadow-resting)]";
           canvas.setAttribute("aria-label", `Page ${n}`);
           canvas.setAttribute("role", "img");
           host.appendChild(canvas);

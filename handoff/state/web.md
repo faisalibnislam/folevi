@@ -14,8 +14,10 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 - Spell check, suggestions and next-word prediction on Tab (PR 143, released in 1.8.78): Folevi's own checker in a worker, nine spelling languages plus Chinese prediction, the personal dictionary synced, Foli AI completions only when Foli AI is on and never for encrypted notes. The ghost word is CSS (`data-ghost`), never part of the text.
 - Sidebar More and Customize sidebar (2026-11-27, `lib/app/sidebarLayout.ts`, `convex/sidebarLayout.ts`): the app's own items follow a per-account layout; Shared with Me, Changes and Templates start under More; Home and Drafts always on the sidebar. Web, Windows and Linux only: the native Mac, iPhone/iPad and Android sidebars don't have it yet.
+- One shadow hierarchy (2026-11-28, `docs/SHADOWS.md`): an edge plus a level (`raised`, `resting`, `lifted`, `floating`, `overlay`) from the tokens, on the web and native. `test/shadow-scale.test.ts` fails on raw drop shadows.
 
 ## Next steps
+- Shadows: move the website (`marketing.css`) onto the levels; run `pnpm styles:gen` so `WebStyles.swift` picks up the new values.
 - Spell check and prediction: not yet tried in the native builds (Mac, iPhone, Windows) or on devices.
 
 - Spell check: a native Settings row for Writing on the Mac and iPhone/iPad; try it in each app's build.

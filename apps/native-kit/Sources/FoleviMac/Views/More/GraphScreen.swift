@@ -826,7 +826,7 @@ struct GraphScreen: View {
             Text(verbatim: title).webText(.role(.subheadline, weight: on ? 550 : 400)).lineLimit(1)
                 .foregroundStyle(on ? moreVar("color-heading", scheme) : moreVar("color-ink-muted", scheme))
                 .padding(.horizontal, 12).frame(height: 28)
-                .background(RoundedRectangle(cornerRadius: segmentRadius, style: .circular).fill(on ? moreVar("color-surface", scheme) : .clear).shadow(color: .black.opacity(on ? 0.08 : 0), radius: 1, y: 0.5))
+                .background(RoundedRectangle(cornerRadius: segmentRadius, style: .circular).fill(on ? moreVar("color-surface", scheme) : .clear).nativeShadow(on ? .raised : nil))
                 .contentShape(Rectangle())
                 .dnaHover(radius: segmentRadius, selected: false)
         }

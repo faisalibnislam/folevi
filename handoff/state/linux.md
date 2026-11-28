@@ -4,7 +4,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Current state
 
-- Released: 1.9.80 (build 111, 2026-11-28, from `7b16a128`). AppImage, .deb and .rpm for x86_64 and aarch64 on folevi.com, apt and rpm repositories (`folevi.com/download/linux/apt` and `/rpm`, signed with the Folevi Linux key), update feeds `desktop/linux-*/latest.json` at 1.9.80. Snap Store: arm64 revision 11 (1.9.80) on stable; amd64 is still revision 10 (1.8.78), because Launchpad answered 503 to every remote-build on 2026-11-28.
+- Released: 1.9.80 (build 111, 2026-11-28, from `7b16a128`). AppImage, .deb and .rpm for x86_64 and aarch64 on folevi.com, apt and rpm repositories (`folevi.com/download/linux/apt` and `/rpm`, signed with the Folevi Linux key), update feeds `desktop/linux-*/latest.json` at 1.9.80. Snap Store: 1.9.80 on stable, arm64 revision 11 (built in the VM) and amd64 revision 12 (Launchpad, after about 90 minutes of 503s on 2026-11-28).
 - Automatic AppImage updates tested in the VM (aarch64, own Xvfb display): 1.7.78 to 1.8.78 and 1.8.78 to 1.9.80 both downloaded, verified, replaced the file and restarted on the new version. Two problems found: message dialogs need `zenity` (below), and Vercel's CDN had cached a 100-byte range response for a versioned file (fixed in PR 187: `CDN-Cache-Control: no-store` on `/download/*`).
 - Message dialogs (update offer, up to date, errors) are drawn with GTK (`linux::message_dialog`), not by the dialog plugin, whose portal backend needs `zenity`; the plugin stays for the file chooser. Tested without zenity in the VM: Check for Updates showed "Folevi is up to date", and a 1.9.79 test build offered 1.9.80, installed it with Return and restarted as 1.9.80.
 - The VM's disk filled up (78 GB) on 2026-11-28 and AppImage bundling failed with "failed to run linuxdeploy": every `snap-build.sh` leaves a stopped LXD container (`lxc list --project snapcraft`); delete the old `snapcraft-folevi-*` ones (not the base instance).
@@ -17,7 +17,6 @@ Keep this short and true: rewrite it when things change, and put history in `han
 ## Next steps
 
 - Release the GTK message dialogs (PR `claude/linux-gtk-dialogs`, merged after 1.9.80): until then the AppImage's update offer needs `zenity` on KDE and minimal installs.
-- The amd64 snap at 1.9.80: rerun `snapcraft remote-build --build-for amd64` from `~/snap-remote-1980` in the VM once Launchpad answers, then `snapcraft upload --release=stable`.
 - The new features on a real Linux desktop (the update test ran in a VM).
 - Dropbox and Google Drive need the owner's app key and Desktop client id (repository variables `FOLEVI_DROPBOX_APP_KEY`, `FOLEVI_GOOGLE_DESKTOP_CLIENT_ID`) and the loopback redirects registered.
 - The owner: copy `~/.folevi-linux-signing/folevi-repo-secret.asc` and `~/.folevi-desktop-signing/folevi-updater.key` to the password manager.

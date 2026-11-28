@@ -4,6 +4,28 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.9.82: Small update
+
+Released 2026-11-28 17:40:25+06:00 (build 113, tag v1.9.82)
+
+A new Home and a search in Settings on the web, Mac, iPad and iPhone, and a quick note in the Mac menu bar.
+
+### Added
+
+- Home is redesigned. It has At a glance, Today, My tasks, Foli DNA and Catch me up, and Customize lets you arrange the sections or reset them. iPhone shows it in one column.
+- Settings has a search. Type what you're looking for, or ask Foli AI to find the setting.
+- Quick note in the Mac menu bar: the menu bar icon or ⌥Space opens it from any app. Write, then Save (⌘Return) makes a note in Drafts or the folder you pick, with its first line as the title. Open and Undo follow the save. It replaces the note panel from 1.9.81.
+- From the quick note you can add the text as a task (⇧⌘Return), save a screenshot with the note (⇧⌘5), pin it on top, or open it as a window.
+
+### Improved
+
+- Folder cards show the notes inside as their real note cards.
+- Note and folder cards have a softer shadow and gradient, a wider spine with round holes, and bigger subfolder cards. A card's date no longer says "Edited".
+- Shadows follow one set of levels on the web, Mac, iPad and iPhone.
+- Settings splits "You" into Account, Security, App and Data.
+- The sidebar fills the selected item's icon, and More opens by itself when you go to a page under it.
+- Lists: a "Notes" heading under a folder's subfolders, two-line rows, and no Sort on an empty list. Task boxes are round, with a flag for priority.
+
 ## Version 1.9.81: Small update
 
 Released 2026-11-28 11:48:26+06:00 (build 112, tag v1.9.81)

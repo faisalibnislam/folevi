@@ -14,8 +14,7 @@ An optional layout for every note list, beside today's cards and rows: the sideb
   Pinned is the list's bookmarked notes; no new pin feature. Bookmarks itself has no Pinned group (all are).
   Sorted by title or by hand, there are no date groups (Pinned still leads).
 - Picking a note swaps the note in place in the same tab. Middle-click and the menu's Open in New Tab open a tab.
-  ⌘-click selects, as it does in every list today (the multi-select must keep working); the owner's answer said
-  ⌘-click opens a tab, so this is the one point to confirm with them.
+  ⌘-click selects, as it does in every list today (the owner chose this on 2026-11-28, over ⌘-click opening a tab).
   A list opens on its last note, or its most recently edited one.
 - The middle column is resizable (width remembered) and collapsible (its own button and ⌘⌥L).
 - Narrow windows (under 900 px wide) and the phone layout keep today's layout.

@@ -13,7 +13,7 @@ code as the cards. The note on the right is RouteView's real note page. Addresse
 `lib/app/tabs.tsx` treats them as the list's page, so the list keeps one tab. Pure logic (groups, address, memory,
 arrow keys) is in `lib/app/noteColumns.ts`.
 
-Choices the owner may want to change: ⌘-click on a row selects (as in every list today) instead of opening a tab;
+⌘-click on a row selects, as in every list today (the owner chose this over opening a tab, 2026-11-28);
 middle-click and the row menu's Open in New Tab open one. A folder's subfolders don't show in the column (the
 sidebar has them). Below 900 px wide the cards come back.
 

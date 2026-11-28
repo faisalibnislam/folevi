@@ -1035,7 +1035,7 @@ public struct WebFolderCard: View {
         let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.15, weight: 600)
         let countSize = min(18, max(11, 4.9 * cq * k))
         // The Edited date at the card-time size, as a note card's time.
-        let countStyle = WebTextStyle(size: countSize, leading: countSize * 1.3, weight: 500).cardInterface(chrome?.forText != nil)
+        let countStyle = WebTextStyle(size: countSize, leading: countSize * 1.3, weight: 400).cardInterface(chrome?.forText != nil)
         let editedStyle = WebTextStyle.cardTime.cardInterface(chrome?.forText != nil)
         let nameW = Self.nameWidth(w, menuRoom: menuRoom && !phone)
         let nameLines = subfolder ? 1 : Self.nameLines(front: frontH, cq: cq, name: nameStyle.leading, count: countStyle.leading, edited: model.editedText.isEmpty ? 0 : editedStyle.leading)

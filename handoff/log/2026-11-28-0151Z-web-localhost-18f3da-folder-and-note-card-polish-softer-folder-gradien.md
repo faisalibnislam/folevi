@@ -71,3 +71,4 @@ Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `We
 - Bookmarks empty state is one compact dashed row. The Foli AI summary's errors are muted, not red.
 - Not done: the Mac's native Home (gap in DESKTOP_PARITY.md); no calendar is connected on the test account, so the
   event rows and Up next tag weren't seen with real events.
+- Home is at most 1,320px wide (was 1,100).

@@ -340,7 +340,7 @@ export function HomeDashboard() {
       title={<h1 className="truncate text-subheadline font-semibold">Home</h1>}
       tabTitle="Home"
     >
-      <div className="@container mx-auto max-w-[1100px] px-4 pb-[max(4rem,var(--fab-clearance))] pt-3 sm:px-8 xl:px-11">
+      <div className="@container mx-auto max-w-[1320px] px-4 pb-[max(4rem,var(--fab-clearance))] pt-3 sm:px-8 xl:px-11">
         <HomeTopLine editing={editing} onToggle={() => setEditing((e) => !e)} />
         {/* The opening, the page's full width: the greeting, the Foli AI summary (while Foli AI is on), the capture field. */}
         <div className="mt-1 flex min-w-0 flex-col gap-6">

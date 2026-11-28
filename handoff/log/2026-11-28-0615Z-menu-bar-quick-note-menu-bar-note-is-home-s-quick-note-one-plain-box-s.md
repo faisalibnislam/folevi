@@ -35,3 +35,10 @@ Not checked:
 - A real save against the dev deployment from the new panel.
 - A screenshot saved into a note.
 - VoiceOver.
+
+Then, from the owner's tries in Folevi Dev:
+- The panel's smallest size is 400 by 260 pt; it can't be resized below that (a picture at that size is in the tests), and it opens at that size.
+- The box's text is Spectral at 16 pt, with the serif note's 1.62 line height. Instrument Sans and 17 pt were tried and set aside.
+- The "Saves to" place is in medium weight, as on Home.
+
+The owner said it's ready ("I think it's good and ready to push").

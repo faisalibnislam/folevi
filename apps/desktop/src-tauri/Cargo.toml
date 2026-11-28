@@ -76,6 +76,9 @@ tauri-plugin-dialog = "2"
 tauri-plugin-dialog = { version = "2", default-features = false, features = ["xdg-portal"] }
 # The desktop's portals: light/dark (settings) and Quick Add's shortcut on Wayland (global_shortcuts). src/linux.rs.
 ashpd = { version = "0.14", default-features = false, features = ["tokio", "settings", "global_shortcuts"] }
+# Message dialogs drawn with GTK (linux::message_dialog): the portal backend above shows them through zenity. The
+# same GTK 3 bindings Tauri itself uses.
+gtk = "0.18"
 
 [target.'cfg(not(windows))'.dependencies]
 notify-rust = "4"

@@ -38,3 +38,5 @@ head or float top left. Shared with Me has a column. Narrow windows keep columns
 Checked in the browser: Home to a note (Drafts column), a nested page (Personal column, Field Notes marked), Tasks
 and Drafts with the sidebar hidden, 860 px, Shared with Me (empty), New note button. 18 unit tests.
 
+Then: the note list can't be hidden any more (no hide button, no ⌘⌥L, shown in narrow windows too), and the
+column's head lost Share and the folder's "..." (both in the folder's right-click menu in the sidebar).

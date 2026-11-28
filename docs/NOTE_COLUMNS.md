@@ -28,8 +28,9 @@ get it with the web app); the Mac and iPad mirror it later (plan in `handoff/sta
   Sorted by title or by hand, there are no date groups (Pinned still leads).
 - Picking a note swaps the note in place. ⌘-click selects, as in every list (the owner's choice). A list opens on
   its last note, or its most recently edited one.
-- The middle column is resizable (width remembered) and collapsible (its own button and ⌘⌥L). Under 900 px wide it
-  starts hidden to its rail, so the note keeps its room; the phone layout keeps its own screens.
+- The middle column is always there: it can be resized (width remembered), never hidden (the owner, 2026-11-28),
+  at any window width; the phone layout keeps its own screens. Its head is the list's name, count, filter and Sort
+  (and Empty Trash in Trash); a folder's options, Share among them, are its right-click menu in the sidebar.
 - Notes joined side by side keep their panes, with the column beside them.
 
 ## Where state lives
@@ -38,7 +39,7 @@ get it with the web app); the Mac and iPad mirror it later (plan in `handoff/sta
 | --- | --- |
 | The layout preference | `localStorage` `folevi:note-columns` (`true`/`false`), per device, like Grid/Compact/List |
 | The last note of each list | `localStorage` `folevi:note-columns:last`, `{ "<scope>|<list path>": noteId }`, newest 200 |
-| Column width, collapsed | `localStorage` `folevi:note-columns:width` (px), `folevi:note-columns:collapsed` |
+| Column width | `localStorage` `folevi:note-columns:width` (px) |
 
 ## The address
 

@@ -17,13 +17,10 @@ export function useNoteColumnsPref(): [boolean, (on: boolean) => void] {
   return [on === true, setOn];
 }
 
-/** Below this width the column starts hidden (its rail shows it), so the note keeps its room. */
-export const COLUMNS_MIN_WINDOW = 900;
 
 /**
  * Whether the columns layout is drawn: chosen, on the web's own chrome (not the phone layout, not a native app's page,
- * which keeps its own layout until the Mac and iPad have it). At any width: in a narrow window the column starts
- * hidden instead (NoteColumns).
+ * which keeps its own layout until the Mac and iPad have it), at any width.
  */
 export function useNoteColumnsActive(): boolean {
   const [on] = useNoteColumnsPref();
@@ -74,9 +71,6 @@ export function useColumnWidth() {
   return useLocalStorage<number>("folevi:note-columns:width", COLUMN_DEFAULT);
 }
 
-export function useColumnCollapsed() {
-  return useLocalStorage<boolean>("folevi:note-columns:collapsed", false);
-}
 
 /**
  * The Layout choice in the Sidebar menu (components/app/SidebarMenu.tsx): available everywhere, it switches the
@@ -103,3 +97,4 @@ export function useNavRoute() {
   const columns = useColumnsList();
   return columns ? columns.route : route;
 }
+

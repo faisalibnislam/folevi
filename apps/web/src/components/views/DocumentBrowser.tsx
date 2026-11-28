@@ -602,12 +602,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
         controls={
           <>
             <ColumnSort value={sort} onChange={setSort} />
-            {view === "folder" && caps.sharing ? (
-              <button type="button" aria-label="Share" title="Share" className={ROW_ICON_BUTTON} onClick={() => setSharingFolder(true)}>
-                <Share2 size={15} aria-hidden />
-              </button>
-            ) : null}
-            {view === "folder" && folder ? <FolderMenu folder={folder} tooltip="More" trigger={<MoreHorizontal size={15} aria-hidden />} triggerClassName={ROW_ICON_BUTTON} /> : null}
+            {/* (A folder's options, Share among them, are its right-click menu in the sidebar: the column's head keeps to
+                Sort.) */}
             {view === "trash" && results.length ? (
               <MenuButton label="Trash actions" trigger={<MoreHorizontal size={15} aria-hidden />} triggerClassName={ROW_ICON_BUTTON} items={[{ label: "Empty Trash…", icon: <Trash2 size={14} />, danger: true, onSelect: () => setConfirmEmpty(true) }]} />
             ) : null}

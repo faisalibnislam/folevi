@@ -1,17 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { PanelLeftClose, PanelLeftOpen, SquarePen, type LucideIcon } from "lucide-react";
+import { SquarePen, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { useListViewTab } from "@/lib/app/tabs";
-import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { useShell } from "@/components/app/Shell";
 import { SidebarMenu } from "@/components/app/SidebarMenu";
 import { useCreateDocument } from "@/components/app/useCreateDocument";
 import { clampColumn, columnsHref, groupNotes, LAST_NOTES_KEY, lastNoteKey, noteAfterLeaving, pickNote, rememberNote, stepNote, type LastNotes } from "@/lib/app/noteColumns";
-import { COLUMNS_MIN_WINDOW, useColumnCollapsed, useColumnWidth } from "@/lib/app/useNoteColumns";
+import { useColumnWidth } from "@/lib/app/useNoteColumns";
 import { ageText, formatRelative } from "@/lib/format";
 import { useKeyLabels } from "@/lib/shortcuts";
 import { ViewChrome } from "@/components/app/Shell";
@@ -73,7 +72,6 @@ export function NoteColumns(p: NoteColumnsProps) {
   const { sidebarOpen } = useShell();
   const createDocument = useCreateDocument();
   const [width, setWidth] = useColumnWidth();
-  const [collapsed, setCollapsed] = useColumnCollapsed();
   const keys = useKeyLabels();
   useListViewTab(p.list, p.title);
 
@@ -136,25 +134,6 @@ export function NoteColumns(p: NoteColumnsProps) {
     listRef.current?.querySelector(`[data-card-id="${CSS.escape(row)}"]`)?.scrollIntoView({ block: "nearest" });
   }, [row]);
 
-  // In a narrow window the column starts hidden (its rail shows it), so the note keeps its room; ⌘⌥L and the rail
-  // show it there for the moment, without changing the choice kept for wide windows.
-  const narrow = useMediaQuery(`(max-width: ${COLUMNS_MIN_WINDOW - 1}px)`);
-  const [narrowShown, setNarrowShown] = useState(false);
-  const hidden = narrow ? !narrowShown : collapsed;
-  const setHidden = (h: boolean) => (narrow ? setNarrowShown(!h) : setCollapsed(h));
-  // ⌘⌥L hides or shows the column.
-  useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      // (AltGr is Ctrl+Alt on Windows and Linux: AltGr+L types a letter on some layouts, never this.)
-      if ((e.metaKey || e.ctrlKey) && e.altKey && !e.shiftKey && e.code === "KeyL" && !e.getModifierState?.("AltGraph")) {
-        e.preventDefault();
-        setHidden(!hidden);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
-
   // Resizing: drag the edge, or ← → on it.
   const [dragW, setDragW] = useState<number | null>(null);
   const shownWidth = clampColumn(dragW ?? width);
@@ -182,8 +161,6 @@ export function NoteColumns(p: NoteColumnsProps) {
     el.addEventListener("pointercancel", up);
   };
 
-  const hideLabel = keys("Hide note list (⌘⌥L)");
-  const showLabel = keys("Show note list (⌘⌥L)");
   const listEmpty = ready && p.docs.length === 0;
 
   // With the sidebar hidden, its menu and New note sit at the top of the column (there's no tab bar in this layout).
@@ -195,24 +172,14 @@ export function NoteColumns(p: NoteColumnsProps) {
       </button>
     </>
   );
-  const column = hidden ? (
-    // A slim rail keeps the way back to the list where it was.
-    <div className="flex w-12 flex-none flex-col items-center gap-1 pt-3">
-      {chrome}
-      <button type="button" aria-label="Show note list" title={showLabel} onClick={() => setHidden(false)} className={ROW_ICON}>
-        <PanelLeftOpen size={16} aria-hidden />
-      </button>
-    </div>
-  ) : (
+  // The note list is always there in this layout (the owner, 2026-11-28): it can be resized, never hidden.
+  const column = (
     <section aria-label={`${p.title}: notes`} data-note-column="" style={{ width: shownWidth }} className="relative flex min-h-0 flex-none flex-col pt-2">
       <header data-toolbar="" className="flex-none px-3 pb-2 pt-3">
         <div className="flex min-w-0 items-center gap-2">
           {chrome}
           {p.mark}
           <h2 className="ui-list-name min-w-0 flex-1 truncate">{p.title}</h2>
-          <button type="button" aria-label="Hide note list" title={hideLabel} onClick={() => setHidden(true)} className={ROW_ICON}>
-            <PanelLeftClose size={16} aria-hidden />
-          </button>
         </div>
         {p.count ? (
           <p role="status" className="ui-list-meta mt-0.5 truncate">

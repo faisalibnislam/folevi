@@ -63,7 +63,7 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     /// Builds the SwiftUI tree and loads the active dot while idle, so the first open is instant.
     func prewarm() {
-        model.prepareNote()
+        model.prepare()
         panel.setContentSize(model.settings.panelSize)
         hosting.layoutSubtreeIfNeeded()
         // Put the panel on screen once, fully transparent and without taking focus, so the window
@@ -120,10 +120,9 @@ final class PanelController: NSObject, NSWindowDelegate {
         let frame = frameForShow()
         if panel.frame != frame { panel.setFrame(frame, display: false) }
         applyPinnedState()
-        model.prepareNote()
+        model.prepare()
         panel.makeKeyAndOrderFront(nil)
         refreshShadow()
-        model.host?.focusNote()
         model.isPanelVisible = true
         animateIn()
         // Recompute once more after the open spring settles, when the glass is at full size.
@@ -265,7 +264,6 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func detach() {
-        model.host?.flush()
         let frame = panel.isVisible ? panel.frame : frameForShow()
         panel.orderOut(nil)
         model.isPanelVisible = false
@@ -277,7 +275,6 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func attach() {
-        model.host?.flush()
         let frame = detachedWindow?.frame
         detachedWindow?.orderOut(nil)
         detachedWindow?.contentView = NSView()
@@ -320,10 +317,9 @@ final class PanelController: NSObject, NSWindowDelegate {
             moveGlass(to: window)
             detachedWindow = window
         }
-        model.prepareNote()
+        model.prepare()
         NSApp.activate()
         detachedWindow?.makeKeyAndOrderFront(nil)
-        model.host?.focusNote()
         model.isPanelVisible = true
         onShownChange(true)
     }
@@ -389,7 +385,6 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         if sender === detachedWindow {
-            model.host?.flush()
             sender.orderOut(nil)
             model.isPanelVisible = false
             onShownChange(false)

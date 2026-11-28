@@ -722,7 +722,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // 2026: "more isn't collapsing/expanding properly").
   const [moreToggled, setMoreOpen] = useLocalStorage("folevi:sidebar-more-open", false);
   const activeInMore = underMore.some((id) => isActive(navRoute, SIDEBAR_ITEMS[id].href));
-  const wasInMore = useRef(activeInMore);
+  // (Starts false, so a page opened straight from its address, under More, opens it too.)
+  const wasInMore = useRef(false);
   useEffect(() => {
     if (activeInMore && !wasInMore.current) setMoreOpen(true);
     wasInMore.current = activeInMore;

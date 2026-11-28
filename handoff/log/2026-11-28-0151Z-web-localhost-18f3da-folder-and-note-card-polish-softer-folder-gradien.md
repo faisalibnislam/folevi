@@ -121,3 +121,4 @@ reference; every difference was one of those intended changes, nothing else move
   home-picture (light, dark): card time and sizes, folder cards; dna-note-iphone-dark: icon stroke.
 Both suites pass on the merged tree (266 Mac, 36 design).
 - Coverage for the new server functions: E2EE routes `homePrefs:*` and `homeStats:get` pass through (ids and counts, no note text; a sealed note's words aren't counted); `ai:settingsSearch` is LOCAL_HIDDEN (aiServer) and Settings shows Ask Foli AI only with `caps.aiServer`, so a local library keeps the word search only.
+- Sidebar More: a page under More opened straight from its address opens More too (the e2e spec sidebar-more caught it); after that the toggle is yours.

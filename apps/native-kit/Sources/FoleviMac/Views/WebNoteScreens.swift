@@ -1106,6 +1106,10 @@ struct WebNoteBrowser: View {
                         } else if model.total == 0 || (model.isFiltering && model.slots.isEmpty) {
                             empty
                         } else {
+                            // A folder with folders and notes names both sections (the owner, 28 November 2026).
+                            if !model.subfolders.isEmpty && !model.isFiltering {
+                                caps("Notes").accessibilityAddTraits(.isHeader)
+                            }
                             // Grid, Compact cards and List trade places with a short crossfade.
                             Group {
                                 switch layout {
@@ -1301,8 +1305,11 @@ struct WebNoteBrowser: View {
                     WebPathMenuButton(title: model.title, color: model.folder?.color, path: path) { frame.open(.web("/folders")) }
                     WebRowTrayDivider()
                 }
-                WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
-                WebRowTrayDivider()
+                // Nothing to sort in an empty list (the owner, 28 November 2026).
+                if hasNotes {
+                    WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
+                    WebRowTrayDivider()
+                }
                 WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar", height: WebListPageHeaderMetrics.trayItemHeight)
                 WebRowTrayDivider()
                 if frame.session.value?.capabilities.sharing ?? false {
@@ -1322,7 +1329,7 @@ struct WebNoteBrowser: View {
         if chrome != nil {
             WebListPageHeader(title: model.title, count: model.isLoading ? "" : statusText) {
                 rowFilter
-                WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
+                if hasNotes { WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort) }
                 WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
                 toolbarActions
             }
@@ -1361,7 +1368,7 @@ struct WebNoteBrowser: View {
             if showsFilter {
                 WebIndexSearch(placeholder: "Filter notes", text: $model.filter, width: 260)
             }
-            WebSortSelect(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
+            if hasNotes { WebSortSelect(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort) }
             WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
             if model.isTrash && model.total > 0 {
                 WebButton("Empty Trash", variant: .quiet) { model.confirmation = .emptyTrash(model.total) }
@@ -1385,6 +1392,9 @@ struct WebNoteBrowser: View {
         .frame(height: bar.height)
         .padding(.bottom, bar.margin.bottom)
     }
+
+    /// The list has notes (or is still loading them): Sort is shown only then.
+    private var hasNotes: Bool { model.isLoading || model.total > 0 }
 
     // MARK: subfolders (a folder's page)
 

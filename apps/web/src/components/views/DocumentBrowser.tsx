@@ -785,7 +785,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
             <h2 id="subfolders-title" data-section-label="" className={SECTION_LABEL}>
               Folders
             </h2>
-            <ul aria-label="Folders inside" className="-mt-4 mb-10 grid grid-cols-[repeat(auto-fill,var(--subfolder-card))] gap-x-[var(--subfolder-gap-x)] gap-y-[var(--subfolder-gap-y)]">
+            <ul aria-label="Folders inside" className="mb-10 grid grid-cols-[repeat(auto-fill,var(--subfolder-card))] gap-x-[var(--subfolder-gap-x)] gap-y-[var(--subfolder-gap-y)]">
               {subfolderCards.map((f) => {
                 const on = selection.selected.has(f.id);
                 return (

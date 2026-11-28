@@ -106,6 +106,9 @@ targets:
         product: FoleviScreens
       - package: FoleviKit
         product: FoleviMac
+      # The menu bar note (Chrome/MenuBarNoteHost.swift).
+      - package: FoleviKit
+        product: FoleviMenuBarNote
     settings:
       base:
         PRODUCT_MODULE_NAME: Folevi

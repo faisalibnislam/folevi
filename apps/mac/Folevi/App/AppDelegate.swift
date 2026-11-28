@@ -146,6 +146,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// canvas's, the title's, the "On this Mac" library's files. So each page is told it is closing, as a
     /// browser would tell it, and the app waits for that (two seconds at most) before it goes.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // The menu bar note's page saves what was typed last, like every other page.
+        MacMenuBarNote.shared.flushIfStarted()
         let views = WindowManager.shared.allViews.filter { $0.loaded }
         guard !savedForQuit, !views.isEmpty else { return .terminateNow }
         savedForQuit = true

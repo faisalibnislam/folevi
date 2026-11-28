@@ -21,4 +21,9 @@ Keep this short and true: rewrite it when things change, and put history in `han
 - Dropbox and Google Drive need the owner's app key and Desktop client id (repository variables `FOLEVI_DROPBOX_APP_KEY`, `FOLEVI_GOOGLE_DESKTOP_CLIENT_ID`) and the loopback redirects registered.
 - The owner: copy `~/.folevi-linux-signing/folevi-repo-secret.asc` and `~/.folevi-desktop-signing/folevi-updater.key` to the password manager.
 
+## Taken down (2026-11-28, owner)
+- Removed from `folevi.com/download` (R2 `folevi-updates`): every `linux/*` file, including the apt and rpm repos, and the feeds `desktop/linux-{x86_64,aarch64}/latest.json`. The Snap Store channels for `folevi` are closed on both architectures (the name stays registered).
+- Archive: `/Volumes/Corsair/Folevi-archive/paused-2026-11-28/` (bucket paths kept, plus `removed-objects.txt` and `object-metadata.json`).
+- Restore: re-upload with `wrangler r2 object put` using the saved content type and cache control, then `snapcraft release folevi 12 stable` (amd64) and `11 stable` (arm64). Owner's OK first. Details: the 2026-11-28 0646Z log entry.
+
 Detail from before 2026-11-26 is in `handoff/archive/` (search it for this area's name); nothing there is kept up to date.

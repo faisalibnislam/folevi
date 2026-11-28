@@ -482,7 +482,7 @@ function NotificationsForm({ settings, save }: { settings: ServerSettings; save:
       <Panel title="Phone notifications">
         <SwitchRow
           label="Folevi push relay"
-          description="Wakes the iPhone, iPad and Android apps for reminders and mentions. Apple and Google only accept Folevi's keys, so this goes through Folevi with a short notice and no note content. Off, the apps catch up when they're opened."
+          description="Wakes the iPhone and iPad apps for reminders and mentions. Apple only accepts Folevi's keys, so this goes through Folevi with a short notice and no note content. Off, the apps catch up when they're opened."
           checked={settings.push.relay}
           onChange={(next) => save({ push: { relay: next } })}
         />

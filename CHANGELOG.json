@@ -1,6 +1,21 @@
 {
   "releases": [
     {
+      "version": "1.9.81",
+      "build": 112,
+      "released": "2026-11-28T11:48:26+06:00",
+      "type": "patch",
+      "summary": "The Mac app gets a menu bar note: a real Folevi note you open from the menu bar or with ⌥Space.",
+      "added": [
+        "Menu bar note on the Mac: the menu bar icon or ⌥Space opens a small panel with a real note in Folevi's editor. New notes go to Drafts, or to a folder you pick.",
+        "In the panel you can send the note to the main window (⌘Return), paste in a screenshot (⇧⌘5), pin the panel on top, or open it as a window."
+      ],
+      "improved": [
+        "Settings > General on the Mac calls the shortcut Menu bar note. Right-click the menu bar icon for the menu it had before."
+      ],
+      "tag": "v1.9.81"
+    },
+    {
       "version": "1.9.80",
       "build": 111,
       "released": "2026-11-28T06:10:42+06:00",

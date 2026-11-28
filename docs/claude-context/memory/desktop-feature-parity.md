@@ -6,6 +6,8 @@ metadata:
   modified: 2026-11-25
 ---
 
+**On hold since 2026-11-28:** the Windows and Linux app is paused ([platforms-paused-2026-11-28](platforms-paused-2026-11-28.md)). Don't port features to `apps/desktop` until the owner resumes it.
+
 The owner, 2026-11-25: "I will mostly change things from the web app and Mac app, but relevant features should sync to Windows and Linux too. Keep notes and always sync features."
 
 - Web app changes reach Windows and Linux automatically (all three load the same `apps/web`). Check only that the web code doesn't gate the feature on `platform === "mac"`, `inMacApp()` or a bridge method the Tauri host lacks.

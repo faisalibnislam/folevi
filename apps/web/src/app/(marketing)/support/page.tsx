@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SupportForm } from "@/components/support/SupportForm";
 import { FaqSection } from "@/components/marketing/parts";
 import { pageMetadata, type FaqItem } from "@/components/marketing/seo";
-import { OPERATOR, OPERATOR_ADDRESS, SECURITY_EMAIL, SUPPORT_EMAIL, WEB_APP_URL } from "@/components/marketing/site";
+import { COMING_SOON_NOTE, OPERATOR, OPERATOR_ADDRESS, SECURITY_EMAIL, SUPPORT_EMAIL, WEB_APP_URL } from "@/components/marketing/site";
 import { Eyebrow, container, cx } from "@/components/marketing/ui";
 import { Float, Hand, Mark } from "@/components/marketing/fun";
 import { MentionPiece } from "@/components/marketing/pieces";
@@ -33,11 +33,11 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Which devices does Folevi work on?",
-    a: "Mac (a free download from folevi.com/mac), Windows and Linux (free downloads from folevi.com/downloads; Linux is in beta), iPhone and iPad (free on the App Store), Android (a free download from folevi.com/downloads), and any modern browser through the web app. Every app is free, with every feature.",
+    a: `Mac (a free download from folevi.com/mac), iPhone and iPad (free on the App Store), and any modern browser through the web app. Every app is free, with every feature. ${COMING_SOON_NOTE}`,
   },
   {
     q: "Do I need an account?",
-    a: "Not in the apps. Choose Keep notes on my devices and your notes are files in a folder you pick, such as iCloud Drive, Dropbox or Google Drive, free forever. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. You can also sync through your own Folevi Server (Beta). The web app, sharing and AI credits need a Folevi account.",
+    a: "Not in the apps. Choose Keep notes on my devices and your notes are files in a folder you pick, such as iCloud Drive, Dropbox or Google Drive, free forever. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. You can also sync through your own Folevi Server (Early Beta). The web app, sharing and AI credits need a Folevi account.",
   },
   {
     q: "Does Folevi work offline?",

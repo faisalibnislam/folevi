@@ -1,5 +1,9 @@
 # Folevi
 
+> **Paused (2026-11-28, owner decision):** the Windows, Linux and Android apps (`apps/desktop`, `apps/android`) are
+> paused. folevi.com shows them as coming soon, with no download links. Folevi is available on the Mac, iPhone and
+> iPad (iPhone Duo too), the web and Folevi Server.
+
 A quieter place for ideas that keep growing. Folevi is a calm writing and notes workspace with block
 documents, nested pages, tasks, calendar, collections, comments, offline editing and sync. It runs on the web
 and on the Mac (Folevi for Mac: a native app showing the same interface in the system's web view). Each person has their own Personal; teams share

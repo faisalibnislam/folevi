@@ -683,7 +683,7 @@ function AppsStep({ settings, mark }: GuideProps) {
     <GuideFrame
       step="apps"
       title="Connect your apps"
-      lede={`${settings.name} is ready. Add it in Folevi on your Mac, iPhone, iPad or Android, and share these steps with the people you invited.`}
+      lede={`${settings.name} is ready. Add it in Folevi on your Mac, iPhone or iPad, and share these steps with the people you invited.`}
       primary={
         <>
           <button type="button" className="ui-btn ui-btn-secondary h-control px-4 text-body" disabled={busy !== null} onClick={() => go("admin")}>

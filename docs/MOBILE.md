@@ -1,5 +1,9 @@
 # Folevi mobile: one Capacitor app (iPhone, iPad, iPhone Duo, Android)
 
+> **Paused (2026-11-28, owner decision):** the Windows, Linux and Android apps are paused. folevi.com shows them as
+> coming soon, with no download links. Folevi is available on the Mac, iPhone and iPad (iPhone Duo too), the web and
+> Folevi Server. The Android parts below are kept as they are for when the work picks up again.
+
 Decided by the owner on 2026-11-24: one web app everywhere, in the system's own web view, small and light. On phones
 and tablets that is one Capacitor project, `apps/mobile`, around the web app's built-in interface (the shell export
 of `apps/web`). It replaces the native SwiftUI app (`apps/ios`, its iPhone, iPad and Duo screens) and the native

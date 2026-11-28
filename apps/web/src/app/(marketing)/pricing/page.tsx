@@ -16,7 +16,7 @@ import {
   sizeLabel,
 } from "@/lib/plans";
 import { pageMetadata, type FaqItem } from "@/components/marketing/seo";
-import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT } from "@/components/marketing/site";
+import { APP_STORE_URL, COMING_SOON_NOTE, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT } from "@/components/marketing/site";
 import { LibraryPlaces } from "@/components/marketing/mac/LibraryPlaces";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Checks } from "@/components/marketing/Checks";
@@ -32,7 +32,7 @@ const credits = (n: number) => n.toLocaleString("en-US");
 
 export const metadata = pageMetadata({
   title: `Pricing: Folevi is free, Folevi Cloud from ${formatPrice(PRICES.core.month)}/month`,
-  description: `Every Folevi app is free on Mac, Windows, Linux, iPhone, iPad, Android and the web. Sync with your own cloud or server and use your own AI key for free. Folevi Cloud starts free, with paid plans from ${formatPrice(PRICES.core.month)} a month.`,
+  description: `Every Folevi app is free on Mac, iPhone, iPad and the web. Sync with your own cloud or server and use your own AI key for free. Folevi Cloud starts free, with paid plans from ${formatPrice(PRICES.core.month)} a month.`,
   path: "/pricing",
 });
 
@@ -50,7 +50,7 @@ const saving = (tier: "core" | "pro" | "pro_ai") =>
 const faqs: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: `Yes, all of them, with every feature: Mac, Windows, Linux (Beta), iPhone, iPad, Android and the web app. Keep your notes on your devices with no account and no limit on notes. The Mac app needs ${MAC_REQUIREMENT}; the iPhone and iPad app needs ${IOS_REQUIREMENT}.`,
+    a: `Yes, all of them, with every feature: Mac, iPhone, iPad and the web app. Keep your notes on your devices with no account and no limit on notes. The Mac app needs ${MAC_REQUIREMENT}; the iPhone and iPad app needs ${IOS_REQUIREMENT}. ${COMING_SOON_NOTE}`,
   },
   {
     q: "What do I pay for?",
@@ -62,7 +62,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Can I host Folevi myself?",
-    a: "Yes, for free. Folevi Server (Beta) runs on your own computer, NAS or cloud server, and every Folevi app can sync with it.",
+    a: "Yes, for free. Folevi Server (Early Beta) runs on your own computer, NAS or cloud server, and every Folevi app can sync with it.",
   },
   {
     q: "Can I use Foli AI without paying?",
@@ -159,7 +159,7 @@ export default function PricingPage() {
           Folevi is <Mark kind="circle">free.</Mark>
         </h1>
         <p className="mk-lede mt-6 max-w-[60ch]">
-          Every Folevi app is free on Mac, Windows, Linux, iPhone, iPad, Android and the web, with every feature. Keep
+          Every Folevi app is free on Mac, iPhone, iPad and the web, with every feature. Keep
           your notes on your devices, sync them through iCloud Drive or Dropbox, or run your own Folevi Server. Pay only
           if you want Folevi Cloud to store and sync them for you.
         </p>
@@ -185,10 +185,10 @@ export default function PricingPage() {
             <Checks
               className="mt-6"
               items={[
-                <>Mac, iPhone, iPad, Android, Windows and Linux (Beta)</>,
+                <>Mac, iPhone and iPad, with Android, Windows and Linux coming soon</>,
                 <>No account, no limit on notes</>,
                 <>A folder you pick, synced by your own cloud</>,
-                <>Folevi Server (Beta) on your own computer, NAS or server</>,
+                <>Folevi Server (Early Beta) on your own computer, NAS or server</>,
                 <>Foli AI with your own OpenAI, Anthropic or Google key, or Apple Intelligence on your Mac</>,
                 <>Docs, tasks, databases, themes, Foli DNA and search</>,
               ]}

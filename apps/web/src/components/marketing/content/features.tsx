@@ -203,7 +203,7 @@ export const FEATURES: Feature[] = [
     intro:
       "Folevi writes every change to your device before it sends it anywhere. With no connection you keep writing, and your edits wait on the device until you’re back online. The status on each page tells you which of those is happening.",
     plans: "Every plan, including Free.",
-    updated: "2026-11-18",
+    updated: "2026-11-28",
     art: "art-13",
     visual: "offline",
     docs: { label: "Sync and offline", href: "/docs/sync-and-offline" },
@@ -213,7 +213,7 @@ export const FEATURES: Feature[] = [
         title: "Saved on your device first",
         body: (
           <p>
-            Every edit goes into a queue on your device first: in the browser’s storage on the web, and on the device in the Mac, Windows, Linux, iPhone and iPad apps. Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
+            Every edit goes into a queue on your device first: in the browser’s storage on the web, and on the device in the Mac, iPhone and iPad apps. Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
           </p>
         ),
       },
@@ -280,12 +280,12 @@ export const FEATURES: Feature[] = [
     name: "Notes on your devices",
     summary: "Free forever, no account. Your notes are files in your own cloud.",
     title: "Free notes app with no account, on every device",
-    description: "Use Folevi on Mac, Windows, Linux, iPhone, iPad and Android with no account and every feature. Your notes are files in a folder you pick, never on our servers.",
+    description: "Use Folevi on Mac, iPhone and iPad with no account and every feature. Your notes are files in a folder you pick, never on our servers.",
     h1: "A notes app with no account, free forever",
     intro:
-      "The Folevi apps for Mac, Windows, Linux (Beta), iPhone, iPad and Android are free, with every feature, and work without an account. Choose Keep notes on my devices when the app opens, pick a place for your library, and start writing. Your notes are files in that place, and Folevi’s servers never see them.",
+      "The Folevi apps for Mac, iPhone and iPad are free, with every feature, and work without an account. Choose Keep notes on my devices when the app opens, pick a place for your library, and start writing. Your notes are files in that place, and Folevi’s servers never see them.",
     plans: "Free forever in every Folevi app. No account.",
-    updated: "2026-11-06",
+    updated: "2026-11-28",
     art: "art-13",
     visual: "folders",
     docs: { label: "The apps and notes on your devices", href: "/docs/apps-and-local-notes" },
@@ -339,9 +339,9 @@ export const FEATURES: Feature[] = [
       },
     ],
     faq: [
-      { q: "Is Folevi free without an account?", a: "Yes. Every Folevi app is free forever, with every feature, when you keep notes on your devices: Mac, Windows, Linux (Beta), iPhone, iPad and Android. No account needed." },
+      { q: "Is Folevi free without an account?", a: "Yes. Every Folevi app is free forever, with every feature, when you keep notes on your devices: Mac, iPhone and iPad. No account needed." },
       { q: "Where are my notes stored?", a: "In the place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Dropbox and Google Drive are in the Mac, iPhone and iPad apps for now. Each note is a file, with a small index beside them. Folevi’s servers never see them." },
-      { q: "Do my notes sync between my devices?", a: "Yes, through your own cloud. Put the library in iCloud Drive, Dropbox or Google Drive (Mac, iPhone and iPad for now) or any synced folder and open it on each device, or sync through your own Folevi Server (Beta)." },
+      { q: "Do my notes sync between my devices?", a: "Yes, through your own cloud. Put the library in iCloud Drive, Dropbox or Google Drive (Mac, iPhone and iPad for now) or any synced folder and open it on each device, or sync through your own Folevi Server (Early Beta)." },
       { q: "What doesn’t work without an account?", a: "Sharing, public pages, comments with others, workspaces, email-in, the web clipper, the API, AI credits and the web app need a Folevi account." },
       { q: "Can I switch to an account later?", a: "Yes. Sign in and upload your library. You can also export everything from an account back into a folder." },
     ],
@@ -638,7 +638,7 @@ export const FEATURES: Feature[] = [
     intro:
       "Press ⌘K anywhere. Folevi searches the titles and text of your notes in the space you’re in, highlights the words it found, and opens the note you pick in a new tab.",
     plans: "Every plan, including Free.",
-    updated: "2026-11-19",
+    updated: "2026-11-28",
     art: "art-41",
     visual: "search",
     sections: [
@@ -661,7 +661,7 @@ export const FEATURES: Feature[] = [
         title: "Filter a list",
         body: (
           <p>
-            Every list of notes has a Filter notes field at the top: All notes, Bookmarks, Drafts, a folder, a tag, Archive, Trash and Templates. Type a few letters and the list narrows to the notes whose title or text match. The Folders and Tags pages have Filter folders and Filter tags. The fields are always in sight, on the web and in the apps for Mac, Windows, Linux, iPhone and iPad.
+            Every list of notes has a Filter notes field at the top: All notes, Bookmarks, Drafts, a folder, a tag, Archive, Trash and Templates. Type a few letters and the list narrows to the notes whose title or text match. The Folders and Tags pages have Filter folders and Filter tags. The fields are always in sight, on the web and in the apps for Mac, iPhone and iPad.
           </p>
         ),
       },
@@ -1536,7 +1536,7 @@ export const FEATURES: Feature[] = [
     h1: "Spell check and Tab prediction",
     intro: "Folevi has its own spell checker, the same on the web and in every app. It underlines what looks wrong, suggests a fix, and offers the next word in gray: press Tab to take it. It works offline and never changes a word for you.",
     plans: "Every plan, including Free, and the apps with no account.",
-    updated: "2026-11-27",
+    updated: "2026-11-28",
     art: "art-04",
     visual: "spelling",
     docs: { label: "Writing settings", href: "/docs/writing-settings" },
@@ -1547,7 +1547,7 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              A misspelled word gets a red wavy underline. Click it, or right-click (long-press on a phone), to see up to five suggestions, then Add to dictionary or Ignore. On iPhone, iPad and Android the suggestions also sit above the keyboard. Folevi never corrects a word on its own.
+              A misspelled word gets a red wavy underline. Click it, or right-click (long-press on a phone), to see up to five suggestions, then Add to dictionary or Ignore. On iPhone and iPad the suggestions also sit above the keyboard. Folevi never corrects a word on its own.
             </p>
             <p>
               Each line is checked in its own language, so a note can mix them: English (American or British), Spanish, French, German, Portuguese, Indonesian, Hindi, Bengali and Arabic. Short lines and headings with no telling words are checked in your English and the note’s language, so a correct word is never marked wrong because of a guess.
@@ -1578,7 +1578,7 @@ export const FEATURES: Feature[] = [
         title: "Float a note while you write elsewhere",
         body: (
           <p>
-            Float this note opens a note in a small window that stays on top of your other windows, so a checklist or a draft stays in sight while you work in another app. Choose it from a tab or a note’s right-click menu in the Mac and Windows apps, or in Chrome and Edge on the web. The window shows the note’s own colour from edge to edge.
+            Float this note opens a note in a small window that stays on top of your other windows, so a checklist or a draft stays in sight while you work in another app. Choose it from a tab or a note’s right-click menu in the Mac app, or in Chrome and Edge on the web. The window shows the note’s own colour from edge to edge.
           </p>
         ),
       },
@@ -1595,13 +1595,13 @@ export const FEATURES: Feature[] = [
     // The server edition and every app's Your own server sign-in (docs/SELF_HOSTING_PLAN.md, handoff/state/server.md).
     slug: "self-hosting",
     name: "Your own server",
-    summary: "Run Folevi on your own NAS or server. Beta.",
+    summary: "Run Folevi on your own NAS or server. Early Beta.",
     title: "Self-hosted notes: run Folevi on your own server",
-    description: "Folevi Server (Beta) runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it by address, QR code or on your home network.",
+    description: "Folevi Server (Early Beta) runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it by address, QR code or on your home network.",
     h1: "Folevi on your own server",
-    intro: "Folevi Server puts the whole workspace on a NAS or a Linux server you run, so your notes never leave it. Everyone keeps using the normal Folevi apps: they sign in to your server instead of Folevi Cloud. Folevi Server is in beta.",
-    plans: "Folevi Server is in beta; pricing comes with its first release.",
-    updated: "2026-11-27",
+    intro: "Folevi Server puts the whole workspace on a NAS or a Linux server you run, so your notes never leave it. Everyone keeps using the normal Folevi apps: they sign in to your server instead of Folevi Cloud. Folevi Server is in Early Beta.",
+    plans: "Folevi Server is in Early Beta; pricing comes with its first release.",
+    updated: "2026-11-28",
     art: "art-11",
     visual: "server",
     docs: { label: "Sign in to your own server", href: "/docs/your-own-server" },
@@ -1611,7 +1611,7 @@ export const FEATURES: Feature[] = [
         title: "The apps you already use",
         body: (
           <p>
-            The web app and the apps for Mac, Windows, Linux, iPhone, iPad and Android all have Your own server on their sign-in screen. Enter the server’s address, scan the QR code on its admin page, or pick it from the list of servers on your home network. The app works as it does with Folevi Cloud, offline editing included.
+            The web app and the apps for Mac, iPhone and iPad all have Your own server on their sign-in screen. Enter the server’s address, scan the QR code on its admin page, or pick it from the list of servers on your home network. The app works as it does with Folevi Cloud, offline editing included.
           </p>
         ),
       },
@@ -1620,7 +1620,7 @@ export const FEATURES: Feature[] = [
         title: "Where it runs",
         body: (
           <p>
-            Folevi Server is made for Synology, QNAP, ASUSTOR, TerraMaster, UGREEN and Unraid, and for Linux servers through .deb and .rpm packages, a one-line install command or a container image, on Intel and AMD or ARM. The packages appear on the <Link href="/server">Folevi Server page</Link> with the first beta.
+            Folevi Server is made for Synology, QNAP, ASUSTOR, TerraMaster, UGREEN and Unraid, and for Linux servers through .deb and .rpm packages, a one-line install command or a container image, on Intel and AMD or ARM. The packages appear on the <Link href="/server">Folevi Server page</Link> with the Early Beta.
           </p>
         ),
       },
@@ -1635,9 +1635,9 @@ export const FEATURES: Feature[] = [
       },
     ],
     faq: [
-      { q: "Can I self-host Folevi?", a: "Yes. Folevi Server, in beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it." },
-      { q: "Which apps work with my own server?", a: "The web app and the Folevi apps for Mac, Windows, Linux, iPhone, iPad and Android. Choose Your own server on the sign-in screen." },
-      { q: "Where can I download Folevi Server?", a: "On the Folevi Server page, once the first beta is out. Packages are planned for Synology, QNAP, ASUSTOR, TerraMaster, UGREEN, Unraid and Linux servers." },
+      { q: "Can I self-host Folevi?", a: "Yes. Folevi Server, in Early Beta, runs Folevi on your own NAS or Linux server, and every Folevi app can sign in to it." },
+      { q: "Which apps work with my own server?", a: "The web app and the Folevi apps for Mac, iPhone and iPad. Choose Your own server on the sign-in screen." },
+      { q: "Where can I download Folevi Server?", a: "On the Folevi Server page, once the Early Beta is out. Packages are planned for Synology, QNAP, ASUSTOR, TerraMaster, UGREEN, Unraid and Linux servers." },
       { q: "Do I need to open a port on my router?", a: "No. A server linked to your Folevi account gets an address through Folevi Connect that your apps can reach from anywhere." },
     ],
     related: ["security-and-privacy", "notes-on-your-devices", "offline-notes"],

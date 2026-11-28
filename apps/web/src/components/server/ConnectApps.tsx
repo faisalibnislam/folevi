@@ -1,12 +1,13 @@
 "use client";
 
 // "Connect your apps" (docs/SELF_HOSTING_PLAN.md §8): the server's address as a QR code and as text, with the few
-// steps to add it in Folevi for Mac, iPhone, iPad and Android. Shown at the end of setup, on the admin Overview and
+// steps to add it in Folevi for Mac, iPhone and iPad (Android, Windows and Linux are paused, lib/platforms.ts). Shown at the end of setup, on the admin Overview and
 // People, and to a member who just joined.
 import { useEffect, useState } from "react";
 import { House, Laptop, Smartphone, Tablet } from "lucide-react";
 import { QrCode } from "./QrCode";
 import { ShareLink } from "./ShareLink";
+import { COMING_SOON_APPS_NOTE } from "@/lib/platforms";
 
 /** True for an address that only works on the home network (a private IP, a .local name, a name with no dots). */
 export function isHomeOnlyAddress(origin: string): boolean {
@@ -48,7 +49,6 @@ const APPS = [
   { icon: Laptop, name: "Mac" },
   { icon: Smartphone, name: "iPhone" },
   { icon: Tablet, name: "iPad" },
-  { icon: Smartphone, name: "Android" },
 ];
 
 export function ConnectApps({ address, serverName, remoteHref, stacked }: { address?: string | null; serverName?: string; /** Where an admin sets up remote access; members get plain words instead. */ remoteHref?: string; /** QR code above the steps at every width (narrow cards). */ stacked?: boolean }) {
@@ -69,8 +69,9 @@ export function ConnectApps({ address, serverName, remoteHref, stacked }: { addr
               </li>
             ))}
           </ul>
+          <p className="text-footnote text-muted">{COMING_SOON_APPS_NOTE}</p>
           <ol className="list-decimal space-y-1.5 pl-5 text-ink marker:text-muted">
-            <li>Open Folevi on the device. New to Folevi? Get it from the App Store, Google Play or folevi.com/download.</li>
+            <li>Open Folevi on the device. New to Folevi? Get it from the App Store or folevi.com/download.</li>
             <li>
               On the sign-in screen, choose <span className="font-semibold text-heading">Your own server</span>.
             </li>

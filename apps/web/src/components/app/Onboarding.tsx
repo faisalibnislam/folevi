@@ -315,7 +315,7 @@ export function Onboarding() {
         >
           <div key={step} className="ob-step flex-1 pb-8 pt-7 lg:pt-12" data-dir={dir}>
             {step === 4 ? (
-              <span className="ob-ai-mark mb-5 inline-grid size-14 place-items-center rounded-container bg-surface shadow-[var(--shadow-card)]" data-on={ai}>
+              <span className="ob-ai-mark mb-5 inline-grid size-14 place-items-center rounded-container bg-surface shadow-[var(--shadow-edge),var(--shadow-resting)]" data-on={ai}>
                 <AiIcon size={30} />
               </span>
             ) : null}
@@ -395,7 +395,7 @@ function Progress({ step }: { step: number }) {
 
 function IconTile({ icon: Icon }: { icon: LucideIcon }) {
   return (
-    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-control bg-surface text-heading shadow-[var(--shadow-card)]">
+    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-control bg-surface text-heading shadow-[var(--shadow-edge),var(--shadow-resting)]">
       <Icon size={17} strokeWidth={1.75} />
     </span>
   );
@@ -514,7 +514,7 @@ function MiniWindow({ mode, styleId }: { mode: "light" | "dark"; styleId: string
         <span className="h-[5%] w-2/3 rounded-chip" style={{ background: "var(--m-muted)" }} />
         <span className="h-[5%] w-5/6 rounded-chip" style={{ background: "var(--m-muted)" }} />
       </span>
-      <span className="flex flex-1 flex-col overflow-hidden rounded-tiny shadow-[0_2px_8px_rgb(0_0_0/0.15)]" style={{ background: paper }}>
+      <span className="flex flex-1 flex-col overflow-hidden rounded-tiny shadow-[var(--shadow-resting)]" style={{ background: paper }}>
         {art ? <span className="h-[34%] flex-none" style={{ background: `${artThumb(art.id)} center / cover no-repeat` }} /> : null}
         <span className="flex flex-col gap-[7%] p-[9%]">
           <span className="h-[9px] w-2/3 rounded-tiny" style={{ background: "var(--m-ink)", opacity: 0.85 }} />
@@ -587,7 +587,7 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
           { icon: PenLine, title: "Writing help", body: keys("Rewrite, shorten, fix or summarize the text you select, or press ⌘J in a note.") },
         ]}
       />
-      <div className="ob-rise mt-6 flex items-start gap-4 rounded-panel bg-surface p-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: 3 }}>
+      <div className="ob-rise mt-6 flex items-start gap-4 rounded-panel bg-surface p-4 shadow-[var(--shadow-edge),var(--shadow-resting)]" style={{ ["--i" as string]: 3 }}>
         <div className="min-w-0 flex-1">
           <p className="text-body font-semibold text-heading">Foli AI {on ? "on" : "off"}</p>
           <p id={descId} className="mt-1 text-subheadline leading-relaxed text-muted">
@@ -613,7 +613,7 @@ function Summary({ pages, style, appearance, ai }: { pages: string[]; style: str
   return (
     <ul className="space-y-2.5">
       {rows.map((row, i) => (
-        <li key={row.title} className="ob-rise flex items-center gap-3.5 rounded-panel bg-surface p-3 pr-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: i }}>
+        <li key={row.title} className="ob-rise flex items-center gap-3.5 rounded-panel bg-surface p-3 pr-4 shadow-[var(--shadow-edge),var(--shadow-resting)]" style={{ ["--i" as string]: i }}>
           {row.icon}
           <div className="min-w-0 flex-1">
             <p className="text-body font-semibold text-heading">{row.title}</p>
@@ -632,7 +632,7 @@ function Summary({ pages, style, appearance, ai }: { pages: string[]; style: str
 
 function AiIconTile() {
   return (
-    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-control bg-surface shadow-[var(--shadow-card)]">
+    <span aria-hidden className="grid size-9 flex-none place-items-center rounded-control bg-surface shadow-[var(--shadow-edge),var(--shadow-resting)]">
       <AiIcon size={17} />
     </span>
   );

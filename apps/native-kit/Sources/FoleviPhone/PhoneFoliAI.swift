@@ -202,7 +202,7 @@ public struct PhoneAiThread: View {
             }
             .padding(.horizontal, 14).frame(height: 36)
             .foregroundStyle(look.heading)
-            .background(Capsule().fill(look.color("color-surface-raised")).shadow(color: .black.opacity(0.25), radius: 7, y: 4))
+            .background(Capsule().fill(look.color("color-surface-raised")).nativeShadow(.floating))
             .overlay(Capsule().strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
             .padding(.vertical, 4).contentShape(Rectangle()).padding(.vertical, -4)
         }

@@ -59,7 +59,7 @@ export function ReactionChips({ reactions, canReact, onToggle }: { reactions: Re
           </>
         );
         const cls = `inline-flex h-6 items-center gap-1 rounded-chip px-2 text-footnote font-medium transition-colors ${
-          r.mine ? "bg-[var(--glass-active)] text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.08)]" : "bg-[var(--glass-hover)] text-muted"
+          r.mine ? "bg-[var(--glass-active)] text-heading shadow-[var(--glass-edge),var(--shadow-raised)]" : "bg-[var(--glass-hover)] text-muted"
         }`;
         return canReact ? (
           <button key={r.kind} type="button" aria-pressed={r.mine} aria-label={`${label}, ${r.count}`} title={who} onClick={() => onToggle(r.kind)} className={`${cls} hover:text-heading`}>

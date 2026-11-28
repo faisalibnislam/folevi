@@ -200,7 +200,7 @@ public struct PlusDisc: View {
             .foregroundStyle(FoleviTokens.Chrome.canvas.resolve(scheme).color)
             .frame(width: 40, height: 40)
             .background {
-                WebShapeBox(shape: .capsule, fill: FoleviTokens.Chrome.heading.resolve(scheme).color, shadows: [ShadowLayer(x: 0, y: 2, blur: 6, spread: 0, color: RGBA(0, 0, 0, 0.18))])
+                WebShapeBox(shape: .capsule, fill: FoleviTokens.Chrome.heading.resolve(scheme).color, shadows: FoleviTokens.Shadow.raised.resolve(scheme))
             }
     }
 }

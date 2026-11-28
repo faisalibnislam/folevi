@@ -238,7 +238,7 @@
   content: ""; width: 18px; height: 18px; border-radius: var(--radius-tiny); box-sizing: border-box;
   border: 1.5px solid var(--fb-check-edge);
   background: linear-gradient(180deg, var(--color-surface-raised), color-mix(in oklab, var(--color-surface-raised) 92%, var(--color-surface-sunken)));
-  box-shadow: 0 1px 1px color-mix(in oklab, var(--color-heading) 8%, transparent);
+  box-shadow: var(--shadow-raised);
   transition: background 140ms, border-color 140ms, box-shadow 140ms, transform 120ms; grid-area: 1 / 1;
 }
 .fb-check:hover::before { border-color: var(--color-moss); }
@@ -252,7 +252,7 @@
 .fb-todo[data-checked="true"] .fb-check::before {
   border-color: color-mix(in srgb, var(--color-moss) 80%, var(--color-ink));
   background: linear-gradient(180deg, color-mix(in oklab, var(--color-moss) 82%, white), var(--color-moss));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 1px 2px color-mix(in oklab, var(--color-moss) 45%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), var(--shadow-raised);
 }
 .fb-todo[data-checked="true"] .fb-check::after {
   content: ""; grid-area: 1 / 1; width: 5px; height: 9px; margin-top: -2px;
@@ -431,7 +431,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* Drag and drop (blockDrag.ts) */
 .fb-drag-ghost {
   position: fixed; left: 0; top: 0; z-index: 80; pointer-events: none;
-  background: var(--color-surface); border-radius: var(--radius-control); box-shadow: var(--shadow-lift);
+  background: var(--color-surface); border-radius: var(--radius-control); box-shadow: var(--shadow-edge), var(--shadow-lifted);
   padding: 6px 14px; opacity: 0.92; max-height: 260px; overflow: hidden;
   -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent); mask-image: linear-gradient(to bottom, #000 78%, transparent);
   transform-origin: 24px 16px; will-change: transform;
@@ -444,7 +444,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   font: 600 var(--type-subheadline)/1.2 var(--font-sans); color: var(--color-heading);
   -webkit-mask-image: none; mask-image: none;
 }
-@keyframes fb-lift { from { opacity: 0.5; box-shadow: var(--shadow-card); } }
+@keyframes fb-lift { from { opacity: 0.5; box-shadow: var(--shadow-edge), var(--shadow-resting); } }
 .fb-drop-line {
   position: fixed; left: 0; top: 0; z-index: 81; height: 3px; pointer-events: none; opacity: 0;
   border-radius: var(--radius-tiny); background: var(--color-ember);
@@ -606,11 +606,11 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 }
 .fb-editor > .fb[data-group="card"]:not(:has(+ .fb[data-group="card"])) {
   margin-bottom: 0.8em; padding-bottom: 0.8em; border-bottom-left-radius: var(--radius-control); border-bottom-right-radius: var(--radius-control);
-  box-shadow: inset 1px 0 0 var(--color-line), inset -1px 0 0 var(--color-line), inset 0 -1px 0 var(--color-line), 0 10px 24px -18px rgb(0 0 0 / 0.35);
+  box-shadow: inset 1px 0 0 var(--color-line), inset -1px 0 0 var(--color-line), inset 0 -1px 0 var(--color-line), var(--shadow-resting);
 }
 .fb-editor > .fb[data-group="card"]:first-child:not(:has(+ .fb[data-group="card"])),
 .fb-editor > :not([data-group="card"]) + .fb[data-group="card"]:not(:has(+ .fb[data-group="card"])) {
-  box-shadow: inset 0 0 0 1px var(--color-line), 0 10px 24px -18px rgb(0 0 0 / 0.35);
+  box-shadow: inset 0 0 0 1px var(--color-line), var(--shadow-resting);
 }
 
 /* ------------------------------------------------------------------------------------------------
@@ -650,7 +650,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-sheet[data-palette] .fb-todo[data-checked="true"] .fb-check::before {
   border-color: color-mix(in srgb, var(--pal-accent) 80%, var(--color-ink));
   background: linear-gradient(180deg, color-mix(in oklab, var(--pal-accent) 82%, white), var(--pal-accent));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 1px 2px color-mix(in oklab, var(--pal-accent) 45%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), var(--shadow-raised);
 }
 /* Underline, inline code */
 .fb-sheet[data-palette] .fb-editor u { text-decoration-color: color-mix(in oklab, var(--pal-accent) 70%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }

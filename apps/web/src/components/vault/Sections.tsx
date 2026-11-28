@@ -93,7 +93,7 @@ function PersonSearch({ vaultId, value, onChange }: { vaultId: string; value: { 
         className="h-control w-full ui-input pl-9 pr-3 text-callout"
       />
       {open && matches.length ? (
-        <ul id={list} role="listbox" aria-label="People" className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-control ui-card py-1 shadow-lg">
+        <ul id={list} role="listbox" aria-label="People" className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-control ui-pop py-1">
           {matches.map((p, i) => (
             <li
               key={p.profileId}

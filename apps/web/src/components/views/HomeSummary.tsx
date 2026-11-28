@@ -85,7 +85,7 @@ export function HomeSummary() {
         <button
           type="button"
           onClick={() => void run()}
-          className="inline-flex h-control items-center gap-2 rounded-control border border-[var(--color-line)] bg-surface px-3.5 text-callout font-semibold text-heading shadow-[0_1px_2px_rgb(0_0_0/0.05)] transition-[box-shadow,background-color] hover:bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_2.5%)] hover:shadow-[0_2px_6px_-2px_rgb(0_0_0/0.12)]"
+          className="inline-flex h-control items-center gap-2 rounded-control border border-[var(--color-line)] bg-surface px-3.5 text-callout font-semibold text-heading shadow-[var(--shadow-raised)] transition-[box-shadow,background-color] hover:bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_2.5%)] hover:shadow-[var(--shadow-lifted)]"
         >
           <AiIcon size={15} aria-hidden />
           <span id="home-summary-title">Catch me up</span>
@@ -97,7 +97,7 @@ export function HomeSummary() {
   }
 
   return (
-    <section aria-labelledby="home-summary-title" className="rounded-container border border-[var(--color-line)] bg-surface px-5 py-4 shadow-[0_1px_2px_rgb(0_0_0/0.03),0_10px_28px_-20px_rgb(20_20_40/0.3)]">
+    <section aria-labelledby="home-summary-title" className="rounded-container border border-[var(--color-line)] bg-surface px-5 py-4 shadow-[var(--shadow-resting)]">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-footnote text-muted">
         <AiIcon size={14} aria-hidden />
         <h2 id="home-summary-title" className="text-footnote font-semibold text-ink">

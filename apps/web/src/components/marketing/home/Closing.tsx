@@ -109,7 +109,7 @@ export function PricingSection() {
                 className={cx(
                   "mk-card flex flex-col p-6",
                   badge &&
-                    "shadow-[var(--shadow-card),inset_0_0_0_1.5px_var(--mk-violet)]",
+                    "shadow-[var(--shadow-edge),var(--shadow-resting),inset_0_0_0_1.5px_var(--mk-violet)]",
                 )}
               >
                 <div className="flex min-h-7 items-center gap-2">

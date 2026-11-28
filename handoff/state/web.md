@@ -17,6 +17,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 - Spell check, suggestions and next-word prediction on Tab (PR 143, released in 1.8.78): Folevi's own checker in a worker, nine spelling languages plus Chinese prediction, the personal dictionary synced, Foli AI completions only when Foli AI is on and never for encrypted notes. The ghost word is CSS (`data-ghost`), never part of the text.
 - Columns layout (PR for branch `claude/apple-notes-layout`, 2026-11-28, `docs/NOTE_COLUMNS.md`): an optional Apple Notes-style layout. Once chosen it holds everywhere: every note opens in a list's column (its folder's, Drafts, Trash, Archive or Shared with Me; nested pages in their top note's), there is no tab bar or tabs (New note is beside Search), and the Folders page lists every note in a folder. The sidebar, a column of the list's notes (serif title, time and first line, folder; Pinned for the list's bookmarks, then Today, Yesterday, Previous 7 days, Previous 30 days, months) and the real note page. Switched with Layout in the Sidebar menu or Settings > Appearance > Note lists (one `localStorage` preference per device). A note in a list is `/d/<id>?list=<list path>`; a plain `/d/<id>` gets its list from the note's details. Saved tabs are left alone while it's on. The note list is always shown (resizable, never hidden); off in the phone layout and in the native apps' chrome.
 - Sidebar More and Customize sidebar (2026-11-27, `lib/app/sidebarLayout.ts`, `convex/sidebarLayout.ts`): the app's own items follow a per-account layout; Shared with Me, Changes and Templates start under More; Home and Drafts always on the sidebar. Web, Windows and Linux only: the native Mac, iPhone/iPad and Android sidebars don't have it yet.
+- One shadow hierarchy (2026-11-28, `docs/SHADOWS.md`): an edge plus a level (`raised`, `resting`, `lifted`, `floating`, `overlay`) from the tokens, on the web and native. `test/shadow-scale.test.ts` fails on raw drop shadows.
 
 ## Next steps
 - Columns layout: try it in the Windows and Linux app. ⌘-click in the column selects, as in every list (owner, 2026-11-28); middle-click and Open in New Tab open a tab.
@@ -25,6 +26,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
   - iPad (`apps/ios`, wide layout): `NavigationSplitView` with three columns (sidebar, content list, detail note), the same rows and groups, the content column always shown; on iPhone and narrow iPad windows it stays today's stack. Same preference key, synced as the other appearance settings are.
   - Both: Pinned is the list's bookmarked notes; the context menu, multi-select, drag to a folder and New note in the list work as on the web; Trash shows the deleted time.
 
+- Shadows: PR 190's Home shadows go onto the levels when it merges `main` (`docs/SHADOWS.md`, Not done yet).
 - Spell check and prediction: not yet tried in the native builds (Mac, iPhone, Windows) or on devices.
 
 - Spell check: a native Settings row for Writing on the Mac and iPhone/iPad; try it in each app's build.

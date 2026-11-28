@@ -661,7 +661,7 @@ struct TabDrag: ViewModifier {
         let lifted = dragging?.id == id
         content
             .offset(x: lifted ? dragging!.dx : 0)
-            .nativeShadow(lifted ? .floating : nil)
+            .nativeShadow(lifted ? .lifted : nil)
             .zIndex(lifted ? 1 : 0)
             .gesture(
                 DragGesture(minimumDistance: 5, coordinateSpace: .named("frame.tabs"))

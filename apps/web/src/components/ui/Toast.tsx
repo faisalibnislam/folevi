@@ -59,7 +59,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               role={t.tone === "error" ? "alert" : "status"}
               aria-hidden={t.leaving || undefined}
               // Panel corners: the action button's 6px corners sit 8px in (6 + 8 = 14).
-              className={`flex max-w-md items-center gap-3 rounded-panel py-2 pl-5 pr-2.5 text-subheadline font-medium shadow-[var(--shadow-pop)] animate-[folio-rise_180ms_var(--ease-folio)] transition-[opacity,translate] duration-150 ease-out ${
+              className={`flex max-w-md items-center gap-3 rounded-panel py-2 pl-5 pr-2.5 text-subheadline font-medium shadow-[var(--shadow-edge),var(--shadow-floating)] animate-[folio-rise_180ms_var(--ease-folio)] transition-[opacity,translate] duration-150 ease-out ${
                 t.leaving ? "pointer-events-none translate-y-1 opacity-0" : "pointer-events-auto"
               } ${
                 t.tone === "error" ? "bg-danger-soft text-ink" : t.tone === "success" ? "bg-success-soft text-ink" : "bg-[var(--color-accent-strong)] text-[var(--color-accent-ink)]"

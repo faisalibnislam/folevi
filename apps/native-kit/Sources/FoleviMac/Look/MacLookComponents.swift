@@ -325,7 +325,7 @@ public struct CapsuleTrack<Item: Hashable, Label: View>: View {
                             if selected {
                                 Capsule()
                                     .fill(MacLook.Colors.raised)
-                                    .shadow(color: .black.opacity(0.12), radius: 1.5, y: 0.5)
+                                    .nativeShadow(.raised)
                                     .matchedGeometryEffect(id: "selection", in: ns)
                             }
                         }

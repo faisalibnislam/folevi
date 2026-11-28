@@ -24,7 +24,7 @@ const DIM_MEDIUM = 0.1;
  * A sheet's surface: solid (the screen's raised neutral, light and dark) with the glass's fine edge and soft
  * shadow. No backdrop blur: blurring what's under a sheet costs the web view every frame it moves.
  */
-const SURFACE = "relative isolate bg-[var(--iphone-solid)] shadow-[var(--liquid-edge),var(--liquid-shadow)]";
+const SURFACE = "relative isolate bg-[var(--iphone-solid)] shadow-[var(--liquid-edge),var(--shadow-floating)]";
 /** Below the screen with its shadow, when it's gone. */
 const OFF = 24;
 /** Going away: the sheet's spring without the bounce (nothing to see past the screen's edge), quick to settle. */

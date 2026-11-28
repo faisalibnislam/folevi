@@ -20,7 +20,7 @@ export function SpellingPicture() {
           The hotel says we’ll{" "}
           <span className="underline decoration-[#e5484d] decoration-wavy decoration-[1.5px] underline-offset-[3px]">recieve</span> the keys at the front desk.
         </p>
-        <div className="mt-1 w-[200px] translate-x-24 overflow-hidden rounded-panel bg-(--color-surface-raised) py-1.5 text-[13px] shadow-[0_12px_32px_-12px_rgb(20_20_40/0.35),0_0_0_1px_var(--color-line)] sm:translate-x-32">
+        <div className="mt-1 w-[200px] translate-x-24 overflow-hidden rounded-panel bg-(--color-surface-raised) py-1.5 text-[13px] shadow-[0_0_0_1px_var(--color-line),var(--shadow-resting)] sm:translate-x-32">
           {["receive", "relieve", "reprieve"].map((word, i) => (
             <p key={word} className={i === 0 ? "mx-1.5 rounded-chip bg-(--color-accent-soft) px-2.5 py-1.5 font-semibold text-(--color-heading)" : "px-4 py-1.5 font-semibold text-(--color-heading)"}>
               {word}

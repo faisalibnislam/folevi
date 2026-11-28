@@ -728,7 +728,7 @@ function WebShell() {
           <IphoneShell
             banner={
               settings?.bannerMessage ? (
-                <div role="status" className="rounded-panel bg-warning-soft px-4 py-2 text-center text-subheadline text-ink shadow-[var(--glass-shadow)]">
+                <div role="status" className="rounded-panel bg-warning-soft px-4 py-2 text-center text-subheadline text-ink shadow-[var(--shadow-resting)]">
                   {settings.bannerMessage}
                   {settings.readOnly ? " Folevi is read-only right now; your edits are kept on this device." : ""}
                 </div>
@@ -959,7 +959,7 @@ function JoinedBar({ joined, primary, title, tabTitle, sync, actions }: { joined
       title="Drag to rearrange"
       className={`mx-1 mb-2 flex h-10 flex-none select-none items-center gap-1 rounded-panel px-1 transition-[background-color,box-shadow,color] duration-150 ${joined.dragging ? "cursor-grabbing" : "cursor-grab"} ${
         primary
-          ? "bg-[var(--color-surface-raised)] text-heading shadow-[0_1px_3px_rgb(0_0_0/0.03),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_5%,transparent)]"
+          ? "bg-[var(--color-surface-raised)] text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_5%,transparent)]"
           : "bg-[var(--glass-hover)] text-muted"
       }`}
     >

@@ -50,7 +50,7 @@ function countBadge(text: string): HTMLElement {
     font: "600 12px system-ui, sans-serif",
     background: dark ? "#f4f4f5" : "#18181b",
     color: dark ? "#18181b" : "#ffffff",
-    boxShadow: "0 2px 8px rgb(0 0 0 / 0.2)",
+    boxShadow: "var(--shadow-lifted)",
   });
   return badge;
 }

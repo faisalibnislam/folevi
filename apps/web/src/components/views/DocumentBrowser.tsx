@@ -811,7 +811,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
                   aria-label={`New page from ${t.name}`}
                   onClick={() => void createDocument({ title: t.name, templateId: t.key })}
                   data-card-row=""
-                  className="flex items-start gap-3 ui-card rounded-control p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
+                  className="flex items-start gap-3 ui-card rounded-control p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-edge),var(--shadow-floating)]"
                 >
                   <TemplateTile name={t.icon} />
                   <span>

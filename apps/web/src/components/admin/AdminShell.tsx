@@ -99,12 +99,12 @@ function isActive(pathname: string, href: string): boolean {
 
 // The app's sidebar row (components/app/Sidebar.tsx NavItem): the open page comes forward on light glass.
 const ROW = "group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-body outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
-const ROW_ON = "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]";
+const ROW_ON = "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),var(--shadow-raised)]";
 const ROW_OFF = "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading";
 
 // The app's tab strip tabs (components/app/TabStrip.tsx).
 const TAB = "relative flex h-8 min-w-0 items-center gap-2 rounded-chip px-2.5 text-subheadline outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus";
-const TAB_ON = "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
+const TAB_ON = "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent),var(--shadow-raised)]";
 const TAB_OFF = "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
 const ICON_BTN = "grid h-8 w-8 flex-none place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 

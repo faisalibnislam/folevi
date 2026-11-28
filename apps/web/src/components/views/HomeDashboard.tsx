@@ -109,7 +109,7 @@ function TodaysReviews() {
   if (!today?.hasCards) return null;
   const waiting = today.due + today.new;
   return (
-    <section aria-labelledby="home-reviews" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-container bg-[var(--glass-active)] px-5 py-4 shadow-[var(--glass-edge),var(--glass-shadow)]">
+    <section aria-labelledby="home-reviews" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-container bg-[var(--glass-active)] px-5 py-4 shadow-[var(--glass-edge),var(--shadow-resting)]">
       <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
         <Layers size={17} strokeWidth={1.9} />
       </span>

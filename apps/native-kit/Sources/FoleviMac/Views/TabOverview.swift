@@ -119,7 +119,7 @@ public struct TabOverviewLayer: View {
             .frame(width: 288, height: 36)
             .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.control, style: .continuous).fill(color("color-surface-raised")))
             .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.control, style: .continuous).strokeBorder(searching ? color("color-focus") : color("color-line"), lineWidth: searching ? 2 : 1))
-            .shadow(color: .black.opacity(0.05), radius: 1, y: 1)
+            .nativeShadow(.raised)
             Button { dismiss() } label: {
                 Text("Done").webText(WebTextStyle(size: 13, leading: 18, weight: 600)).foregroundStyle(color("color-heading"))
                     .padding(.horizontal, 12).frame(height: 36).contentShape(Rectangle())
@@ -177,7 +177,7 @@ public struct TabOverviewLayer: View {
         .overlay {
             if hovered { shape.strokeBorder(color("color-focus"), lineWidth: 2) } else if on { shape.strokeBorder(color("color-heading").opacity(0.3), lineWidth: 1.5) }
         }
-        .nativeShadow(hovered ? .floating : .card)
+        .nativeShadow(hovered ? .lifted : .card)
         .offset(y: hovered ? -2 : 0)
         .animation(.easeOut(duration: 0.15), value: hovered)
         .onHover { if $0 { sel = i } }

@@ -329,14 +329,14 @@ public struct WebNoteCard: View {
         let link = s("link")
         let sheetStyle = s("sheet")
         let shape = phone ? WebCornersShape.phoneNoteCard : WebCornersShape.noteCard
-        let shadows = risen ? Self.hoverShadows : link.visibleShadows
+        let shadows = risen ? Self.hoverShadows(scheme) : link.visibleShadows
         let look = model.look
         let appHeading = s("title").color
         let appTint = { (p: Double) in appHeading.oklabMix(sheetStyle.background, p / 100) }
         ZStack(alignment: .topLeading) {
             if look == .stack {
                 // Sheets fanned behind the cover: the note has pages inside.
-                let sheetShadows = [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true), ShadowLayer(x: 0, y: 4, blur: 10, spread: -6, color: RGBA(20, 20, 30, 0.25))]
+                let sheetShadows = [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true)] + FoleviTokens.Shadow.resting.resolve(scheme)
                 WebShapeBox(shape: shape, fill: appTint(16).color, shadows: sheetShadows)
                     .frame(width: w * 0.97, height: h * 0.98)
                     .rotationEffect(.degrees(5))
@@ -642,12 +642,8 @@ public struct WebNoteCard: View {
         }.joined(separator: "\n")
     }
 
-    /// NOTE_CARD_LINK's hover shadow.
-    static let hoverShadows: [ShadowLayer] = [
-        ShadowLayer(x: -3, y: 12, blur: 16, spread: -8, color: RGBA(20, 20, 30, 0.09)),
-        ShadowLayer(x: -5, y: 24, blur: 36, spread: -18, color: RGBA(20, 20, 30, 0.09)),
-        ShadowLayer(x: 0, y: 3, blur: 8, spread: 0, color: RGBA(20, 20, 30, 0.02)),
-    ]
+    /// NOTE_CARD_LINK's hover shadow: the lifted level (docs/SHADOWS.md).
+    static func hoverShadows(_ scheme: ColorScheme) -> [ShadowLayer] { FoleviTokens.Shadow.lifted.resolve(scheme) }
 }
 
 /// Graph paper: a line every `step` both ways, from the top-left (the card's graph look).
@@ -972,9 +968,8 @@ public struct WebFolderCard: View {
         let st = Self.stack(model.subfolders)
         let r = FoleviTokens.Radius.panel
         let shadow = WebCornersShape(topLeft: r, topRight: r, bottomRight: r, bottomLeft: r)
-        let shadows = dark
-            ? [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.04)), ShadowLayer(x: 0, y: 14, blur: 26, spread: -14, color: RGBA(0, 0, 0, 0.45))]
-            : [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.03)), ShadowLayer(x: 0, y: 14, blur: 26, spread: -14, color: RGBA(30, 30, 50, 0.21))]
+        // The resting level, as every card's (docs/SHADOWS.md); dark adds the faint ring the web draws.
+        let shadows = (dark ? [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.04))] : []) + FoleviTokens.Shadow.resting.resolve(scheme)
         // It starts where the back's body does beside the tab (16% down the back), so its edge never shows in the
         // gap beside the tab (as FolderCardArt.tsx).
         let top = st.back + (1 - st.back) * 0.16

@@ -94,7 +94,7 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
     <div
       role="group"
       aria-label={`${card.name} plan`}
-      className={cx("mk-card relative flex flex-col p-6 sm:p-7", sticker ? "shadow-[var(--shadow-card),inset_0_0_0_1.5px_var(--mk-violet)]" : featured && "shadow-[var(--shadow-card),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]")}
+      className={cx("mk-card relative flex flex-col p-6 sm:p-7", sticker ? "shadow-[var(--shadow-edge),var(--shadow-resting),inset_0_0_0_1.5px_var(--mk-violet)]" : featured && "shadow-[var(--shadow-edge),var(--shadow-resting),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]")}
     >
       <div className="flex min-h-7 items-center gap-2">
         <Heading className="flex items-center gap-1.5 text-[16px] font-semibold text-(--color-heading)">

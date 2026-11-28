@@ -11,6 +11,9 @@
 //! - [`bind_quick_add`]: Quick Add's shortcut on Wayland, where apps can't grab keys: through the desktop's
 //!   GlobalShortcuts portal (KDE Plasma 5.27+, GNOME 48+, Hyprland). X11 keeps the global-shortcut plugin.
 //! - [`icon_name`], [`THIS_DEVICE`]: names that differ from Windows'.
+//! - [`message_dialog`]: Folevi's own message dialogs, drawn with GTK. The dialog plugin's portal backend (kept for
+//!   the file chooser) shows messages by running `zenity`, which KDE and minimal installs don't have: there the
+//!   update offer never appeared and nothing was logged (found 2026-11-28).
 //!
 //! Checked in an Ubuntu 22.04 VM (X11 under Xvfb): rendering, tray, notifications, the Secret Service,
 //! single-instance links and the portal's color scheme. Not checked: a real Wayland desktop with the portal.
@@ -240,4 +243,49 @@ mod tests {
     fn hint_names_the_command() {
         assert!(system_shortcut_hint().contains("folevi://quick-add"));
     }
+}
+
+/// A message dialog drawn with GTK, over the main window when it's showing. `primary` is the button the person
+/// gets with Enter; `done` is called once with true for it and false for `secondary` or closing the dialog.
+pub fn message_dialog(
+    app: &AppHandle,
+    title: &str,
+    body: &str,
+    warning: bool,
+    primary: &str,
+    secondary: Option<&str>,
+    done: impl FnOnce(bool) + Send + 'static,
+) {
+    use gtk::prelude::*;
+    use tauri::Manager;
+    let (title, body, primary, secondary) = (title.to_owned(), body.to_owned(), primary.to_owned(), secondary.map(str::to_owned));
+    let app2 = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        let parent = app2
+            .get_webview_window("main")
+            .filter(|w| w.is_visible().unwrap_or(false))
+            .and_then(|w| w.gtk_window().ok());
+        let kind = if warning { gtk::MessageType::Warning } else { gtk::MessageType::Info };
+        let dialog = gtk::MessageDialog::new(parent.as_ref(), gtk::DialogFlags::MODAL | gtk::DialogFlags::DESTROY_WITH_PARENT, kind, gtk::ButtonsType::None, &title);
+        dialog.set_title("Folevi");
+        dialog.set_secondary_text(Some(&body));
+        if let Some(secondary) = &secondary {
+            dialog.add_button(secondary, gtk::ResponseType::Cancel);
+        }
+        dialog.add_button(&primary, gtk::ResponseType::Accept);
+        dialog.set_default_response(gtk::ResponseType::Accept);
+        if parent.is_none() {
+            dialog.set_position(gtk::WindowPosition::Center);
+            dialog.set_keep_above(true);
+        }
+        let done = std::cell::RefCell::new(Some(done));
+        dialog.connect_response(move |dialog, response| {
+            if let Some(done) = done.borrow_mut().take() {
+                done(response == gtk::ResponseType::Accept);
+            }
+            dialog.close();
+        });
+        dialog.show_all();
+        dialog.present();
+    });
 }

@@ -233,7 +233,7 @@ export function CommentThreadCard({
           onClose();
         }
       }}
-      className={embedded ? "overflow-hidden rounded-control bg-[var(--color-surface)] shadow-[var(--shadow-card)]" : "ui-pop overflow-hidden rounded-panel text-ink"}
+      className={embedded ? "overflow-hidden rounded-control bg-[var(--color-surface)] shadow-[var(--shadow-edge),var(--shadow-resting)]" : "ui-pop overflow-hidden rounded-panel text-ink"}
     >
       <header className="flex items-center gap-0.5 border-b border-line/70 py-2 pl-4 pr-2">
         <div className="min-w-0 flex-1">

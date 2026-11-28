@@ -14,7 +14,7 @@
 .fb-narrow-canvas-open {
   display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 12px; border-radius: var(--radius-control);
   background: var(--color-heading); color: var(--color-canvas); font: 600 var(--type-footnote)/1 var(--font-sans);
-  box-shadow: 0 6px 18px -8px rgb(0 0 0 / 0.35), 0 0 0 0.5px rgb(0 0 0 / 0.08);
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08), var(--shadow-floating);
   transition: transform 160ms var(--motion-easing, ease);
 }
 .fb-narrow-canvas-open:active { transform: scale(0.96); }

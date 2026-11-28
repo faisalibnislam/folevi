@@ -334,7 +334,7 @@ private struct FormatKeyStyle: ButtonStyle {
             .background {
                 if on && swatch {
                     Capsule().fill(FoleviTokens.Chrome.surfaceRaised.resolve(scheme).color)
-                        .shadow(color: .black.opacity(0.14), radius: 1.5, y: 1)
+                        .nativeShadow(.raised)
                         .overlay(Capsule().strokeBorder(.black.opacity(0.06), lineWidth: 0.5))
                 } else {
                     Capsule().fill(filled ? heading : configuration.isPressed ? FoleviTokens.Chrome.ink.resolve(scheme).color.opacity(0.11) : .clear)

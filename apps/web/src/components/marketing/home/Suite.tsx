@@ -87,7 +87,7 @@ function BoardPicture() {
           <span key={c.name} className="block rounded-tiny bg-(--color-surface-sunken) p-1.5">
             <span className="block text-[11px] font-semibold text-muted">{c.name}</span>
             {c.cards.map((x) => (
-              <span key={x} className="mt-1 block truncate rounded-tiny bg-(--color-surface) px-1.5 py-1 text-[11px] text-ink shadow-[0_1px_2px_rgb(0_0_0/0.06)]">
+              <span key={x} className="mt-1 block truncate rounded-tiny bg-(--color-surface) px-1.5 py-1 text-[11px] text-ink shadow-[var(--shadow-raised)]">
                 {x}
               </span>
             ))}

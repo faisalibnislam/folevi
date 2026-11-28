@@ -35,7 +35,7 @@ export function SectionHead({ id, children, action, icon: Icon }: { id: string; 
     <div className="flex items-center justify-between gap-3">
       <h2 id={id} className="flex min-w-0 items-center gap-2.5 font-serif text-title-3 font-semibold leading-tight text-heading">
         {Icon ? (
-          <span aria-hidden className="grid size-7 flex-none place-items-center rounded-small border border-[var(--color-line)] bg-surface text-muted shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+          <span aria-hidden className="grid size-7 flex-none place-items-center rounded-small border border-[var(--color-line)] bg-surface text-muted shadow-[var(--shadow-raised)]">
             <Icon size={14} aria-hidden />
           </span>
         ) : null}
@@ -216,7 +216,7 @@ export function CaptureField() {
   };
   const tool = "ui-btn ui-btn-quiet size-control p-0 text-muted disabled:opacity-40";
   return (
-    <div className="relative rounded-container border border-[var(--color-line)] bg-surface px-5 pb-3 pt-4 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_32px_-18px_rgb(20_20_40/0.25)]">
+    <div className="relative rounded-container border border-[var(--color-line)] bg-surface px-5 pb-3 pt-4 shadow-[var(--shadow-resting)]">
       <label htmlFor="home-capture" className="sr-only">
         New note
       </label>
@@ -420,7 +420,7 @@ export function DnaWeek({ load }: { load: boolean }) {
     );
   const chip = "absolute inline-flex max-w-[40%] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-panel px-2.5 py-1 text-footnote font-medium transition-[filter] hover:brightness-95";
   return (
-    <div className="relative h-72 overflow-hidden rounded-container border border-[var(--color-line)] bg-surface bg-[radial-gradient(circle,color-mix(in_oklab,var(--color-ink)_14%,transparent)_1px,transparent_1.2px)] bg-[length:16px_16px] shadow-[0_1px_2px_rgb(0_0_0/0.03),0_10px_28px_-20px_rgb(20_20_40/0.3)]">
+    <div className="relative h-72 overflow-hidden rounded-container border border-[var(--color-line)] bg-surface bg-[radial-gradient(circle,color-mix(in_oklab,var(--color-ink)_14%,transparent)_1px,transparent_1.2px)] bg-[length:16px_16px] shadow-[var(--shadow-resting)]">
       <svg aria-hidden width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0">
         <g fill="none" stroke="var(--color-ink-faint)" strokeOpacity="0.45" strokeWidth="1">
           {week.around.map((_, i) => {
@@ -429,7 +429,7 @@ export function DnaWeek({ load }: { load: boolean }) {
           })}
         </g>
       </svg>
-      <AppLink href={`/d/${week.hub.id}`} className={`${chip} left-1/2 top-1/2 bg-heading text-canvas shadow-[0_6px_16px_-8px_rgb(0_0_0/0.35)]`}>
+      <AppLink href={`/d/${week.hub.id}`} className={`${chip} left-1/2 top-1/2 bg-heading text-canvas shadow-[var(--shadow-raised)]`}>
         <span aria-hidden className="h-[7px] w-[7px] flex-none rounded-tiny" style={{ background: colorOf(week.hub.folderId) }} />
         <span className="truncate">{week.hub.label}</span>
       </AppLink>
@@ -477,7 +477,7 @@ export function HomeBlockFrame({
   return (
     <div className={`relative min-w-0 ${editing ? "rounded-panel outline-dashed outline-[1.5px] outline-offset-[10px] outline-[var(--color-ink-faint)]" : ""}`}>
       {editing ? (
-        <div className="absolute -top-7 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-control bg-surface px-1 shadow-[0_1px_4px_rgb(0_0_0/0.12)]">
+        <div className="absolute -top-7 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-control bg-surface px-1 shadow-[var(--shadow-raised)]">
           <button type="button" className={tool} disabled={first} onClick={() => move(-1)} aria-label={`Move ${block.label} earlier`} title="Move earlier">
             <ArrowUp size={14} aria-hidden />
           </button>

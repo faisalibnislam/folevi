@@ -10,8 +10,8 @@ const newer = (a: string, b: string) => {
 };
 
 describe("changelog page entries", () => {
-  test("the newest entry is 1.8.79 and its date is the page's latest", () => {
-    expect(RELEASES[0]!.version).toBe("1.8.79");
+  test("the newest entry is 1.9.80 and its date is the page's latest", () => {
+    expect(RELEASES[0]!.version).toBe("1.9.80");
     expect(LATEST_RELEASE_DATE).toBe(RELEASES[0]!.date);
   });
 

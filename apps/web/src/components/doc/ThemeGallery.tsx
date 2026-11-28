@@ -23,7 +23,7 @@ const isDark = () => typeof document !== "undefined" && document.documentElement
 function Sheet({ name, defaults, fonts, paper, ink, accent, highlights }: { name: string; defaults: ThemeDefaults; fonts: ThemeFonts; paper: string; ink: string; accent?: string; highlights?: string[] }) {
   const title = familyFor(defaults.font === "sans" ? "serif" : defaults.font, fonts);
   return (
-    <div className="absolute bottom-0 left-1/2 top-9 w-[70%] -translate-x-1/2 rounded-t-chip px-3 pt-2.5 shadow-[0_8px_22px_-8px_rgb(0_0_0/0.45)]" style={{ background: paper, color: ink }}>
+    <div className="absolute bottom-0 left-1/2 top-9 w-[70%] -translate-x-1/2 rounded-t-chip px-3 pt-2.5 shadow-[var(--shadow-resting)]" style={{ background: paper, color: ink }}>
       <p className="truncate text-title-3 font-semibold leading-tight" style={{ fontFamily: title, fontSizeAdjust: defaults.font === "mono" ? "ex-height 0.55" : defaults.font === "rounded" ? "ex-height 0.52" : "ex-height 0.45" }}>
         {name}
       </p>
@@ -51,7 +51,7 @@ function Card({ label, on, onPick, art, footer, locked, children }: { label: str
       aria-label={label}
       onClick={onPick}
       data-card-row=""
-      className={`group relative flex flex-col overflow-hidden rounded-control bg-surface text-left transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-heading)]" : "shadow-[var(--shadow-card)]"}`}
+      className={`group relative flex flex-col overflow-hidden rounded-control bg-surface text-left transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[var(--shadow-edge),var(--shadow-floating)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-heading)]" : "shadow-[var(--shadow-edge),var(--shadow-resting)]"}`}
     >
       <span aria-hidden className="relative block aspect-[4/3] overflow-hidden" style={{ background: art }}>
         {children}

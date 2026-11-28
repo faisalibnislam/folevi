@@ -1143,7 +1143,7 @@ function PageView({ node, selected }: ReactNodeViewProps) {
       <AppLink
         href={`/d/${a.documentId}`}
         contentEditable={false}
-        className="group my-2 flex items-start gap-3 ui-card rounded-control p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
+        className="group my-2 flex items-start gap-3 ui-card rounded-control p-4 no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-edge),var(--shadow-floating)]"
         title="Open page (Alt-click opens a new tab)"
       >
         <FileText size={20} aria-hidden className="mt-0.5 flex-none text-muted" />

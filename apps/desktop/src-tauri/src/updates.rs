@@ -13,6 +13,7 @@ use std::time::Duration;
 
 use parking_lot::Mutex;
 use tauri::AppHandle;
+#[cfg(not(target_os = "linux"))]
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
@@ -87,18 +88,13 @@ fn offer(app: &AppHandle, update: Update) {
     let notes = update.body.as_deref().map(str::trim).filter(|b| !b.is_empty()).map(|b| format!("\n\n{b}")).unwrap_or_default();
     let body = format!("Folevi {} is available. You have {}.{notes}", update.version, crate::FOLEVI_VERSION);
     let app2 = app.clone();
-    app.dialog()
-        .message(body)
-        .title("A new version of Folevi is available")
-        .kind(MessageDialogKind::Info)
-        .buttons(MessageDialogButtons::OkCancelCustom("Install and Restart".into(), "Later".into()))
-        .show(move |install| {
-            if !install {
-                *LATER.lock() = Some(update.version.clone());
-                return;
-            }
-            tauri::async_runtime::spawn(async move { install_update(&app2, update).await });
-        });
+    show(app, "A new version of Folevi is available", &body, false, "Install and Restart", Some("Later"), move |install| {
+        if !install {
+            *LATER.lock() = Some(update.version.clone());
+            return;
+        }
+        tauri::async_runtime::spawn(async move { install_update(&app2, update).await });
+    });
 }
 
 async fn install_update(app: &AppHandle, update: Update) {
@@ -115,17 +111,16 @@ async fn install_update(app: &AppHandle, update: Update) {
     if let Err(e) = update.install(bytes) {
         log::warn!("Folevi: update install failed: {e}");
         // The library is closed by now, so Folevi starts again after the message, as it was.
-        let app = app.clone();
-        let _ = tauri::async_runtime::spawn_blocking(move || {
-            app.dialog()
-                .message("Download the newest Folevi from folevi.com/download and install it. Folevi will now open again.")
-                .title("Folevi couldn't install the update")
-                .kind(MessageDialogKind::Warning)
-                .buttons(MessageDialogButtons::Ok)
-                .blocking_show();
-            app.restart();
-        })
-        .await;
+        let app2 = app.clone();
+        show(
+            app,
+            "Folevi couldn't install the update",
+            "Download the newest Folevi from folevi.com/download and install it. Folevi will now open again.",
+            true,
+            "OK",
+            None,
+            move |_| app2.restart(),
+        );
         return;
     }
     // The AppImage was replaced in place; Windows's installer starts Folevi again when it's done.
@@ -133,5 +128,29 @@ async fn install_update(app: &AppHandle, update: Update) {
 }
 
 fn tell(app: &AppHandle, title: &str, body: &str) {
-    app.dialog().message(body).title(title).kind(MessageDialogKind::Info).buttons(MessageDialogButtons::Ok).show(|_| {});
+    show(app, title, body, false, "OK", None, |_| {});
+}
+
+/// A message with one button, or two (`secondary`); `done` gets true for `primary`. Linux draws it with GTK
+/// (`linux::message_dialog`), since the dialog plugin's portal backend there needs zenity; Windows uses the plugin.
+fn show(
+    app: &AppHandle,
+    title: &str,
+    body: &str,
+    warning: bool,
+    primary: &str,
+    secondary: Option<&str>,
+    done: impl FnOnce(bool) + Send + 'static,
+) {
+    #[cfg(target_os = "linux")]
+    crate::linux::message_dialog(app, title, body, warning, primary, secondary, done);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let buttons = match secondary {
+            Some(secondary) => MessageDialogButtons::OkCancelCustom(primary.into(), secondary.into()),
+            None => MessageDialogButtons::Ok,
+        };
+        let kind = if warning { MessageDialogKind::Warning } else { MessageDialogKind::Info };
+        app.dialog().message(body).title(title).kind(kind).buttons(buttons).show(done);
+    }
 }

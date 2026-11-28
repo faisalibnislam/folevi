@@ -49,7 +49,7 @@ export function refusalText(problem: "self" | "descendant" | "depth"): string {
 /** The few words a target shows when what's dragged can't go there. */
 export function DropRefusal({ text, className = "", style }: { text: string; className?: string; style?: React.CSSProperties }) {
   return (
-    <span role="status" style={style} className={`pointer-events-none absolute z-20 whitespace-nowrap rounded-chip bg-heading px-2 py-1 text-footnote font-medium text-canvas shadow-[0_4px_12px_rgb(0_0_0/0.18)] ${className}`}>
+    <span role="status" style={style} className={`pointer-events-none absolute z-20 whitespace-nowrap rounded-chip bg-heading px-2 py-1 text-footnote font-medium text-canvas shadow-[var(--shadow-floating)] ${className}`}>
       {text}
     </span>
   );
@@ -454,7 +454,7 @@ function lift(face: HTMLElement, x: number, y: number, badgeText: string | null,
     zIndex: "2147483000",
     pointerEvents: "none",
     opacity: "0.92",
-    boxShadow: "0 12px 32px rgb(0 0 0 / 0.22), 0 2px 8px rgb(0 0 0 / 0.12)",
+    boxShadow: "var(--shadow-lifted)",
     borderRadius: "var(--radius-chip)",
     background: getComputedStyle(face).backgroundColor === "rgba(0, 0, 0, 0)" ? "var(--color-surface, var(--color-canvas))" : "",
     transformOrigin: `${x - box.left}px ${y - box.top}px`,

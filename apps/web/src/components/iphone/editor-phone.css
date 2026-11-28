@@ -64,7 +64,7 @@
 :root[data-iphone] :is(.iphone-fmt-btn, .iphone-fmt-style).is-on { background: var(--color-heading); color: var(--color-canvas); }
 :root[data-iphone] :is(.iphone-fmt-btn, .iphone-fmt-style, .iphone-fmt-row):disabled { opacity: 0.35; }
 /* A colour keeps its colour when chosen: it sits on a raised thumb, as in a segmented control. */
-:root[data-iphone] .iphone-fmt-btn.is-swatch.is-on { background: var(--color-surface-raised); color: var(--color-heading); box-shadow: 0 1px 3px rgb(0 0 0 / 0.14), 0 0 0 0.5px rgb(0 0 0 / 0.06); }
+:root[data-iphone] .iphone-fmt-btn.is-swatch.is-on { background: var(--color-surface-raised); color: var(--color-heading); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.06), var(--shadow-raised); }
 :root[data-iphone] .iphone-fmt-list { border-radius: var(--radius-container); background: var(--fmt-wash); overflow: hidden; }
 :root[data-iphone] .iphone-fmt-row {
   position: relative; display: flex; width: 100%; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px;
@@ -88,7 +88,7 @@
 :root[data-iphone] .iphone-seg { display: flex; gap: 2px; padding: 2px; overflow-x: auto; border-radius: var(--radius-capsule); background: color-mix(in oklab, var(--color-ink) 6%, transparent); scrollbar-width: none; }
 :root[data-iphone] .iphone-seg::-webkit-scrollbar { display: none; }
 :root[data-iphone] .iphone-seg > button { display: inline-flex; flex: 1 0 auto; min-width: 0; height: 32px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); color: var(--color-ink); transition: background-color 150ms, box-shadow 150ms; }
-:root[data-iphone] .iphone-seg > button[aria-pressed="true"] { background: var(--color-surface-raised); font-weight: 600; color: var(--color-heading); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.05); }
+:root[data-iphone] .iphone-seg > button[aria-pressed="true"] { background: var(--color-surface-raised); font-weight: 600; color: var(--color-heading); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.05), var(--shadow-raised); }
 :root[data-theme="dark"][data-iphone] .iphone-seg > button[aria-pressed="true"] { background: rgb(255 255 255 / 0.16); }
 :root[data-iphone] .iphone-collection-list > li { position: relative; }
 :root[data-iphone] .iphone-collection-list > li + li::before { content: ""; position: absolute; top: 0; right: 0; left: 48px; height: 0.5px; background: var(--iphone-separator); }
@@ -146,7 +146,7 @@
   position: absolute; z-index: 20; left: 16px; bottom: var(--fb-full-foot);
   min-width: 96px; height: 44px; padding: 0 24px; border-radius: var(--radius-capsule);
   background: var(--color-heading); color: var(--color-canvas); font: 600 var(--type-body)/1 var(--font-sans);
-  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.35), 0 0 0 0.5px rgb(0 0 0 / 0.08);
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08), var(--shadow-floating);
   transition: transform 420ms var(--spring-press);
 }
 :root[data-iphone] .fb-vc-phone-done:active { transform: scale(0.96); }

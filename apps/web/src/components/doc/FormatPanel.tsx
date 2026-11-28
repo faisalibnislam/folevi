@@ -70,7 +70,7 @@ function Tile({ label, icon, onClick, disabled, pressed, tone = "ink" }: { label
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={`group flex flex-col items-center gap-1.5 rounded-chip px-1 py-2.5 text-footnote font-medium transition-[box-shadow,transform,background-color] duration-150 disabled:opacity-40 ${
-        pressed ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_45%,transparent)]" : "ui-raised text-ink hover:-translate-y-px hover:shadow-[var(--shadow-card)]"
+        pressed ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_45%,transparent)]" : "ui-raised text-ink hover:-translate-y-px hover:shadow-[var(--shadow-edge),var(--shadow-resting)]"
       }`}
     >
       <span aria-hidden className={`grid h-7 w-7 place-items-center rounded-chip ${TONES[tone] ?? TONES.ink}`}>

@@ -18,7 +18,7 @@ import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { WaitingToSync, waitingOf } from "@/components/sync/WaitingToSync";
 import { cardCount, useReviewWindow } from "@/components/study/review";
 import { useCardSizes } from "@/lib/cardSize";
-import { arrangeHome, type HomeBlockId } from "@/lib/app/homeLayout";
+import { arrangeHome, homeRows, type HomeBlock, type HomeBlockId } from "@/lib/app/homeLayout";
 import { useQuery } from "@/lib/convex/queries";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { AddBlockTile, BlockLink, CaptureField, DnaWeek, HomeBlockFrame, HomeGreeting, HomeTopLine, SectionHead, TasksPreview, TodayCard, useHomePrefs } from "./HomeBlocks";
@@ -192,10 +192,10 @@ function PinnedNote({ id, choices, pin }: { id: string | null; choices: Summary[
 }
 
 /**
- * Home (the owner's design version 16): a top line (the date, Customize), the opening (the greeting, the Foli AI
- * summary while Foli AI is on and the capture field at the left, the Today card at the right), then this person's
- * sections (lib/app/homeLayout.ts): Recent notes, Bookmarks, My tasks, Recent folders, Foli DNA, and the ones they
- * add (Shared with me, Pinned note, Templates). Each section is a serif title over a hairline with See all.
+ * Home (the owner's design version 19): a top line (the date, Customize), the opening (the greeting, the Foli AI
+ * summary while Foli AI is on, the capture field), then this person's sections (lib/app/homeLayout.ts): Recent notes,
+ * Bookmarks, Today and My tasks beside Foli DNA, Recent folders, and the ones they add (Shared with me, Pinned note,
+ * Templates). Each section is a serif title over a hairline with See all; Today and the DNA map are the only tiles.
  */
 export function HomeDashboard() {
   const aiOn = useAiEnabled();
@@ -230,7 +230,8 @@ export function HomeDashboard() {
       {text}
     </SectionHead>
   );
-  const blockBody = (id: HomeBlockId): ReactNode => {
+  /** A block's content; `paired` when it sits in the two-column row (Today and My tasks beside Foli DNA). */
+  const blockBody = (id: HomeBlockId, paired: boolean): ReactNode => {
     switch (id) {
       case "recent":
         return (
@@ -246,11 +247,13 @@ export function HomeDashboard() {
             <NoteRow docs={starred} label="Bookmarked notes" empty={<EmptyState size="inline" title="No bookmarks yet" body="Bookmark a note to keep it here." />} />
           </section>
         );
+      case "today":
+        return <TodayCard />;
       case "tasks":
         return (
           <section aria-labelledby="home-tasks-title">
             {head("home-tasks-title", "My tasks", "/tasks")}
-            <TasksPreview />
+            <TasksPreview twoColumns={!paired} />
           </section>
         );
       case "folders":
@@ -302,6 +305,15 @@ export function HomeDashboard() {
     }
   };
 
+  const frame = (block: HomeBlock, paired: boolean) => {
+    const i = shown.findIndex((r) => r.block.id === block.id);
+    return (
+      <HomeBlockFrame key={block.id} block={block} hidden={false} editing={editing} first={i === 0} last={i === shown.length - 1} saved={layout} saveLayout={saveLayout}>
+        {blockBody(block.id, paired)}
+      </HomeBlockFrame>
+    );
+  };
+
   return (
     <ViewChrome
       title={<h1 className="truncate text-subheadline font-semibold">Home</h1>}
@@ -309,25 +321,27 @@ export function HomeDashboard() {
     >
       <div className="@container mx-auto max-w-[1100px] px-4 pb-[max(4rem,var(--fab-clearance))] pt-3 sm:px-8 xl:px-11">
         <HomeTopLine editing={editing} onToggle={() => setEditing((e) => !e)} />
-        {/* The opening: the greeting, the Foli AI summary and the capture field; the Today card beside them (under
-            them on a narrow window). */}
-        <div className="mt-6 grid grid-cols-1 items-start gap-10 @[860px]:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-          <div className="flex min-w-0 flex-col gap-6">
-            <HomeGreeting />
-            {aiOn ? <HomeSummary /> : null}
-            <CaptureField />
-            <TodaysReviews />
-          </div>
-          <TodayCard />
+        {/* The opening, the page's full width: the greeting, the Foli AI summary (while Foli AI is on), the capture field. */}
+        <div className="mt-6 flex min-w-0 flex-col gap-6">
+          <HomeGreeting />
+          {aiOn ? <HomeSummary /> : null}
+          <CaptureField />
+          <TodaysReviews />
         </div>
-        {/* This person's sections, in their order (lib/app/homeLayout.ts). Customize moves them, takes them off Home
-            and adds them back, saved per person (convex/homePrefs.ts). */}
+        {/* This person's sections, in their order (lib/app/homeLayout.ts): one per row, except Today and My tasks beside
+            Foli DNA while they follow each other. Customize moves them, takes them off Home and adds them back, saved
+            per person (convex/homePrefs.ts). */}
         <div className="mt-14 flex flex-col gap-14">
-          {shown.map(({ block, hidden }, i) => (
-            <HomeBlockFrame key={block.id} block={block} hidden={hidden} editing={editing} first={i === 0} last={i === shown.length - 1} saved={layout} saveLayout={saveLayout}>
-              {blockBody(block.id)}
-            </HomeBlockFrame>
-          ))}
+          {homeRows(shown).map((row) =>
+            row.kind === "one" ? (
+              frame(row.item.block, false)
+            ) : (
+              <div key={row.main[0]!.block.id} className="grid grid-cols-1 items-start gap-10 @[860px]:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+                <div className="flex min-w-0 flex-col gap-10">{row.main.map((r) => frame(r.block, true))}</div>
+                <div className="flex min-w-0 flex-col gap-10">{row.side.map((r) => frame(r.block, true))}</div>
+              </div>
+            ),
+          )}
           {editing ? <AddBlockTile blocks={rows.filter((r) => r.hidden).map((r) => r.block)} saved={layout} saveLayout={saveLayout} /> : null}
         </div>
         {editing ? (

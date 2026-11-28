@@ -1,6 +1,6 @@
 "use client";
 
-// Home's own pieces (the owner, 28 November 2026, Home design version 16): the top line (the date and Customize), the
+// Home's own pieces (the owner, 28 November 2026, Home design version 19): the top line (the date and Customize), the
 // greeting, the capture field (with where a capture saves), the Today card (today's events and due tasks on one
 // timeline), My tasks, Foli DNA of the week, the sections' heads, and the frame and Add-a-block tile of Customize
 // mode. The layout and the pinned note are one person's, synced (convex/homePrefs.ts).
@@ -341,16 +341,19 @@ export function TodayCard() {
   );
 }
 
-/** My tasks: the next open tasks by due date in two columns of one-line rows, the due date at the right, ticked off here. */
-export function TasksPreview() {
+/**
+ * My tasks: the next open tasks by due date as one-line rows, the due date at the right, ticked off here. In two
+ * columns when the section has the row to itself.
+ */
+export function TasksPreview({ twoColumns }: { twoColumns: boolean }) {
   const { today } = useAppState();
   const data = useOpenTasks();
   const toggle = useToggleTask();
   if (data === undefined) return <p className="pt-3 text-subheadline text-muted">Loading…</p>;
   if (!data.length) return <p className="pt-3 text-subheadline text-muted">No open tasks.</p>;
   return (
-    <ul aria-label="Open tasks" className="mt-1 grid grid-cols-1 gap-x-10 @[640px]:grid-cols-2">
-      {data.slice(0, 6).map((t) => {
+    <ul aria-label="Open tasks" className={`mt-1 grid grid-cols-1 gap-x-10 ${twoColumns ? "@[640px]:grid-cols-2" : ""}`}>
+      {data.slice(0, twoColumns ? 6 : 5).map((t) => {
         const due = !!t.dueDate && t.dueDate <= today;
         return (
           <li key={t.blockId} className="flex min-h-11 items-center gap-3 border-b border-[var(--color-line)]">
@@ -413,7 +416,7 @@ export function DnaWeek({ load }: { load: boolean }) {
     const f = folderId ? tree?.folders.find((x) => x.id === folderId) : undefined;
     return f ? folderHex(f.color) : "var(--color-ink-faint)";
   };
-  if (!week) return <div className="h-56 animate-pulse rounded-container bg-[var(--glass-hover)] motion-reduce:animate-none" role="status" aria-label="Loading Foli DNA" />;
+  if (!week) return <div className="h-72 animate-pulse rounded-container bg-[var(--glass-hover)] motion-reduce:animate-none" role="status" aria-label="Loading Foli DNA" />;
   if (!week.hub)
     return (
       <p className="rounded-container border border-[var(--color-line)] px-5 py-8 text-center text-subheadline text-muted">
@@ -422,7 +425,7 @@ export function DnaWeek({ load }: { load: boolean }) {
     );
   const chip = "absolute inline-flex max-w-[40%] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-panel px-2.5 py-1 text-footnote font-medium transition-[filter] hover:brightness-95";
   return (
-    <div className="relative h-56 overflow-hidden rounded-container border border-[var(--color-line)] bg-[var(--glass-hover)]">
+    <div className="relative h-72 overflow-hidden rounded-container border border-[var(--color-line)] bg-[var(--glass-hover)]">
       <svg aria-hidden width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0">
         <g fill="none" stroke="var(--color-ink-faint)" strokeOpacity="0.45" strokeWidth="1">
           {week.around.map((_, i) => {

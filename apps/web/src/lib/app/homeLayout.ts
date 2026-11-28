@@ -1,25 +1,31 @@
-// Home's blocks (the owner, 28 November 2026, Home design version 16): under the opening (the greeting, the Foli AI
-// summary, the capture field and the Today timeline, always there), full-width sections this person can move, take
+// Home's blocks (the owner, 28 November 2026, Home design version 19): under the opening (the greeting, the Foli AI
+// summary and the capture field, always there), sections this person can move, take
 // off Home and add back: what they are, in which order by default, and how one person's saved layout
 // (convex/homePrefs.ts) is laid over that. A block the saved order doesn't name (one added to the apps later) takes its
 // default place, shown or hidden as its default says; an id the apps no longer know (the earlier designs' scratch,
 // summary, upnext and today) is dropped.
 
-export type HomeBlockId = "recent" | "bookmarks" | "tasks" | "folders" | "dna" | "shared" | "pinned" | "templates";
+export type HomeBlockId = "recent" | "bookmarks" | "today" | "tasks" | "dna" | "folders" | "shared" | "pinned" | "templates";
 
 export type HomeBlock = {
   id: HomeBlockId;
   label: string;
   /** Off until the person adds it (Customize, Add a block). */
   hiddenByDefault?: boolean;
+  /**
+   * Shares a row with the other paired blocks next to it: the "main" ones stack in the left column (1fr), the "side"
+   * ones in the right (1.15fr). Today and My tasks beside Foli DNA, in design version 19.
+   */
+  pair?: "main" | "side";
 };
 
 export const HOME_BLOCKS: readonly HomeBlock[] = [
   { id: "recent", label: "Recent notes" },
   { id: "bookmarks", label: "Bookmarks" },
-  { id: "tasks", label: "My tasks" },
+  { id: "today", label: "Today", pair: "main" },
+  { id: "tasks", label: "My tasks", pair: "main" },
+  { id: "dna", label: "Foli DNA", pair: "side" },
   { id: "folders", label: "Recent folders" },
-  { id: "dna", label: "Foli DNA" },
   { id: "shared", label: "Shared with me", hiddenByDefault: true },
   { id: "pinned", label: "Pinned note", hiddenByDefault: true },
   { id: "templates", label: "Templates", hiddenByDefault: true },
@@ -59,6 +65,31 @@ export function arrangeHome(saved: SavedHomeLayout): { block: HomeBlock; hidden:
 }
 
 const layoutOf = (rows: { block: HomeBlock; hidden: boolean }[]) => ({ order: rows.map((r) => r.block.id as string), hidden: rows.filter((r) => r.hidden).map((r) => r.block.id as string) });
+
+/**
+ * Home's rows: a block on its own, or a run of paired blocks next to each other in two columns (main at the left,
+ * side at the right). A run without both kinds is drawn one block per row.
+ */
+export function homeRows<T extends { block: HomeBlock }>(shown: readonly T[]): ({ kind: "one"; item: T } | { kind: "pair"; main: T[]; side: T[] })[] {
+  const rows: ({ kind: "one"; item: T } | { kind: "pair"; main: T[]; side: T[] })[] = [];
+  let run: T[] = [];
+  const flush = () => {
+    const main = run.filter((r) => r.block.pair === "main");
+    const side = run.filter((r) => r.block.pair === "side");
+    if (main.length && side.length) rows.push({ kind: "pair", main, side });
+    else for (const item of run) rows.push({ kind: "one", item });
+    run = [];
+  };
+  for (const r of shown) {
+    if (r.block.pair) run.push(r);
+    else {
+      flush();
+      rows.push({ kind: "one", item: r });
+    }
+  }
+  flush();
+  return rows;
+}
 
 /** The layout to save after moving block `id` one place earlier (-1) or later (+1) among the shown blocks. */
 export function moveHomeBlock(saved: SavedHomeLayout, id: HomeBlockId, dir: -1 | 1): { order: string[]; hidden: string[] } {

@@ -18,4 +18,10 @@ Keep this short and true: rewrite it when things change, and put history in `han
 - PR 112 stays a draft until its session marks it ready.
 - Not tested: a full sign-in on a server, a real QR read, home-network discovery, a real device.
 
+## Taken down (2026-11-28, owner)
+- Removed from `folevi.com/download` (R2 `folevi-updates`): `android/Folevi.apk`, `Folevi-1.8.79.apk` and `Folevi-1.9.80.apk`.
+- Archive: `/Volumes/Corsair/Folevi-archive/paused-2026-11-28/folevi-updates/android/` (content type and cache control in `object-metadata.json` next to it).
+- Play internal testing still has 1.9.80. Taking that down needs the owner in Play Console (Testing > Internal testing: pause the track, or remove the testers).
+- Restore: re-upload the APKs with `wrangler r2 object put`. Owner's OK first.
+
 Detail from before 2026-11-26 is in `handoff/archive/` (search it for this area's name); nothing there is kept up to date.

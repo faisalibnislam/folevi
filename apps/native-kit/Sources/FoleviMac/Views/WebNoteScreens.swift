@@ -1646,10 +1646,22 @@ struct WebNoteListRow: View {
             } else {
                 WebIconView(.fileText, size: 16).foregroundStyle(icon.color.color)
             }
-            // The note's title is the note's own: Folevi's font under the native look too.
-            Text(row.title.isEmpty ? "Untitled" : row.title).webText(title.text).lineLimit(1).foregroundStyle(title.color.color)
-                .noteContent()
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // Apple Notes-style (the web's list rows, the owner, 28 November 2026): the serif title over the note's
+            // first words on the left; the time over its folder and tags on the right.
+            VStack(alignment: .leading, spacing: 2) {
+                // The note's title is the note's own: Folevi's font under the native look too.
+                Text(row.title.isEmpty ? "Untitled" : row.title)
+                    .webText(WebTextStyle(family: .display, size: 15, leading: 20, weight: 600))
+                    .lineLimit(1)
+                    .foregroundStyle(title.color.color)
+                    .noteContent()
+                let firstWords = row.excerpt.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty } ?? ""
+                Text(firstWords.isEmpty ? "No additional text" : firstWords)
+                    .webText(.role(.footnote))
+                    .lineLimit(1)
+                    .foregroundStyle(webVar("color-ink-muted", scheme).color)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             if row.sync != .saved {
                 HStack(spacing: 4) {
                     Circle().fill(webVar("color-heading", scheme).color).frame(width: 6, height: 6)
@@ -1657,12 +1669,16 @@ struct WebNoteListRow: View {
                 }
                 .foregroundStyle(webVar("color-heading", scheme).color)
             }
-            if row.kind != "template" { WebFolderBadge(name: row.folder?.name, colorId: row.folder?.color) }
-            if !row.tags.isEmpty {
-                Text(row.tags.map { "#\($0.name)" }.joined(separator: " ")).webText(tags.text).lineLimit(1).foregroundStyle(tags.color.color)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(CardMapping.timeText(row, inTrash: model.isTrash)).webText(.role(.footnote)).lineLimit(1).foregroundStyle(time.color.color)
+                HStack(spacing: 6) {
+                    if row.kind != "template" { WebFolderBadge(name: row.folder?.name, colorId: row.folder?.color) }
+                    if !row.tags.isEmpty {
+                        Text(row.tags.map { "#\($0.name)" }.joined(separator: " ")).webText(tags.text).lineLimit(1).foregroundStyle(tags.color.color)
+                    }
+                }
             }
-            Text(CardMapping.timeText(row, inTrash: model.isTrash)).webText(time.text).lineLimit(1).foregroundStyle(time.color.color)
-                .frame(width: time.width, alignment: .trailing)
+            .fixedSize()
             if row.kind == "template" && !model.isTrash {
                 WebButton("Use", icon: .filePlusCorner, variant: .ghost, size: .sm) {
                     Task { if let id = await model.actions.create(folderId: nil, templateId: row.id, title: row.title) { frame.open(.note(id)) } }
@@ -1678,7 +1694,8 @@ struct WebNoteListRow: View {
             .accessibilityLabel(moreActionsLabel(row.title))
         }
         .padding(chrome != nil ? EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 4) : r.padding.edgeInsets)
-        .frame(height: r.height)
+        // Two lines a row.
+        .frame(height: max(r.height, 56))
         // Selected and hovered rows show on the list's own surface (MAC-19: glass-active and surface were white on
         // white, #1C1C1E on #1C1C1E): the Mac's selected and hover fills. The native look: a rounded highlight.
         .background {

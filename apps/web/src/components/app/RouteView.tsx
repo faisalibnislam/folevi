@@ -171,7 +171,7 @@ function Routes() {
         view={view}
         folderId={list.name === "folder" ? list.id : undefined}
         tagId={list.name === "tag" ? list.id : undefined}
-        title={list.name === "notes" ? "All notes" : undefined}
+        title={list.name === "notes" ? "All notes" : list.name === "folders" ? "All folders" : undefined}
         columns={{ list: columns.path, noteId: columns.noteId, note: columns.noteId ? <NotePage id={columns.noteId} /> : null }}
       />
     );

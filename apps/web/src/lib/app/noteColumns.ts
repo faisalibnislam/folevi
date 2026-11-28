@@ -5,8 +5,9 @@
 import { parseRoute, type Route } from "./router";
 
 /** The lists shown as a column (Templates keeps its own page). */
-export type ColumnsListRoute = Extract<Route, { name: "notes" | "starred" | "archive" | "trash" | "unsorted" | "folder" | "tag" }>;
-const LIST_NAMES = new Set(["notes", "starred", "archive", "trash", "unsorted", "folder", "tag"]);
+export type ColumnsListRoute = Extract<Route, { name: "notes" | "starred" | "archive" | "trash" | "unsorted" | "folder" | "folders" | "tag" }>;
+/** (The Folders page, `folders`, lists every note that's in a folder.) */
+const LIST_NAMES = new Set(["notes", "starred", "archive", "trash", "unsorted", "folder", "folders", "tag"]);
 
 export function isColumnsList(route: Route): route is ColumnsListRoute {
   return LIST_NAMES.has(route.name);

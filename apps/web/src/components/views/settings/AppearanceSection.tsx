@@ -168,12 +168,12 @@ function ThemePicture({ theme }: { theme: "light" | "dark" | "system" }) {
 
 /**
  * How note lists open (docs/NOTE_COLUMNS.md): cards and rows filling the page, or the list in a column beside the
- * open note. The top bar's toggle flips the same choice.
+ * open note. Layout in the Sidebar menu flips the same choice.
  */
 function NoteListsCard() {
   const [columns, setColumns] = useNoteColumnsPref();
   return (
-    <Card title="Note lists" description="Folders, Drafts, All notes, Bookmarks, tags, Archive and Trash. The button in the top bar switches it at any time.">
+    <Card title="Note lists" description="Folders, Drafts, All notes, Bookmarks, tags, Archive and Trash. Layout in the sidebar's menu (the panel button) switches it at any time.">
       <div role="radiogroup" aria-label="Note lists" className="grid max-w-lg grid-cols-2 gap-3">
         {(
           [

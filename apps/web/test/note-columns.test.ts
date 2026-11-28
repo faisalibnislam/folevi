@@ -24,8 +24,10 @@ const at = (y: number, m: number, d: number, h = 12) => new Date(y, m, d, h).get
 
 describe("columns layout: the address", () => {
   it("names every note list by its own path, and only those", () => {
-    expect(["/notes", "/drafts", "/unsorted", "/starred", "/archive", "/trash", "/folders/abc", "/tags/t1"].map((p) => isColumnsList(parseRoute(p)))).toEqual(Array(8).fill(true));
-    expect(["/documents", "/templates", "/folders", "/tags", "/d/x", "/settings", "/tasks"].map((p) => isColumnsList(parseRoute(p)))).toEqual(Array(7).fill(false));
+    expect(["/notes", "/drafts", "/unsorted", "/starred", "/archive", "/trash", "/folders", "/folders/abc", "/tags/t1"].map((p) => isColumnsList(parseRoute(p)))).toEqual(Array(9).fill(true));
+    expect(["/documents", "/templates", "/tags", "/d/x", "/settings", "/tasks"].map((p) => isColumnsList(parseRoute(p)))).toEqual(Array(6).fill(false));
+    // The Folders page lists every note in a folder.
+    expect(listPath({ name: "folders" })).toBe("/folders");
     expect(listPath({ name: "unsorted" })).toBe("/drafts");
     expect(listPath({ name: "folder", id: "a b" })).toBe("/folders/a%20b");
   });

@@ -6,8 +6,10 @@
 
 What changed: an optional columns layout for every note list on the web (All notes, Drafts, Bookmarks, folders,
 tags, Archive, Trash; not Templates), asked for by the owner on 2026-11-28. Design and decisions:
-`docs/NOTE_COLUMNS.md`. The top bar's new button (next to New note) and Settings > Appearance > Note lists switch it;
-both write `folevi:note-columns`. The column (`components/views/NoteColumns.tsx`) draws DocumentBrowser's own list
+`docs/NOTE_COLUMNS.md`. Layout in the Sidebar menu (Cards and rows, Columns; the owner moved it there from a
+top-bar button) and Settings > Appearance > Note lists switch it; both write `folevi:note-columns`. The Folders
+page's column lists every note in a folder (All notes minus Drafts, filtered in the browser: the server has no
+list of its own for it). Switching on from a note opened on its own shows its folder's column. The column (`components/views/NoteColumns.tsx`) draws DocumentBrowser's own list
 data, so selection, menus, drag to folders, filter, sort, Empty Trash and the folder's Share and "..." are the same
 code as the cards. The note on the right is RouteView's real note page. Addresses are `/d/<id>?list=<list path>`;
 `lib/app/tabs.tsx` treats them as the list's page, so the list keeps one tab. Pure logic (groups, address, memory,

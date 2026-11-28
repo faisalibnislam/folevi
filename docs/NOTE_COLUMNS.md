@@ -6,9 +6,13 @@ An optional layout for every note list, beside today's cards and rows: the sideb
 
 ## The decisions it follows (owner, 2026-11-28)
 
-- A top-bar toggle flips it at once; Settings > Appearance has the same choice. Both write one preference.
-- Every note list: All notes, Drafts, Bookmarks, a folder, a tag, Archive, Trash. Home stays the dashboard.
-  Templates keep today's layout (their built-in gallery and Use buttons don't fit a note column).
+- Layout in the Sidebar menu (the panel button by the bell; it moves to the top bar when the sidebar is hidden) has
+  two choices, Cards and rows and Columns, on every page. Settings > Appearance > Note lists is the same choice;
+  both write one preference. (The owner moved it there from a top-bar button, 2026-11-28.)
+- Every note list: All notes, Drafts, Bookmarks, a folder, a tag, Archive, Trash, and the Folders page, whose column
+  lists every note that's in a folder (with its folder under it). A folder's column has its own notes only, as in
+  Apple Notes; its subfolders open from the sidebar. Home stays the dashboard. Templates keep today's layout (their
+  built-in gallery and Use buttons don't fit a note column).
 - Rows: serif title, then the date and the note's first line, then its folder. Grouped under Pinned, Today,
   Yesterday, Previous 7 days, Previous 30 days, then by month (a month name this year, "October 2025" before).
   Pinned is the list's bookmarked notes; no new pin feature. Bookmarks itself has no Pinned group (all are).
@@ -32,7 +36,7 @@ An optional layout for every note list, beside today's cards and rows: the sideb
 A note open in a list is `/d/<note id>?list=<list path>`, for example `/d/01JX…?list=%2Ffolders%2Fabc`. The route
 stays the note's, so everything that keys off the open note (the note page, Foli AI's context, the inspector,
 comments, sharing, the Mac and desktop bridges, ⌘K) works unchanged. `list` is the list's own path (`/notes`,
-`/drafts`, `/starred`, `/archive`, `/trash`, `/folders/<id>`, `/tags/<id>`); anything else is ignored.
+`/drafts`, `/starred`, `/archive`, `/trash`, `/folders`, `/folders/<id>`, `/tags/<id>`); anything else is ignored.
 
 - A list's own address (`/folders/abc`) with the layout on shows the column and replaces itself with its last note's
   address once the list has loaded; an empty list stays on the list's address with an empty note pane.
@@ -42,4 +46,6 @@ comments, sharing, the Mac and desktop bridges, ⌘K) works unchanged. `list` is
   the tab opens the list on the note it remembers.
 - A plain `/d/<id>` (a link, ⌘K, the sidebar) is the note page as today, in its own tab.
 - Turning the layout off on a columns address goes to the list's own page; turning it on on a list page opens the
-  column there. With the layout off (or a narrow window) a columns address shows the note page.
+  column there. Turning it on on a note opened on its own shows it in its list's column: its folder's, else Drafts
+  (Trash or Archive while it's there); nested pages and templates stay as they are. Elsewhere (Home, Tasks,
+  Settings) the page stays as it is. With the layout off (or a narrow window) a columns address shows the note page.

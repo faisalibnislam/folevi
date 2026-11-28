@@ -6,7 +6,7 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { useIphoneApp } from "@/lib/iphone";
 import { nativeChrome } from "@/lib/nativeApp";
 import { useAppRouter } from "./router";
-import { columnsListOf, COLUMN_DEFAULT } from "./noteColumns";
+import { columnsHref, columnsListOf, COLUMN_DEFAULT } from "./noteColumns";
 
 /** The layout preference (Settings > Appearance and the top bar's toggle write the same one). */
 export const NOTE_COLUMNS_KEY = "folevi:note-columns";
@@ -46,21 +46,23 @@ export function useColumnCollapsed() {
 }
 
 /**
- * The top bar's toggle: shown on a note list (and on a note open in one) in a window wide enough. Turning it off on
- * a note in a column goes to the list's own page; turning it on on a list's page opens the column there.
+ * The Layout choice in the Sidebar menu (components/app/SidebarMenu.tsx): available everywhere, it switches the
+ * preference. Turning it off on a note in a column goes to the list's own page. Turning it on on a note opened on
+ * its own shows it in its list's column (`listOfNote`, worked out by the menu from the note's details); anywhere
+ * else the page stays as it is and the next note list opens in the new layout.
  */
-export function useColumnsToggle(): { available: boolean; on: boolean; toggle: () => void } {
+export function useLayoutChoice(listOfNote: string | null): { columns: boolean; available: boolean; setColumns: (on: boolean) => void } {
   const [on, setOn] = useNoteColumnsPref();
-  const wide = useMediaQuery(`(min-width: ${COLUMNS_MIN_WINDOW}px)`);
   const iphone = useIphoneApp();
   const { route, search, navigate } = useAppRouter();
   const here = columnsListOf(route, search);
-  const available = wide && !iphone && !nativeChrome() && here !== null;
-  const toggle = () => {
-    if (on && here?.noteId) navigate(here.path, { replace: true });
-    setOn(!on);
+  const setColumns = (next: boolean) => {
+    if (next === on) return;
+    if (!next && here?.noteId) navigate(here.path, { replace: true });
+    if (next && route.name === "doc" && !here && listOfNote) navigate(columnsHref(route.id, listOfNote), { replace: true });
+    setOn(next);
   };
-  return { available, on, toggle };
+  return { columns: on, available: !iphone && !nativeChrome(), setColumns };
 }
 
 /** The route the sidebar marks as where you are: a note open in a list's column is in that list. */

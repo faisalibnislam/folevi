@@ -70,7 +70,8 @@ function UnsyncedMarker({ className = "" }: { className?: string }) {
   );
 }
 
-type View = "all" | "starred" | "archive" | "trash" | "templates" | "unsorted" | "folder" | "tag";
+/** `folders`: every note in a folder, the Folders page in the columns layout (docs/NOTE_COLUMNS.md). */
+type View = "all" | "starred" | "archive" | "trash" | "templates" | "unsorted" | "folder" | "folders" | "tag";
 type Layout = "grid" | "compact" | "list";
 type Sort = "updated" | "created" | "title" | "manual";
 const NOTE_SORTS: readonly (readonly [Sort, string])[] = [
@@ -88,6 +89,7 @@ const TITLES: Record<View, string> = {
   templates: "Templates",
   unsorted: "Drafts",
   folder: "Folder",
+  folders: "All folders",
   tag: "Tag",
 };
 
@@ -100,6 +102,7 @@ const LIST_WHAT: Record<View, string> = {
   templates: "your templates",
   unsorted: "your drafts",
   folder: "this folder",
+  folders: "your folders",
   tag: "this tag",
 };
 
@@ -112,6 +115,7 @@ const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = 
   templates: { icon: LayoutTemplate, title: "No templates of your own yet", body: "Save any note as a template from its menu." },
   unsorted: { icon: Inbox, title: "No drafts", body: "Notes without a folder show up here." },
   folder: { icon: FolderOpen, title: "This folder is empty", body: "Start a note here, or move one in with Move to folder." },
+  folders: { icon: FolderOpen, title: "No notes in folders yet", body: "Move a note into a folder, or start one in a folder." },
   tag: { icon: Hash, title: "No notes with this tag yet", body: "Add tags to a note from its Info panel." },
 };
 
@@ -212,6 +216,7 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
   switch (view) {
     case "all":
     case "folder":
+    case "folders":
       return ordered || !online ? (d) => page(d) && live(d) && !d.parentDocumentId : null;
     case "unsorted":
       return ordered || !online ? (d) => page(d) && live(d) && !d.parentDocumentId && !(d as { folderId?: string | null }).folderId : null;
@@ -234,7 +239,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
   // Until it's there it's an empty folder; its notes, if any were filed while it waited, arrive with it.
   const queued = useOutboxEntries(outbox);
   const unsent = view === "folder" && !!folderId && queued.some((e) => e.creates?.includes(folderId));
-  const paged = usePaginatedQuery(api.documents.list, unsent ? "skip" : { scope, view, folderId, tagId, sort }, { initialNumItems: PAGE_SIZE });
+  // The Folders page's notes are All notes' without Drafts (filed below): the server has no list of its own for them.
+  const serverView = view === "folders" ? "all" : view;
+  const paged = usePaginatedQuery(api.documents.list, unsent ? "skip" : { scope, view: serverView, folderId, tagId, sort }, { initialNumItems: PAGE_SIZE });
   const { results, loadMore } = paged;
   const status = unsent ? ("Exhausted" as const) : paged.status;
   const builtIns = useQuery(api.settings.builtInTemplates, view === "templates" ? {} : "skip");
@@ -329,12 +336,13 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
   // Notes made (or renamed, or moved) on this device that the server doesn't have yet show in their lists at
   // once, marked as waiting to sync (lib/sync/localNotes.ts).
   const offlineNoList = status === "LoadingFirstPage" && !cached && !online;
-  const docs =
+  const withLocal =
     useNotesWithLocal(offlineNoList ? undefined : served, {
-      include: view === "all" ? "all" : view === "unsorted" ? "drafts" : view === "folder" ? "folder" : "none",
+      include: view === "all" || view === "folders" ? "all" : view === "unsorted" ? "drafts" : view === "folder" ? "folder" : "none",
       folderId,
       byUpdated: sort === "updated",
     }) ?? served;
+  const docs = useMemo(() => (view === "folders" ? withLocal.filter((d) => d.folderId) : withLocal), [view, withLocal]);
   // "Filter notes" narrows the notes loaded so far, by title or text (as the iPhone's list does); it starts empty on
   // each list. Typing in it never asks the server: Search looks through every note.
   const [filterState, setFilterState] = useState({ view, q: "" });
@@ -636,7 +644,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
   if (iphone) {
     return (
       <IphoneNoteList
-        view={view}
+        // (The phone shows the Folders page as folders: its notes view is only drawn in the columns layout.)
+        view={view === "folders" ? "all" : view}
         title={title}
         docs={docs}
         loading={loading}

@@ -73,6 +73,13 @@ const YOU: Item[] = [
   { id: "desktop", label: "Desktop app", icon: AppWindowMac },
   { id: "this-device", label: "This device", icon: Smartphone },
 ];
+/** How "You" is grouped in the list (in this order); a section not named here goes under App. */
+const YOU_GROUPS: { label: string; ids: Section[] }[] = [
+  { label: "Account", ids: ["library", "account", "billing", "devices"] },
+  { label: "Security", ids: ["security", "privacy"] },
+  { label: "App", ids: ["appearance", "writing", "notifications", "ai"] },
+  { label: "Data", ids: ["sync", "data", "connected-apps", "desktop", "this-device"] },
+];
 /**
  * The current team workspace's settings, only when a workspace is open. Personal has none of these.
  * Each is listed only for the roles that may use it (the server checks every action again):
@@ -154,7 +161,10 @@ export function SettingsView({ section: asked }: { section: Section }) {
   const you = YOU.filter((i) => here(i.id) && (i.id !== "library" || !caps.account) && (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"))
     // In local mode the library comes first: it's where Settings opens (LOCAL_FIRST).
     .sort((a, b) => Number(b.id === "library") - Number(a.id === "library"));
-  const groups = [{ label: "You", items: you }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
+  // "You" in smaller groups (the owner, 28 November 2026: "divide you into more categories").
+  const groupOf = (id: Section) => YOU_GROUPS.find((g) => g.ids.includes(id))?.label ?? "App";
+  const youGroups = YOU_GROUPS.map((g) => ({ label: g.label, items: you.filter((i) => groupOf(i.id) === g.label) })).filter((g) => g.items.length);
+  const groups = [...youGroups, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
   const item = [...YOU, ...WORKSPACE, ABOUT].find((s) => s.id === section);
   const heading = (WORKSPACE_SECTIONS.has(section) && HEADINGS[section]) || item?.label;
   // A workspace section opened in Personal (a bookmark, or right after leaving a workspace).
@@ -489,13 +499,19 @@ function IphoneCreateWorkspace() {
 function CreateWorkspaceNudge() {
   const [open, setOpen] = useState(false);
   const { navigate } = useAppRouter();
+  // A plain row under its own Workspace heading, like the sections (the owner, 28 November 2026).
   return (
-    <div className="hidden flex-none rounded-control border border-line p-3 @3xl:mt-1 @3xl:block">
-      <p className="text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
-      <p className="mt-1 max-w-52 text-subheadline text-muted">Work with a team: shared notes, folders and tasks, with its own plan and members.</p>
-      <Button className="mt-2" onClick={() => setOpen(true)}>
-        <Plus size={14} aria-hidden /> Create a workspace
-      </Button>
+    <div className="hidden flex-none @3xl:block">
+      <p className="mb-1.5 truncate px-2.5 text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Work with a team: shared notes, folders and tasks, with its own plan and members"
+        className="group flex h-8 w-full items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-left text-body text-ink/90 outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11"
+      >
+        <Plus size={16} aria-hidden className="flex-none text-muted group-hover:text-heading" />
+        Create a workspace
+      </button>
       <NewWorkspaceDialog open={open} onClose={() => setOpen(false)} onCreated={() => navigate("/settings/workspace")} />
     </div>
   );

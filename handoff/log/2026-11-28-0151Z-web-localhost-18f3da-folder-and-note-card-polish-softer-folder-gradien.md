@@ -109,3 +109,4 @@ Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `We
 - Sidebar More: it opens by itself once when you go to a page under it, then its toggle is yours. Before, it was forced open while that page was showing, so clicking More did nothing.
 - A folder page with folders and notes names both sections: "Folders" then "Notes". The folder row sits 16px closer to its heading (the cards keep room at the top for peeking notes).
 - Undone at the owner's word: the folder row keeps its original gap under "Folders" (room for peeking notes).
+- Settings: "You" is split into Account (Account, Plan & billing, Devices; Library in local mode), Security (Security, Privacy), App (Foli AI, Appearance, Writing, Notifications) and Data (Connected apps, Offline & sync, Import & export, Desktop app, This device). Create a workspace is a plain row under a Workspace heading instead of a boxed card.

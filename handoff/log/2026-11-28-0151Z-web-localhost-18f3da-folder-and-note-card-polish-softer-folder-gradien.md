@@ -106,3 +106,4 @@ Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `We
 - Home's section heading tiles: black background, white icon, no border or shadow.
 - Customize mode has Reset next to Done (puts Home back to the default sections and order); the old bottom button
   is gone.
+- Sidebar More: it opens by itself once when you go to a page under it, then its toggle is yours. Before, it was forced open while that page was showing, so clicking More did nothing.

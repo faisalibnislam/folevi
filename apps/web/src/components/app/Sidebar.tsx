@@ -5,7 +5,7 @@ import { useCreateDocument } from "./useCreateDocument";
 import { useKeyLabels } from "@/lib/shortcuts";
 import { SquarePen } from "lucide-react";
 import { useMutation } from "convex/react";
-import { Fragment, useEffect, useId, useMemo, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowDownUp, Archive, CalendarDays, SquareCheckBig, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, SlidersHorizontal, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
 import { Bookmark } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -717,13 +717,17 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // (Templates on the sidebar waits with the rows below it, so nothing jumps as the start settles: see lowerSettled.)
   const onSidebar = shownIds.filter((s) => !s.more && (s.id !== "templates" || lowerSettled)).map((s) => s.id);
   const underMore = shownIds.filter((s) => s.more).map((s) => s.id);
-  // More starts closed and remembers being opened or closed on this device; it opens by itself for the page you're on.
+  // More starts closed and remembers being opened or closed on this device. It opens by itself when you go to a page
+  // under it, once: after that its toggle is yours, so it closes even while that page is open (the owner, 28 November
+  // 2026: "more isn't collapsing/expanding properly").
   const [moreToggled, setMoreOpen] = useLocalStorage("folevi:sidebar-more-open", false);
   const activeInMore = underMore.some((id) => isActive(navRoute, SIDEBAR_ITEMS[id].href));
+  const wasInMore = useRef(activeInMore);
   useEffect(() => {
-    if (activeInMore && !moreToggled) setMoreOpen(true);
-  }, [activeInMore, moreToggled, setMoreOpen]);
-  const moreOpen = moreToggled || activeInMore;
+    if (activeInMore && !wasInMore.current) setMoreOpen(true);
+    wasInMore.current = activeInMore;
+  }, [activeInMore, setMoreOpen]);
+  const moreOpen = moreToggled === true;
   const customizeItems = useMemo(
     () => new Map(shownIds.map((s) => [s.id, { label: SIDEBAR_ITEMS[s.id].label, icon: SIDEBAR_ITEMS[s.id].icon }] as const)),
     // (shownIds is new each render; its ids are what matter.)

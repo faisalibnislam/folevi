@@ -196,14 +196,14 @@ export function FolderCardArt({
   // The two most recent subfolders, the farther one first (it is drawn first, so it sits behind).
   const kids = stack.tops.map((_, i) => folderHex(subfolderColors[stack.tops.length - 1 - i] ?? color)).reverse();
   return (
-    <div aria-hidden className="absolute inset-0" style={{ ["--fc" as string]: base, ["--fc-tone" as string]: tone }}>
+    <div aria-hidden data-fc="art" className="absolute inset-0" style={{ ["--fc" as string]: base, ["--fc-raw" as string]: tone }}>
       {/* the folder's soft shadow, under its back (half its first strength: the owner, 28 November 2026). It starts where the back's body does (BACK_PATH's 16 of 100), so its
           edge never shows in the gap beside the tab. */}
       <div className="absolute inset-x-0 bottom-0 rounded-folder shadow-[0_1px_2px_rgb(0_0_0/0.03),0_14px_26px_-14px_rgb(30_30_50/0.21)]" data-fc="shadow" style={{ top: `${stack.back + (100 - stack.back) * BACK_BODY_TOP}%` }} />
       {/* subfolders stacked behind, and the back with its tab: one 85% layer, so a subfolder's outline doesn't show through the back */}
       <div className="absolute inset-0 opacity-85">
         {kids.map((hex, i) => (
-          <BackShape key={i} kind="sub" style={{ top: `${stack.tops[i]}%`, left: `${stack.insets[i]}%`, right: `${stack.insets[i]}%`, ["--fs" as string]: toneOf(hex) }} />
+          <BackShape key={i} kind="sub" style={{ top: `${stack.tops[i]}%`, left: `${stack.insets[i]}%`, right: `${stack.insets[i]}%`, ["--fs-raw" as string]: toneOf(hex) }} />
         ))}
         <BackShape kind="back" className="inset-x-0" style={{ top: `${stack.back}%` }} />
       </div>

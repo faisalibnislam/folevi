@@ -1257,6 +1257,15 @@
    Since 28 November 2026 the front is opaque (the owner: "no transparency"): its tint is mixed with the folder's own
    colour, what used to show through, instead of with transparency, so it looks as before with nothing behind it
    showing, and the frost layer is gone. */
+/* A folder's colour in light mode is 35% lighter (65% of the muted colour, 35% white; the owner, 28 November 2026);
+   dark mode keeps it. The components set the muted colour (--fc-raw, --fs-raw, --fg-raw), these derive the tone the
+   drawing uses. WebNoteCard.swift's tone and FolderGlyph.swift match. */
+[data-fc="art"] { --fc-tone: color-mix(in oklab, var(--fc-raw) 65%, #ffffff); }
+[data-fc="sub"] { --fs: color-mix(in oklab, var(--fs-raw) 65%, #ffffff); }
+.fg { --fg-tone: color-mix(in oklab, var(--fg-raw) 65%, #ffffff); }
+:root[data-theme="dark"] [data-fc="art"] { --fc-tone: var(--fc-raw); }
+:root[data-theme="dark"] [data-fc="sub"] { --fs: var(--fs-raw); }
+:root[data-theme="dark"] .fg { --fg-tone: var(--fg-raw); }
 /* The back and the subfolders are inline SVG shapes (FolderCardArt BackShape); these are their gradient stops. */
 [data-fc="back"] .fcb-1 { stop-color: color-mix(in oklab, var(--fc-tone) 84%, #2c2c3a); }
 [data-fc="back"] .fcb-2 { stop-color: color-mix(in oklab, var(--fc-tone) 86%, #ffffff); }

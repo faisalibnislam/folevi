@@ -28,7 +28,7 @@ export function FolderGlyph({ color, size = 18, kind = "notes", className = "" }
       viewBox={`0 ${vb.y} 240 ${vb.h}`}
       aria-hidden
       className={`fg flex-none overflow-visible ${className}`}
-      style={{ ["--fg-tone" as string]: `color-mix(in oklab, ${base} 84%, #9a9fab)` }}
+      style={{ ["--fg-raw" as string]: `color-mix(in oklab, ${base} 84%, #9a9fab)` }}
     >
       <defs>
         <linearGradient id={`${id}b`} x1="0" y1="0" x2="0.6" y2="1">

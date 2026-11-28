@@ -20,8 +20,10 @@ public struct FolderGlyph: View {
     private var box: (top: CGFloat, height: CGFloat) { kind == .stack ? (-44, 264) : (0, 220) }
 
     public var body: some View {
-        let tone = color.color.oklabMix(RGBA(154, 159, 171), 0.84)
         let dark = scheme == .dark
+        // In light mode 35% lighter, as the folder card (WebFolderCard.tone; the owner, 28 November 2026).
+        let muted = color.color.oklabMix(RGBA(154, 159, 171), 0.84)
+        let tone = dark ? muted : muted.oklabMix(RGBA(255, 255, 255), 0.65)
         // The folder card's colours and depth (FolderGlyph.tsx, globals.css .fg-*; the owner, 28 November 2026: "too
         // flat"): the back's diagonal gradient, the front's opaque top-to-bottom tint, a hairline shadow above the front,
         // a light top edge on it and a small drop shadow.

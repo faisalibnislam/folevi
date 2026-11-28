@@ -894,7 +894,11 @@ public struct WebFolderCard: View {
 
     /// The grey the folder's colour is softened with (FolderCardArt's `tone`: the colour 84% into #9a9fab).
     static let grey = RGBA(154, 159, 171)
-    static func tone(_ base: RGBA) -> RGBA { base.oklabMix(grey, 0.84) }
+    /// In light mode 35% lighter (65% of the muted colour, 35% white; the owner, 28 November 2026), as globals.css.
+    static func tone(_ base: RGBA, dark: Bool) -> RGBA {
+        let muted = base.oklabMix(grey, 0.84)
+        return dark ? muted : muted.oklabMix(RGBA(255, 255, 255), 0.65)
+    }
 
     /// "2 notes · 1 min ago" (the older count line; the front now says counts and "Edited …" on two lines).
     static func countLine(_ count: Int, age: String) -> String {
@@ -932,7 +936,7 @@ public struct WebFolderCard: View {
         let kids: [RGBA] = st.tops.indices.map { i in
             let j = st.tops.count - 1 - i
             let id = model.subfolderColorIds.indices.contains(j) ? model.subfolderColorIds[j] : nil
-            return Self.tone(FolderColor.resolve(id ?? model.colorId).color)
+            return Self.tone(FolderColor.resolve(id ?? model.colorId).color, dark: dark)
         }
         let back = FrostBackShape()
         return ZStack(alignment: .topLeading) {
@@ -983,7 +987,7 @@ public struct WebFolderCard: View {
     /// The card but its shadow: the back and notes, the frost and the front.
     private func art(w: CGFloat, h: CGFloat) -> some View {
         let cq = w / 100
-        let tone = Self.tone(FolderColor.resolve(model.colorId).color)
+        let tone = Self.tone(FolderColor.resolve(model.colorId).color, dark: dark)
         let frontH = h * (1 - Self.frontTop)
         let frontShape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)
         return ZStack(alignment: .topLeading) {

@@ -48,7 +48,8 @@ public final class MenuBarNoteSettings {
     var screenshotFormat: ScreenshotFormat = .automatic
     var screenshotDownscale = true
     var screenshotSound = true { didSet { save(screenshotSound, Key.screenshotSound) } }
-    var panelSize = PanelSize.medium.size {
+    /// It starts at the smallest size (the owner, 2026-11-28); resized, it's remembered.
+    var panelSize = PanelSize.small.size {
         didSet {
             guard !isLoading else { return }
             defaults.set(Double(panelSize.width), forKey: Key.panelWidth)

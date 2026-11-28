@@ -116,6 +116,7 @@ struct NoteBox: View {
             if model.text.isEmpty {
                 Text("What’s on your mind?")
                     .font(PlainTextBox.swiftUIFont)
+                    .frame(height: PlainTextBox.lineHeight, alignment: .bottom)
                     .foregroundStyle(webColor("color-ink-faint", scheme, .secondary))
                     .padding(.leading, PlainTextBox.inset.width + 5)
                     .padding(.top, PlainTextBox.inset.height)
@@ -132,8 +133,9 @@ struct PlainTextBox: NSViewRepresentable {
     let focusRequest: Int
     let ink: NSColor
 
-    /// Home's box: the serif face at title-3 (20 px), leading-relaxed.
-    static let size: CGFloat = 20
+    /// A note's body text in the serif face (editor.css: 17 px, line-height 1.62): the box writes as the note will read.
+    static let size: CGFloat = 17
+    static let lineHeight: CGFloat = (17 * 1.62).rounded()
     static var nsFont: NSFont { FoleviFonts.nsFont(.display, size: size) }
     static var swiftUIFont: Font { FoleviFonts.font(.display, size: size) }
     static let inset = NSSize(width: 6, height: 6)
@@ -157,7 +159,8 @@ struct PlainTextBox: NSViewRepresentable {
         view.insertionPointColor = ink
         view.textContainerInset = Self.inset
         let paragraph = NSMutableParagraphStyle()
-        paragraph.lineHeightMultiple = 1.3
+        paragraph.minimumLineHeight = Self.lineHeight
+        paragraph.maximumLineHeight = Self.lineHeight
         view.defaultParagraphStyle = paragraph
         view.typingAttributes = [.font: Self.nsFont, .foregroundColor: ink, .paragraphStyle: paragraph]
         view.isContinuousSpellCheckingEnabled = true

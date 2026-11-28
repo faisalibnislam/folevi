@@ -4,6 +4,8 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Current state
 
+- Home is a customizable dashboard (2026-11-28): greeting and capture field, then blocks (Scratch pad, Recent notes, Up next, Today, My tasks, Foli DNA, Recent folders; Bookmarks to add) that Customize moves, removes and adds, saved per person in `convex/homePrefs.ts` (`apps/web/src/lib/app/homeLayout.ts`, `HomeBlocks.tsx`).
+
 - Live at folevi.com and app.folevi.com from `main`; the sign-in page offers "Sign in to your own server", and `/downloads` lists every download.
 - Closing a dialog or the command palette: the dialog closes first and its picture fades as an inert popover (`components/ui/closing.ts`), so the page takes the keyboard back at once.
 - iPhone and Android swipe rows (`components/iphone/Swipe.tsx`) run on Pointer Events and close on a touch outside their list.

@@ -3,7 +3,7 @@
 import { startTransition, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { CatchUp } from "@/components/ai/CatchUp";
-import { ArrowRight, ChevronLeft, ChevronRight, Clock3, Folder, Layers } from "lucide-react";
+import { ArrowRight, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock3, Folder, Layers, NotebookPen, SquareCheckBig, Waypoints } from "lucide-react";
 import { Bookmark } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/convex/api";
@@ -20,6 +20,8 @@ import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { WaitingToSync, waitingOf } from "@/components/sync/WaitingToSync";
 import { cardCount, useReviewWindow } from "@/components/study/review";
 import { useCardSizes } from "@/lib/cardSize";
+import { arrangeHome, type HomeBlockId } from "@/lib/app/homeLayout";
+import { AddBlockTile, BlockLink, BlockTitle, CaptureField, DnaWeek, HomeBlockFrame, HomeHeader, ScratchPad, TasksPreview, TodayAgenda, UpNextList, useHomePrefs } from "./HomeBlocks";
 
 const GAP = 32;
 
@@ -47,12 +49,7 @@ function useColumns(min: number, gap = GAP) {
 function Section({ title, icon, href, count, children, empty, shelf }: { title: string; icon: ReactNode; href: string; count?: string; children: ReactNode; empty?: ReactNode; shelf?: boolean }) {
   const id = title.toLowerCase().replace(/\s+/g, "-");
   return (
-    <section
-      aria-labelledby={`home-${id}`}
-      className={
-        shelf ? "mt-7 first:mt-6" : "mt-10 first:mt-6"
-      }
-    >
+    <section aria-labelledby={`home-${id}`} data-shelf={shelf ? "" : undefined}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id={`home-${id}`} className="ui-display flex items-center gap-2.5 text-title-2">
           <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
@@ -241,7 +238,8 @@ export function HomeDashboard() {
   const folders = useColumns(sizes.folderMin, sizes.gap);
   // Only the most recently changed folders are counted (a fixed minimum, so resizing rarely refetches).
   const org = useOfflineQuery(api.organization.recentFolders, { scope, limit: Math.max(RECENT_FOLDERS, folders.cols * 2) });
-  const recentFolders = (org?.folders ?? []).slice(0, folders.cols * 2);
+  // One row of folder cards (as many as fit).
+  const recentFolders = (org?.folders ?? []).slice(0, folders.cols);
   // Home's first frame (the one the click that opened it waits for) has the notes a screen shows; the cards past the
   // rows' edges and the folder cards, the last section, come in the background right after (INP,
   // docs/perf/web-results.md). Nothing sits below the folders, so nothing moves when they come.
@@ -250,39 +248,127 @@ export function HomeDashboard() {
     if (!allCards) startTransition(() => setAllCards(true));
   }, [allCards]);
 
+  const { prefs, setLayout, setScratch } = useHomePrefs();
+  const [editing, setEditing] = useState(false);
+  const layout = prefs?.layout;
+  const rows = arrangeHome(layout);
+  const shown = rows.filter((r) => !r.hidden);
+  const saveLayout = (l: { order: string[]; hidden: string[] }) => setLayout({ layout: l });
+  const title = (id: string, icon: ReactNode, text: string, href?: string, link?: string) => (
+    <BlockTitle id={id} icon={icon} action={href ? <BlockLink href={href}>{link}</BlockLink> : undefined}>
+      {text}
+    </BlockTitle>
+  );
+  const blockBody = (id: HomeBlockId): ReactNode => {
+    switch (id) {
+      case "scratch":
+        return (
+          <section aria-labelledby="home-scratch-title">
+            {title("home-scratch-title", <NotebookPen size={17} strokeWidth={1.9} />, "Scratch pad")}
+            <ScratchPad saved={prefs?.scratch} save={(text) => setScratch({ text })} />
+          </section>
+        );
+      case "recent":
+        return (
+          <section aria-labelledby="home-recent-title">
+            {title("home-recent-title", <Clock3 size={17} strokeWidth={1.9} />, "Recent notes", "/notes", "See all")}
+            {recent && !recent.length ? (
+              <EmptyState size="inline" title="No notes yet" body="Notes you open show up here." />
+            ) : (
+              <ul aria-label="Recent notes" className="grid grid-cols-2 gap-4 @[560px]:grid-cols-3">
+                {(recent ?? []).slice(0, 3).map((d) => (
+                  <li key={d.id} className="[&:nth-child(3)]:hidden @[560px]:[&:nth-child(3)]:block">
+                    <NoteCard d={d} recent />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      case "upnext":
+        return (
+          <section aria-labelledby="home-upnext-title">
+            {title("home-upnext-title", <CalendarClock size={17} strokeWidth={1.9} />, "Up next")}
+            <UpNextList />
+          </section>
+        );
+      case "today":
+        return (
+          <section aria-labelledby="home-today-title">
+            {title("home-today-title", <CalendarDays size={17} strokeWidth={1.9} />, "Today", "/calendar", "Calendar")}
+            <TodayAgenda />
+          </section>
+        );
+      case "tasks":
+        return (
+          <section aria-labelledby="home-tasks-title">
+            {title("home-tasks-title", <SquareCheckBig size={17} strokeWidth={1.9} />, "My tasks", "/tasks", "All tasks")}
+            <TasksPreview />
+          </section>
+        );
+      case "dna":
+        return (
+          <section aria-labelledby="home-dna-title">
+            {title("home-dna-title", <Waypoints size={17} strokeWidth={1.9} />, "Foli DNA · this week", "/graph", "Open Foli DNA")}
+            <DnaWeek load={allCards} />
+          </section>
+        );
+      case "folders":
+        return (
+          <Section title="Recent folders" href="/folders" icon={<Folder size={17} strokeWidth={1.9} />} empty={org && !org.total ? <EmptyState size="inline" title="No folders yet" body="Folders keep related notes together." /> : undefined}>
+            <div ref={folders.ref}>
+              <ul className="grid" style={{ gridTemplateColumns: `repeat(${folders.cols}, minmax(0, 1fr))`, columnGap: sizes.gap, rowGap: sizes.rowGap }}>
+                {(allCards ? recentFolders : []).map((f) => (
+                  <li key={f.id}>
+                    <FolderCard folder={f} parentName={f.parentName ?? undefined} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Section>
+        );
+      case "bookmarks":
+        return (
+          <Section shelf title="Bookmarks" icon={<Bookmark size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <EmptyState size="inline" title="No bookmarks yet" body="Bookmark a note to keep it here." /> : undefined}>
+            <NoteCarousel docs={starred?.page} label="Bookmarked notes" allCards={allCards} />
+          </Section>
+        );
+    }
+  };
+
   return (
     <ViewChrome
       title={<h1 className="truncate text-subheadline font-semibold">Home</h1>}
       tabTitle="Home"
     >
-      <div className="mx-auto max-w-[1400px] px-4 pb-[max(2rem,var(--fab-clearance))] pt-2 sm:px-8">
+      <div className="mx-auto max-w-[1180px] px-4 pb-[max(2rem,var(--fab-clearance))] pt-2 sm:px-8">
+        <HomeHeader editing={editing} onToggle={() => setEditing((e) => !e)} />
+        <CaptureField />
         {/* With Home from its first frame (it used to arrive a moment later and push everything below down). */}
-        {aiOn ? <CatchUp /> : null}
-        <TodaysReviews />
-        <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <EmptyState size="inline" title="No notes yet" body="Notes you open show up here." /> : undefined}>
-          <NoteCarousel docs={recent} label="Recent notes" recent allCards={allCards} />
-        </Section>
-
-        <Section shelf title="Bookmarks" icon={<Bookmark size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <EmptyState size="inline" title="No bookmarks yet" body="Bookmark a note to keep it here." /> : undefined}>
-          <NoteCarousel docs={starred?.page} label="Bookmarked notes" allCards={allCards} />
-        </Section>
-
-        <Section
-          title="Recent folders"
-          href="/folders"
-          icon={<Folder size={17} strokeWidth={1.9} />}
-          empty={org && !org.total ? <EmptyState size="inline" title="No folders yet" body="Folders keep related notes together." /> : undefined}
-        >
-          <div ref={folders.ref}>
-            <ul className="grid" style={{ gridTemplateColumns: `repeat(${folders.cols}, minmax(0, 1fr))`, columnGap: sizes.gap, rowGap: sizes.rowGap }}>
-              {(allCards ? recentFolders : []).map((f) => (
-                <li key={f.id}>
-                  <FolderCard folder={f} parentName={f.parentName ?? undefined} />
-                </li>
-              ))}
-            </ul>
+        <div className="mx-auto max-w-[680px]">
+          {aiOn ? <CatchUp /> : null}
+          <TodaysReviews />
+        </div>
+        {/* One grid of blocks in this person's order (lib/app/homeLayout.ts): three columns on a wide window, one on a
+            narrow one. Customize moves them, takes them off Home and adds them back, saved per person
+            (convex/homePrefs.ts). */}
+        <div className="@container mt-12">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-10 @[760px]:grid-cols-3">
+            {shown.map(({ block, hidden }, i) => (
+              <HomeBlockFrame key={block.id} block={block} hidden={hidden} editing={editing} first={i === 0} last={i === shown.length - 1} saved={layout} saveLayout={saveLayout} panel={block.span !== 3 && block.id !== "recent"}>
+                {blockBody(block.id)}
+              </HomeBlockFrame>
+            ))}
+            {editing ? <AddBlockTile blocks={rows.filter((r) => r.hidden).map((r) => r.block)} saved={layout} saveLayout={saveLayout} /> : null}
           </div>
-        </Section>
+        </div>
+        {editing ? (
+          <div className="mt-8 flex justify-end">
+            <button type="button" className="ui-btn ui-btn-quiet h-control px-3 text-callout" onClick={() => void setLayout({ layout: null })}>
+              Reset to the default Home
+            </button>
+          </div>
+        ) : null}
       </div>
     </ViewChrome>
   );

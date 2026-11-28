@@ -46,3 +46,12 @@ Not run: native snapshot tests (FoleviScreensTests); their reference images for 
 - Not yet: the iPhone and iPad Settings lists, the Windows/Linux app's own settings (recorded gap), and native
   Mac Settings. Add new settings cards to the index when they're added.
 - Tests: `apps/web/test/settings-search.test.ts`.
+
+## The owner's type sizes (from the type sizes page, 28 November)
+
+The owner filled in sizes on https://claude.ai/artifact/TN7Mz8Q9SqVi5hWMMD3S9G. Applied on web and native:
+- Note card title 13 (6.9cqw), created line 10 (5.3cqw), preview 8 (4.25cqw, leading 5.9cqw), at a Home card.
+- Folder card name 15 (8.33cqw; subfolders keep 0.8 of it).
+- Card time and folder chip: `--type-card-time` is a flat 10px (leading 13.3); `WebTextStyle.cardTime` is 10 pt.
+- Editor body (serif) 17px, so headings land at 24.
+Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `WebNoteCard.swift`.

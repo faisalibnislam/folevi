@@ -471,9 +471,9 @@ public struct WebNoteCard: View {
     private func content(cq: CGFloat, titleWidth: CGFloat, heading: RGBA, faint: RGBA, muted: RGBA, chip: RGBA, look: NoteCardLook, tint: (Double) -> RGBA) -> some View {
         let titleStyle = phone
             ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600, letterSpacing: -0.005 * 17)
-            : WebTextStyle(family: .display, size: 6.6 * cq, leading: 6.6 * cq * 1.22, weight: 500, letterSpacing: 0.005 * 6.6 * cq)
-        let createdStyle = WebTextStyle(size: 4.5 * cq, leading: 4.5 * cq * 1.3).cardInterface(chrome?.forText != nil)
-        let bodyStyle = WebTextStyle(size: 3.6 * cq, leading: 5 * cq)
+            : WebTextStyle(family: .display, size: 6.9 * cq, leading: 6.9 * cq * 1.22, weight: 500, letterSpacing: 0.005 * 6.9 * cq)
+        let createdStyle = WebTextStyle(size: 5.3 * cq, leading: 5.3 * cq * 1.3).cardInterface(chrome?.forText != nil)
+        let bodyStyle = WebTextStyle(size: 4.25 * cq, leading: 5.9 * cq)
         let text = NoteCardView.previewText(model.preview, excerpt: model.excerpt)
         // A template's title is a typed label (the iPhone's 12/16, as globals.css sets [data-card="memo"], Caption 1).
         let memoStyle = phone
@@ -1029,7 +1029,7 @@ public struct WebFolderCard: View {
         // (FolderCard.tsx's SUBFOLDER_NAME and nameLines; the owner, 28 November 2026).
         let subfolder = labelScale > 1
         // The name: clamp(14px, 8cqw, 30px), semibold, 1.25 (1.15 until 28 November 2026); the phone's at Headline, 17/22 (globals.css).
-        let nameSize = min(30, max(14, 8 * cq * k * (subfolder ? 0.8 : 1)))
+        let nameSize = min(30, max(14, 8.33 * cq * k * (subfolder ? 0.8 : 1)))
         let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.25, weight: 600)
         let countSize = min(18, max(11, 4.9 * cq * k))
         // The Edited date at the card-time size, as a note card's time.
@@ -1402,10 +1402,10 @@ struct BookmarkRibbon: Shape {
 }
 
 extension WebTextStyle {
-    /// A card's time ("Oct 20", no "Edited"): one size on note cards and folder cards, 80.5% of Footnote (globals.css
-    /// --type-card-time; the owner, 28 November 2026).
+    /// A card's time ("Oct 20", no "Edited"): one size on note cards and folder cards, 10 pt (globals.css
+    /// --type-card-time; the owner's type sizes page, 28 November 2026).
     static var cardTime: WebTextStyle {
         let f = WebTextStyle.role(.footnote)
-        return WebTextStyle(size: f.size * 0.805, leading: f.leading * 0.805, weight: f.weight)
+        return WebTextStyle(size: 10, leading: 10 * 4 / 3, weight: f.weight)
     }
 }

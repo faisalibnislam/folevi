@@ -217,7 +217,7 @@ export function FolderCardArt({
           own instead, and the words keep to their lines (line clamp and truncate). */}
       <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col rounded-folder px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
         <span aria-hidden className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-[0.1] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
-        <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} ${nameLines === 1 ? "block truncate" : nameLines === 2 ? "line-clamp-2" : "line-clamp-2 @max-[150px]:block @max-[150px]:truncate"} text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)*var(--fc-name,1)),30px)] font-semibold leading-[1.25]`}>
+        <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} ${nameLines === 1 ? "block truncate" : nameLines === 2 ? "line-clamp-2" : "line-clamp-2 @max-[150px]:block @max-[150px]:truncate"} text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8.33cqw*var(--fc-text,1)*var(--fc-name,1)),30px)] font-semibold leading-[1.25]`}>
           {name}
         </span>
         <span data-fc="age" className="relative flex min-h-0 flex-1 flex-col tabular-nums">

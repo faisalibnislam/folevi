@@ -1138,9 +1138,9 @@ svg.lucide :is(path, line, polyline, polygon, rect, circle, ellipse) { vector-ef
    them: the rows sit on the page between hairlines. One hierarchy: the name in the serif at Headline size
    (as a folder card's name), everything else at Footnote in the muted ink with even figures, and a small caps
    header naming the columns. A row lights up on hover, as a sidebar row does. */
-/* A card's time ("Oct 20", no "Edited"): one size on note cards and folder cards, 80.5% of Footnote (the owner,
-   28 November 2026: the same size for both, then 30% smaller, then 15% bigger). WebNoteCard.swift's cardTime matches. */
-:root { --type-card-time: calc(var(--type-footnote) * 0.805); --type-card-time-leading: calc(var(--type-footnote-leading) * 0.805); }
+/* A card's time ("Oct 20", no "Edited"): one size on note cards and folder cards, 10px (the owner's type sizes page,
+   28 November 2026). WebNoteCard.swift's cardTime matches. */
+:root { --type-card-time: 10px; --type-card-time-leading: calc(10px * 4 / 3); }
 @layer components {
   .ui-list-head { display: flex; align-items: center; gap: 12px; padding: 0 12px 8px; font-size: var(--type-caption-2); line-height: var(--type-caption-2-leading); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
   .ui-list { border-top: 1px solid var(--color-line); }

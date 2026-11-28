@@ -22,7 +22,7 @@
   padding-bottom: 30vh;
   caret-color: var(--color-ember);
 }
-.fb-page[data-font="serif"] .fb-editor { font-size: calc(17.5px * var(--editor-zoom, 1)); line-height: 1.62; letter-spacing: 0; }
+.fb-page[data-font="serif"] .fb-editor { font-size: calc(17px * var(--editor-zoom, 1)); line-height: 1.62; letter-spacing: 0; }
 .fb-page[data-font="mono"] .fb-editor { font-size: calc(15px * var(--editor-zoom, 1)); }
 /* Every theme's typeface reads at the same size: each font type is set to its standard face's x-height
    (Inter, Spectral, JetBrains Mono, the system's rounded face), so a theme's Newsreader or Space Mono looks

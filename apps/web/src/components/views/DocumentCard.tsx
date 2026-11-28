@@ -192,15 +192,15 @@ export function NoteCardFace({
         {look === "memo" ? (
           <h3 data-card="memo" className="line-clamp-2 self-start text-ellipsis break-words rounded-tiny bg-heading px-[2.4cqw] py-[1.2cqw] font-mono text-[4cqw] font-medium uppercase leading-[1.3] tracking-[0.06em] text-surface">{title || "Untitled"}</h3>
         ) : (
-          <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
+          <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.9cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
         )}
         {look === "index" ? <span aria-hidden className="mt-[2.4cqw] block h-[0.5cqw] bg-[#e88e8e]" /> : null}
-        <p data-card="created" className="mt-[1cqw] truncate text-[4.5cqw] leading-[1.3] text-faint">
+        <p data-card="created" className="mt-[1cqw] truncate text-[5.3cqw] leading-[1.3] text-faint">
           {createdText(createdAt)}
         </p>
         <div
           ref={body.ref}
-          className="mt-[4.6cqw] min-h-0 flex-1 overflow-hidden text-[3.6cqw] leading-[5cqw]"
+          className="mt-[4.6cqw] min-h-0 flex-1 overflow-hidden text-[4.25cqw] leading-[5.9cqw]"
           // An index card's blue lines under each line of text.
           style={look === "index" ? { backgroundImage: "repeating-linear-gradient(transparent 0 calc(5cqw - 1px), rgb(120 160 210 / 0.35) calc(5cqw - 1px) 5cqw)" } : undefined}
         >

@@ -302,8 +302,9 @@ struct DestinationButton: View {
         } label: {
             HStack(spacing: 6) {
                 SpaceMark(space: model.spaces?.first { $0.id == destination.space }, name: destination.spaceName, size: 16)
+                // Home's "Saves to" button: footnote size, medium weight.
                 Text(destination.label)
-                    .font(QNStyle.labelStrong)
+                    .font(FoleviFonts.font(.ui, size: FoleviTextStyle.footnote.size, weight: .medium))
                     .lineLimit(1)
                     .truncationMode(.middle)
                 QNIcon(.chevronDown, size: 12)

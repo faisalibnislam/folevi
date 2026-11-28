@@ -57,7 +57,7 @@ afterEach(() => {
 });
 
 describe("views", () => {
-  it("home.stats and home.prefs: Home's At a glance and this person's layout (revision 37)", async () => {
+  it("home.stats and home.prefs: Home's At a glance and this person's layout (revision 38)", async () => {
     r.client.answer("homeStats:get", { notes: 3, words: 476, images: 1, folders: 2, tasksDone: 4, tasksOpen: 2, week: [0, 1, 0, 0, 0, 0, 2], capped: false });
     const stats = (await query("home.stats", { todayStart: 1764266400000 })) as HomeStatsValue;
     expect(stats).toEqual({ notes: 3, words: 476, images: 1, folders: 2, tasksDone: 4, tasksOpen: 2, week: [0, 1, 0, 0, 0, 0, 2], capped: false });
@@ -67,7 +67,7 @@ describe("views", () => {
     expect((await errorOf({ kind: "query", place: PLACE, name: "home.stats", args: { todayStart: "today" } })).code).toBe("invalid_args");
   });
 
-  it("home.setLayout and home.setPinnedNote go to homePrefs (revision 37)", async () => {
+  it("home.setLayout and home.setPinnedNote go to homePrefs (revision 38)", async () => {
     await command("home.setLayout", { layout: { order: ["recent", "recent", "dna"], hidden: ["dna"] } });
     expect(r.client.mutations.at(-1)).toMatchObject({ name: "homePrefs:setLayout", args: { layout: { order: ["recent", "dna"], hidden: ["dna"] } } });
     await command("home.setLayout", { layout: null });
@@ -79,7 +79,7 @@ describe("views", () => {
 
   it("folders.cards: a folder's subfolders with their counts and previews", async () => {
     const v = (await query("folders.cards", { parentId: "f1" })) as FolderCardsValue;
-    expect(v.folders).toEqual([expect.objectContaining({ id: "f2", noteCount: 5, childCount: 1, previews: [{ title: "Kyoto", excerpt: "Temples", cover: { kind: "none" }, createdAt: 0 }] })]);
+    expect(v.folders).toEqual([expect.objectContaining({ id: "f2", noteCount: 5, childCount: 1, previews: [{ title: "Kyoto", excerpt: "Temples", cover: { kind: "none" }, createdAt: 0, updatedAt: 0, style: null, preview: null, shape: null, kind: "document" }] })]);
     const top = (await query("folders.cards", {})) as FolderCardsValue;
     expect(top.folders.map((f) => f.id)).toEqual(["f1"]);
   });

@@ -104,15 +104,12 @@ test("a new note on a folder page lands in that folder with no page icon; folder
     await expect(section).toBeVisible();
     await expect(section.getByRole("link", { name: /^See all/ })).toHaveAttribute("href", href);
   }
-  // Recent notes and Bookmarks are single sideways rows of at most 10 notes, with arrows to scroll.
+  // Recent notes is one row of at most 6 cards in the redesigned Home's grid (the owner, PR 190: no sideways
+  // scrolling and no scroll arrows any more).
   const recentList = page.getByRole("list", { name: "Recent notes" });
   await expect(recentList.getByRole("listitem").first()).toBeVisible();
-  expect(await recentList.getByRole("listitem").count()).toBeLessThanOrEqual(10);
-  await page.setViewportSize({ width: 1100, height: 900 });
-  const forward = page.getByRole("button", { name: "Scroll recent notes forward" });
-  await forward.click();
-  await expect(page.getByRole("button", { name: "Scroll recent notes back" })).toBeVisible();
-  await expect.poll(() => recentList.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  expect(await recentList.getByRole("listitem").count()).toBeLessThanOrEqual(6);
+  await expect(page.getByRole("button", { name: /^Scroll recent notes/ })).toHaveCount(0);
 
   // Folder cards have the same folder menu on hover.
   const folderCard = page.getByRole("region", { name: "Recent folders" }).getByRole("listitem").first();

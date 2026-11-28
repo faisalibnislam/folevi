@@ -504,6 +504,19 @@ data class FolderPreview(
     val cover: CardCover,
     /** Revision 33: when the note was created ("Created Nov 3" on the page peeking out of the card); 0 when unknown. */
     @EncodeDefault val createdAt: Double = 0.0,
+    /** Revision 36: when the note last changed ("Edited 2 days ago" on its card); 0 when unknown. */
+    @EncodeDefault val updatedAt: Double = 0.0,
+    /**
+     * Revision 36: the note's look, so the page peeking out of the folder is drawn as the note's own card (NoteRow's
+     * style, preview, shape and kind). Null when the server has none for it yet (the default look).
+     */
+    @EncodeDefault val style: CardStyle? = null,
+    /** Revision 36: the note's first blocks, as NoteRow.preview. */
+    @EncodeDefault val preview: List<PreviewLine>? = null,
+    /** Revision 36: what kind of page it is, as NoteRow.shape. */
+    @EncodeDefault val shape: String? = null,
+    /** Revision 36: "document", "daily" or "template", as NoteRow.kind. */
+    @EncodeDefault val kind: String = "document",
 )
 
 /** A folder as Home's and a folder screen's folder cards show it. */
@@ -2964,7 +2977,7 @@ data class ChatMemoryArgs(
     val save: Boolean,
 )
 
-/** One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 36). */
+/** One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 37). */
 @Serializable
 data class SettingsAskOption(
     /** The setting's key, as the app knows it ("appearance/Theme"); only keys from the list come back. */
@@ -2975,7 +2988,7 @@ data class SettingsAskOption(
 )
 
 /**
- * `ai.settingsSearch` (revision 36): Settings' Ask Foli AI. The person's words and the settings this person has;
+ * `ai.settingsSearch` (revision 37): Settings' Ask Foli AI. The person's words and the settings this person has;
  * Foli AI picks up to three that do what they asked (convex/ai.ts settingsSearch). An account's only.
  */
 @Serializable
@@ -2993,7 +3006,7 @@ data class SettingsAskResult(
 )
 
 /**
- * `home.stats` (revision 37): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
+ * `home.stats` (revision 38): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
  * `todayStart` is local midnight (ms), so the week's last bar is this person's today.
  */
 @Serializable
@@ -3023,20 +3036,20 @@ data class HomeLayout(
     val hidden: List<String>,
 )
 
-/** `home.prefs` (revision 37): this person's Home layout (null: the default) and pinned note (homePrefs.get). */
+/** `home.prefs` (revision 38): this person's Home layout (null: the default) and pinned note (homePrefs.get). */
 @Serializable
 data class HomePrefsValue(
     val layout: HomeLayout?,
     val pinnedNote: String?,
 )
 
-/** `home.setLayout` (revision 37): saves the layout (homePrefs.setLayout); null puts Home back to its default. */
+/** `home.setLayout` (revision 38): saves the layout (homePrefs.setLayout); null puts Home back to its default. */
 @Serializable
 data class HomeSetLayoutArgs(
     val layout: HomeLayout?,
 )
 
-/** `home.setPinnedNote` (revision 37): the note the Pinned note block shows (homePrefs.setPinnedNote), or null. */
+/** `home.setPinnedNote` (revision 38): the note the Pinned note block shows (homePrefs.setPinnedNote), or null. */
 @Serializable
 data class HomeSetPinnedNoteArgs(
     val noteId: String?,

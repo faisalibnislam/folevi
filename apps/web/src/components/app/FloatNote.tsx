@@ -12,7 +12,7 @@ import { closeFloat, floatTitle, inPip, openInMainWindow } from "@/lib/app/float
 import { desktop, registerMenuCommand } from "@/lib/desktop";
 import { useAppRouter } from "@/lib/app/router";
 import { inMenuBarPanel } from "@/lib/desktop/menuBarNote";
-import { MenuBarComposer, useMenuBarCommands } from "./MenuBarNote";
+import { useMenuBarCommands } from "./MenuBarNote";
 
 const DocumentView = lazy(() => import("@/components/doc/DocumentView").then((m) => ({ default: m.DocumentView })));
 
@@ -62,8 +62,8 @@ function useNoteColours(root: HTMLElement | null): { paper: string; ink: string 
 }
 
 export function FloatNote({ id }: { id: string }) {
-  // The Mac's menu bar note (`?panel=1`, components/app/MenuBarNote.tsx): the same page without the bar (the panel
-  // has its own), and `/float/new` there is the empty page that makes a note on the first keystroke.
+  // The Mac's menu bar note (`?panel=1`, components/app/MenuBarNote.tsx): `/float/menu?panel=1` is the panel's quiet
+  // page, which shows nothing and answers the panel's commands (its note is written natively, as Home's quick note).
   const { search } = useAppRouter();
   const panel = inMenuBarPanel(search);
   useMenuBarCommands(panel);
@@ -119,9 +119,7 @@ export function FloatNote({ id }: { id: string }) {
           >
             {panel ? null : <FloatBar id={id} title={title} tinted={Boolean(colours)} />}
             <div className="relative min-h-0 flex-1">
-              {panel && id === "new" ? (
-                <MenuBarComposer />
-              ) : (
+              {panel && id === "menu" ? null : (
                 <Suspense fallback={null}>
                   <DocumentView documentId={id} />
                 </Suspense>

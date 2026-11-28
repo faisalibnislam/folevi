@@ -1,5 +1,7 @@
 "use client";
 
+// Not on any page while the app is paused (owner, 2026-11-28): kept, with its tests, for when it comes back.
+
 import { useEffect, useState } from "react";
 import { ButtonLink } from "./ui";
 import { LINUX_CHECKSUMS_URL, LINUX_DOWNLOADS } from "./site";

@@ -10,6 +10,7 @@ import {
   vImagePalette,
   vDocumentKind,
   vDocumentStyle,
+  vPreviewLines,
   vPlatformRole,
   vPublishTheme,
   vNotificationPrefs,
@@ -315,6 +316,15 @@ export default defineSchema({
         title: v.string(),
         cover: vDocumentCover,
         excerpt: v.string(),
+        /**
+         * The rest of what the note's own card shows, so the notes peeking out of the folder card are drawn as
+         * exactly that card (FolderCardArt.tsx): its look, first blocks, page shape and kind. Optional: entries
+         * written before 28 November 2026 have none until the note is next saved.
+         */
+        style: v.optional(vDocumentStyle),
+        preview: v.optional(vPreviewLines),
+        shape: v.optional(v.string()),
+        kind: v.optional(v.string()),
         restricted: v.optional(v.boolean()),
         /** A sealed note's sealed title and appearance (lib/e2ee/sealedRows.ts sealedFieldsOf). */
         sealed: v.optional(v.any()),
@@ -402,18 +412,7 @@ export default defineSchema({
     blockCount: v.number(),
     excerpt: v.string(),
     /** First blocks, trimmed, for page-thumbnail cards (derived; see lib/documents.ts buildPreview). */
-    preview: v.optional(
-      v.array(
-        v.object({
-          t: v.string(),
-          x: v.string(),
-          l: v.optional(v.number()),
-          c: v.optional(v.boolean()),
-          d: v.optional(v.number()),
-          rows: v.optional(v.array(v.array(v.string()))),
-        }),
-      ),
-    ),
+    preview: v.optional(vPreviewLines),
     /** What kind of page it is, for the look of its card: tabs, pocket, canvas, list or page (derived; derive.ts deriveShape). */
     shape: v.optional(v.string()),
     /**

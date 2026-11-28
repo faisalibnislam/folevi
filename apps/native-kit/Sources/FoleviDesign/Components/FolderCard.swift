@@ -5,17 +5,35 @@
 import SwiftUI
 
 public struct FolderCardModel: Hashable, Sendable, Identifiable {
+    /// A note peeking out of the folder, with what its own card shows: it is drawn as exactly that card
+    /// (WebNoteCard, as the web's FolderCardArt draws NoteCardFace; the owner, 28 November 2026).
     public struct Note: Hashable, Sendable {
         public var title: String
         public var excerpt: String
         public var cover: NoteCover
         /// "Created 3 days ago", under the title on the page peeking out of the card; empty when unknown.
         public var createdText: String
-        public init(title: String, excerpt: String = "", cover: NoteCover = .plain, createdText: String = "") {
+        /// The note's first blocks, font, "Edited 2 days ago" and page shape (empty or nil when unknown).
+        public var preview: [CardPreviewLine]
+        public var fontType: NoteFontType
+        public var timeText: String
+        public var shape: String?
+        public var template: Bool
+        public init(title: String, excerpt: String = "", cover: NoteCover = .plain, createdText: String = "", preview: [CardPreviewLine] = [], fontType: NoteFontType = .system, timeText: String = "", shape: String? = nil, template: Bool = false) {
             self.title = title
             self.excerpt = excerpt
             self.cover = cover
             self.createdText = createdText
+            self.preview = preview
+            self.fontType = fontType
+            self.timeText = timeText
+            self.shape = shape
+            self.template = template
+        }
+
+        /// The note as its own card shows it, without the folder chip (it is in this folder) or a bookmark.
+        public var card: NoteCardModel {
+            NoteCardModel(id: title, title: title, excerpt: excerpt, preview: preview, cover: cover, fontType: fontType, createdText: createdText, timeText: timeText, showsFolder: false, shape: shape, template: template)
         }
     }
 

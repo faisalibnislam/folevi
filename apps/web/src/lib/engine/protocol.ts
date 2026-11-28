@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 37;
+export const CONTRACT_REVISION = 38;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -555,6 +555,32 @@ export interface FolderPreview {
    * @default 0
    */
   createdAt: number;
+  /**
+   * Revision 36: when the note last changed ("Edited 2 days ago" on its card); 0 when unknown.
+   * @default 0
+   */
+  updatedAt: number;
+  /**
+   * Revision 36: the note's look, so the page peeking out of the folder is drawn as the note's own card (NoteRow's
+   * style, preview, shape and kind). Null when the server has none for it yet (the default look).
+   * @default null
+   */
+  style: CardStyle | null;
+  /**
+   * Revision 36: the note's first blocks, as NoteRow.preview.
+   * @default null
+   */
+  preview: PreviewLine[] | null;
+  /**
+   * Revision 36: what kind of page it is, as NoteRow.shape.
+   * @default null
+   */
+  shape: string | null;
+  /**
+   * Revision 36: "document", "daily" or "template", as NoteRow.kind.
+   * @default "document"
+   */
+  kind: string;
 }
 
 /** A folder as Home's and a folder screen's folder cards show it. */
@@ -2376,7 +2402,7 @@ export interface ChatMemoryArgs {
   save: boolean;
 }
 
-/** One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 36). */
+/** One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 37). */
 export interface SettingsAskOption {
   /** The setting's key, as the app knows it ("appearance/Theme"); only keys from the list come back. */
   key: string;
@@ -2386,7 +2412,7 @@ export interface SettingsAskOption {
 }
 
 /**
- * `ai.settingsSearch` (revision 36): Settings' Ask Foli AI. The person's words and the settings this person has;
+ * `ai.settingsSearch` (revision 37): Settings' Ask Foli AI. The person's words and the settings this person has;
  * Foli AI picks up to three that do what they asked (convex/ai.ts settingsSearch). An account's only.
  */
 export interface SettingsAskArgs {
@@ -2402,7 +2428,7 @@ export interface SettingsAskResult {
 }
 
 /**
- * `home.stats` (revision 37): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
+ * `home.stats` (revision 38): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
  * `todayStart` is local midnight (ms), so the week's last bar is this person's today.
  */
 export interface HomeStatsArgs {
@@ -2429,18 +2455,18 @@ export interface HomeLayout {
   hidden: string[];
 }
 
-/** `home.prefs` (revision 37): this person's Home layout (null: the default) and pinned note (homePrefs.get). */
+/** `home.prefs` (revision 38): this person's Home layout (null: the default) and pinned note (homePrefs.get). */
 export interface HomePrefsValue {
   layout: HomeLayout | null;
   pinnedNote: string | null;
 }
 
-/** `home.setLayout` (revision 37): saves the layout (homePrefs.setLayout); null puts Home back to its default. */
+/** `home.setLayout` (revision 38): saves the layout (homePrefs.setLayout); null puts Home back to its default. */
 export interface HomeSetLayoutArgs {
   layout: HomeLayout | null;
 }
 
-/** `home.setPinnedNote` (revision 37): the note the Pinned note block shows (homePrefs.setPinnedNote), or null. */
+/** `home.setPinnedNote` (revision 38): the note the Pinned note block shows (homePrefs.setPinnedNote), or null. */
 export interface HomeSetPinnedNoteArgs {
   noteId: string | null;
 }

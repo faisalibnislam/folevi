@@ -140,9 +140,9 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "apps-and-local-notes",
     title: "The apps and notes on your devices",
     nav: "Apps and no-account notes",
-    description: "The Folevi apps for Mac, Windows, Linux, iPhone, iPad and Android: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
+    description: "The Folevi apps for Mac, iPhone and iPad: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
     published: "2026-11-06",
-    updated: "2026-11-27",
+    updated: "2026-11-28",
     body: () => (
       <>
         <h2 id="apps">The apps</h2>
@@ -151,10 +151,8 @@ export const DOC_ARTICLES: DocArticle[] = [
           head={["App", "Where to get it"]}
           rows={[
             ["Mac", <>A free download from <Link href="/mac">folevi.com/mac</Link>. Open it and drag Folevi to Applications; it updates itself. {MAC_REQUIREMENT}.</>],
-            ["Windows", <>A free download from <Link href="/downloads#windows">folevi.com/downloads</Link>, for Intel and AMD or Arm PCs; it updates itself.</>],
-            ["Linux", <>A free download from <Link href="/downloads#linux">folevi.com/downloads</Link>: AppImage, .deb or .rpm, for Intel and AMD or ARM. Linux is in beta.</>],
             ["iPhone and iPad", <>Free on the <a href={APP_STORE_URL}>App Store</a>. {IOS_REQUIREMENT}.</>],
-            ["Android, Windows and Linux (Beta)", <>Free, from the <Link href="/downloads">downloads page</Link>.</>],
+            ["Android, Windows and Linux", <>Coming soon. Until then, use the web app in any browser.</>],
             ["Web", <>In any modern browser: <a href={WEB_APP_URL}>open the web app</a>. Needs a Folevi account.</>],
           ]}
         />
@@ -174,7 +172,7 @@ export const DOC_ARTICLES: DocArticle[] = [
           A library is a folder of files: one file for each note, and a small index beside them. Folevi’s servers never see them. To use the same library on another device, open the app there, choose Keep notes on my devices and pick the same place.
         </p>
         <p>
-          You can also run your own <Link href="/server">Folevi Server</Link> (Beta), which is free, and sync every app through it.
+          You can also run your own <Link href="/server">Folevi Server</Link> (Early Beta), which is free, and sync every app through it.
         </p>
         <h2 id="ai">Foli AI without an account</h2>
         <p>
@@ -198,7 +196,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     nav: "Spell check and prediction",
     description: "How Folevi checks spelling in nine languages, predicts the next word on Tab, and where to change it in Settings → Writing.",
     published: "2026-11-27",
-    updated: "2026-11-27",
+    updated: "2026-11-28",
     body: () => (
       <>
         <p>
@@ -207,7 +205,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         <h2 id="spelling">Spell check</h2>
         <ul>
           <li>A word that looks misspelled gets a red wavy underline.</li>
-          <li>Click it, or right-click (long-press on a phone), for up to five suggestions, then <strong>Add to dictionary</strong> or <strong>Ignore</strong>. On iPhone, iPad and Android the suggestions also appear above the keyboard.</li>
+          <li>Click it, or right-click (long-press on a phone), for up to five suggestions, then <strong>Add to dictionary</strong> or <strong>Ignore</strong>. On iPhone and iPad the suggestions also appear above the keyboard.</li>
           <li>Each line is checked in its own language: English (American or British), Spanish, French, German, Portuguese, Indonesian, Hindi, Bengali or Arabic. A heading or short line with no telling words is checked in your English and the note’s language.</li>
         </ul>
         <h2 id="prediction">Next-word prediction</h2>
@@ -231,13 +229,13 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "your-own-server",
     title: "Sign in to your own server",
     nav: "Your own server",
-    description: "Connect the Folevi apps to a Folevi Server (Beta) you run on a NAS or Linux server: by address, QR code or on your home network.",
+    description: "Connect the Folevi apps to a Folevi Server (Early Beta) you run on a NAS or Linux server: by address, QR code or on your home network.",
     published: "2026-11-27",
-    updated: "2026-11-27",
+    updated: "2026-11-28",
     body: () => (
       <>
         <p>
-          Folevi Server, in beta, runs Folevi on your own NAS or Linux server. The normal Folevi apps connect to it: the web app, and the apps for Mac, Windows, Linux, iPhone, iPad and Android. To set up a server, see the <Link href="/server">Folevi Server page</Link>.
+          Folevi Server, in Early Beta, runs Folevi on your own NAS or Linux server. The normal Folevi apps connect to it: the web app, and the apps for Mac, iPhone and iPad. To set up a server, see the <Link href="/server">Folevi Server page</Link>.
         </p>
         <h2 id="sign-in">Sign in</h2>
         <p>On the sign-in screen, choose <strong>Your own server</strong>, then one of:</p>
@@ -371,11 +369,11 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "How offline editing works in Folevi, what the Saved, Saving, Offline, Syncing, Conflict and Not saved statuses mean, and how version snapshots work.",
     legacyAnchor: "sync",
     published: "2026-09-25",
-    updated: "2026-11-18",
+    updated: "2026-11-28",
     body: () => (
       <>
         <p>
-          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; the Mac, Windows, Linux, iPhone and iPad apps keep them on the device. You can keep writing with no connection at all. (This is how an account syncs. A library kept on your devices with no account syncs through your own cloud instead: see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)
+          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; the Mac, iPhone and iPad apps keep them on the device. You can keep writing with no connection at all. (This is how an account syncs. A library kept on your devices with no account syncs through your own cloud instead: see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)
         </p>
         <h2 id="offline">What works offline</h2>
         <p>With no connection you can:</p>

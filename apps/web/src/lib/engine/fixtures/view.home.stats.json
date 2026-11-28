@@ -1,7 +1,7 @@
 {
   "kind": "view",
   "name": "home.stats",
-  "description": "Home's At a glance for Personal, from local midnight (revision 37).",
+  "description": "Home's At a glance for Personal, from local midnight (revision 38).",
   "args": {
     "todayStart": 1764266400000
   },

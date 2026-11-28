@@ -548,7 +548,10 @@ function NoWorkspaceCard() {
 function SettingsSearch({ items, query, setQuery }: { items: Item[]; query: string; setQuery: (q: string) => void }) {
   const { navigate } = useAppRouter();
   const { scope } = useAppState();
-  const aiOn = useAiEnabled();
+  // "Ask Foli AI" asks Folevi's server: not in a local library (lib/local/registry.ts, LOCAL_HIDDEN).
+  const aiEnabled = useAiEnabled();
+  const { aiServer } = useCapabilities();
+  const aiOn = aiEnabled && aiServer;
   const askAi = useAiAction(api.ai.settingsSearch);
   const [at, setAt] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -623,7 +626,7 @@ function SettingsSearch({ items, query, setQuery }: { items: Item[]; query: stri
           }}
           placeholder={aiOn ? "Search or describe a setting" : "Search settings"}
           aria-label="Search settings"
-          aria-controls="settings-search-results"
+          aria-controls={typing ? "settings-search-results" : undefined}
           className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
         />
         {typing ? (

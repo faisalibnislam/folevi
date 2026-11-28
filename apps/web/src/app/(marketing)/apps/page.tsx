@@ -1,5 +1,5 @@
 import { Check, Minus } from "lucide-react";
-import { BetaNote } from "@/components/marketing/Beta";
+import { BetaNote, ComingSoonBadge } from "@/components/marketing/Beta";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Float, Mark, Sticker } from "@/components/marketing/fun";
 import { MacPicture } from "@/components/marketing/home/GetApps";
@@ -8,16 +8,15 @@ import { YourFiles } from "@/components/marketing/home/YourFiles";
 import { FaqSection } from "@/components/marketing/parts";
 import { SyncPiece } from "@/components/marketing/pieces";
 import { JsonLd, pageMetadata, softwareLd, type FaqItem } from "@/components/marketing/seo";
-import { ANDROID_DOWNLOAD_URL, ANDROID_INSTALL_NOTE, ANDROID_REQUIREMENT, APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL, WINDOWS_REQUIREMENT } from "@/components/marketing/site";
-import { WindowsDownload } from "@/components/marketing/WindowsDownload";
-import { LinuxDownload } from "@/components/marketing/LinuxDownload";
+import { PlatformMark, type PlatformMarkName } from "@/components/marketing/PlatformMark";
+import { APP_STORE_URL, COMING_SOON_NOTE, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL } from "@/components/marketing/site";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
 import { PRICES, formatPrice } from "@/lib/plans";
 
 export const metadata = pageMetadata({
   title: "Folevi apps: a free notes workspace for Mac, iPhone, iPad",
   description:
-    "Folevi for Mac, Windows, Linux, iPhone and iPad: docs, tasks and databases in one workspace. Free forever, no account, works offline. Your pages stay in a folder you pick.",
+    "Folevi for Mac, iPhone and iPad: docs, tasks and databases in one workspace. Free forever, no account, works offline. Your pages stay in a folder you pick.",
   path: "/apps",
 });
 
@@ -31,7 +30,7 @@ const MODES: Array<{ label: string; local: boolean | string; cloud: boolean | st
   { label: "Price", local: "Free forever", cloud: `Free plan, or from ${formatPrice(PRICES.core.month)} a month` },
   { label: "Account", local: "None", cloud: "A Folevi account" },
   { label: "Where notes live", local: "Files in a folder you pick", cloud: "Folevi Cloud, synced to every device" },
-  { label: "Mac, Windows, Linux, iPhone and iPad apps", local: true, cloud: true },
+  { label: "Mac, iPhone and iPad apps", local: true, cloud: true },
   { label: "Works offline", local: true, cloud: true },
   { label: "Docs, tasks, databases, themes, Foli DNA", local: true, cloud: true },
   { label: "Foli AI", local: "Your own OpenAI, Anthropic or Google key, or Apple Intelligence on your Mac", cloud: "Foli AI credits on every device" },
@@ -49,21 +48,6 @@ const MAC_POINTS = [
   "Updates itself",
   "Import everything from Apple Notes",
 ];
-const WINDOWS_POINTS = [
-  "The same workspace, in a window of its own",
-  "Quick Add from any app with Ctrl+Alt+Space",
-  "Keep notes on this PC, with no account",
-  "Spell check and next-word prediction, offline",
-  "Made for Arm PCs and for Intel and AMD PCs",
-  "Updates itself",
-];
-const LINUX_POINTS = [
-  "The same workspace, in a window of its own",
-  "Keep notes on this computer, with no account",
-  "Spell check and next-word prediction, offline",
-  "AppImage, .deb and .rpm, signed apt and rpm repositories, and the Snap Store",
-  "For Intel and AMD, and for ARM",
-];
 const IOS_POINTS = [
   "Made for iOS 26 on iPhone, with the Mac’s layout on iPad",
   "Home Screen widgets: Today, Recent notes and Quick add",
@@ -72,17 +56,17 @@ const IOS_POINTS = [
   "Foli DNA, the map of how your notes connect",
   "Works offline, syncs when you’re back",
 ];
-const ANDROID_POINTS = [
-  "The same workspace as on your other devices",
-  "Made for Android phones and tablets",
-  "Sign in and your notes are there",
-  "Works offline, syncs when you’re back",
+/** The paused apps (owner, 2026-11-28), shown as Coming soon with no download. */
+const COMING_SOON: Array<{ name: string; mark: PlatformMarkName }> = [
+  { name: "Android", mark: "android" },
+  { name: "Windows", mark: "windows" },
+  { name: "Linux", mark: "linux" },
 ];
 
 const FAQS: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: "Yes. Choose Keep notes on my devices when the app opens and the whole workspace (docs, tasks, databases and themes) is free forever on your Mac, Windows, Linux (Beta), iPhone, iPad and Android: no account, no trial and no limit on notes.",
+    a: `Yes. Choose Keep notes on my devices when the app opens and the whole workspace (docs, tasks, databases and themes) is free forever on your Mac, iPhone and iPad: no account, no trial and no limit on notes. ${COMING_SOON_NOTE}`,
   },
   {
     q: "Can I sign in to my Folevi account in the apps?",
@@ -102,7 +86,7 @@ const FAQS: FaqItem[] = [
   },
   {
     q: "What do the apps need?",
-    a: `Folevi for Mac needs ${MAC_REQUIREMENT}, on Apple silicon or Intel. Folevi for Windows needs ${WINDOWS_REQUIREMENT}. Folevi for Linux, in beta, comes as an AppImage for most distributions, a .deb for Ubuntu, Debian and Mint, and an .rpm for Fedora and openSUSE, on Intel and AMD or ARM. Folevi for iPhone and iPad needs ${IOS_REQUIREMENT}.`,
+    a: `Folevi for Mac needs ${MAC_REQUIREMENT}, on Apple silicon or Intel. Folevi for iPhone and iPad needs ${IOS_REQUIREMENT}. The web app runs in Chrome, Safari, Edge and Firefox. ${COMING_SOON_NOTE}`,
   },
 ];
 
@@ -175,8 +159,7 @@ export default function AppsPage() {
           </h1>
           <p className="mk-lede mt-6 max-w-[56ch]">
             The full Folevi workspace in native apps: docs, tasks, databases and themes. It’s free forever and needs no
-            account. Your pages are files in a folder you pick, and they work offline. Folevi is also free on Android,
-            Windows and Linux (Beta), with every feature.
+            account. Your pages are files in a folder you pick, and they work offline. {COMING_SOON_NOTE}
           </p>
           <div className="mt-8 flex flex-wrap gap-2.5">
             <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" size="lg">
@@ -258,40 +241,6 @@ export default function AppsPage() {
         />
 
         <AppCard
-          id="windows"
-          eyebrow="For Windows"
-          title={
-            <>
-              Folevi on your <Mark>PC.</Mark>
-            </>
-          }
-          lede="The same docs, tasks and databases on your Windows PC, with Quick Add a shortcut away."
-          points={WINDOWS_POINTS}
-          actions={<WindowsDownload />}
-          requirement={
-            <>
-              <p>{WINDOWS_REQUIREMENT}.</p>
-              <p className="mt-1">This early build isn’t signed yet, so Windows asks you to confirm it (More info, then Run anyway). It updates itself.</p>
-            </>
-          }
-        />
-
-        <AppCard
-          id="linux"
-          eyebrow="For Linux"
-          title={
-            <>
-              Folevi on <Mark>Linux.</Mark>
-            </>
-          }
-          lede="The same docs, tasks and databases on your Linux computer, whichever distribution you use."
-          points={LINUX_POINTS}
-          beta
-          actions={<LinuxDownload />}
-          requirement="The AppImage updates itself; the .deb, .rpm and Snap packages update through your package manager."
-        />
-
-        <AppCard
           id="iphone-ipad"
           eyebrow="For iPhone and iPad"
           title={
@@ -311,26 +260,32 @@ export default function AppsPage() {
           requirement={`${IOS_REQUIREMENT}.`}
         />
 
-        <AppCard
-          id="android"
-          eyebrow="For Android"
-          title={
-            <>
-              Folevi on your <Mark>Android.</Mark>
-            </>
-          }
-          lede="The same docs, tasks and databases on your Android phone and tablet. Download it from folevi.com while it’s on its way to Google Play."
-          points={ANDROID_POINTS}
-          actions={
-            <>
-              <ButtonLink href={ANDROID_DOWNLOAD_URL}>Download for Android</ButtonLink>
-              <ButtonLink href={WEB_APP_URL} variant="secondary">
-                Open the web app
-              </ButtonLink>
-            </>
-          }
-          requirement={`${ANDROID_REQUIREMENT}. ${ANDROID_INSTALL_NOTE}`}
-        />
+        <Card id="coming-soon" aria-labelledby="coming-soon-title" className="scroll-mt-20">
+          <SectionHeading
+            id="coming-soon-title"
+            eyebrow="Android, Windows and Linux"
+            title={
+              <>
+                Coming <Mark>soon.</Mark>
+              </>
+            }
+            lede="There’s nothing to download for these yet. Until there is, the web app runs in any browser on them, with a free Folevi account."
+          />
+          <ul className="mt-7 flex flex-wrap gap-3">
+            {COMING_SOON.map((p) => (
+              <li key={p.name} className="mk-card flex items-center gap-3 px-4 py-3 text-[15px] font-medium text-(--color-heading)">
+                <PlatformMark name={p.mark} size={20} className="shrink-0" />
+                {p.name}
+                <ComingSoonBadge />
+              </li>
+            ))}
+          </ul>
+          <div className="mt-8 flex flex-wrap gap-2.5">
+            <ButtonLink href={WEB_APP_URL} variant="secondary">
+              Open the web app
+            </ButtonLink>
+          </div>
+        </Card>
         <Card tint aria-labelledby="server-title">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end lg:gap-16">
             <div>
@@ -342,7 +297,7 @@ export default function AppsPage() {
                     Or run Folevi on your own <Mark>NAS.</Mark>
                   </>
                 }
-                lede="Install Folevi Server on a Synology, QNAP, Unraid or TrueNAS, or on a Linux server. These apps connect to it with Your own server."
+                lede="Install Folevi Server on a Synology, QNAP, Unraid or TrueNAS, or on a Linux server. The Mac, iPhone and iPad apps and the web app connect to it with Your own server."
               />
               <BetaNote badge className="mt-5" />
             </div>

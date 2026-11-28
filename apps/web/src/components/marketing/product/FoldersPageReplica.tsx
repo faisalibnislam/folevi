@@ -1,8 +1,14 @@
 import type { DocumentCover } from "@folevi/editor-schema";
 import { ChevronDown, FolderPlus, Funnel, LayoutGrid, Rows3 } from "lucide-react";
-import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FolderCardArt, type FolderPreview } from "@/components/views/FolderCardArt";
+import {
+  FOLDER_CARD_BOX,
+  FOLDER_CARD_FRAME,
+  FolderCardArt,
+  type FolderPreview,
+} from "@/components/views/FolderCardArt";
 import { COVER_ART } from "@/lib/cover";
 import { DEMO_FOLDERS, type DemoFolder, type DemoNote } from "../content/demoFolders";
+import { OfflineConvex } from "@/lib/convex/offline";
 import { cx } from "../ui";
 import { ListTabs, MainSidebar, artById, artThumb } from "./Replica";
 
@@ -27,16 +33,29 @@ const previewsOf = (notes: DemoNote[]): FolderPreview[] =>
   notes
     .slice(-3)
     .reverse()
-    .map((n) => ({ cover: coverFor(n.style), title: n.title, excerpt: `${n.lines[0]} ${n.lines[1]}` }));
+    .map((n) => ({
+      cover: coverFor(n.style),
+      title: n.title,
+      excerpt: `${n.lines[0]} ${n.lines[1]}`,
+    }));
 
 /** One demo folder drawn as the app's folder card: it lifts on hover and its newest notes rise out of it (no "…" menu on the site). */
 export function DemoFolderCard({ folder }: { folder: DemoFolder }) {
   return (
-    <div className={FOLDER_CARD_BOX}>
-      <div className={FOLDER_CARD_FRAME}>
-        <FolderCardArt name={folder.name} color={folder.color} count={folder.notes.length} age={folder.age} previews={previewsOf(folder.notes)} />
+    // Its notes are the app's note cards, which ask Convex for an image cover: the site has no server.
+    <OfflineConvex>
+      <div className={FOLDER_CARD_BOX}>
+        <div className={FOLDER_CARD_FRAME}>
+          <FolderCardArt
+            name={folder.name}
+            color={folder.color}
+            count={folder.notes.length}
+            age={folder.age}
+            previews={previewsOf(folder.notes)}
+          />
+        </div>
       </div>
-    </div>
+    </OfflineConvex>
   );
 }
 
@@ -45,12 +64,20 @@ export function FoldersPageReplica({ className }: { className?: string }) {
   const names = folders.map((f) => f.name);
   const label = `The Folders page in Folevi. ${folders.length} folders are shown as cards, each in its own color: ${names.slice(0, -1).join(", ")} and ${names.at(-1)}. Each card shows how many notes the folder holds and when it last changed, with its newest notes showing through the front cover. The sidebar lists the first five folders and ${folders.length - SIDEBAR_FOLDERS} more.`;
   return (
-    <div role="img" aria-label={label} className={cx("mk-app", className)} style={{ ["--app-art" as string]: artThumb(artById("art-44")) }}>
+    <div
+      role="img"
+      aria-label={label}
+      className={cx("mk-app", className)}
+      style={{ ["--app-art" as string]: artThumb(artById("art-44")) }}
+    >
       <div aria-hidden="true" className="mk-app-ambient" />
       <div aria-hidden="true" className="flex h-full gap-2 p-1">
         <MainSidebar
           activeLabel="Folders"
-          folders={DEMO_FOLDERS.slice(0, SIDEBAR_FOLDERS).map((f) => ({ color: f.color, label: f.name }))}
+          folders={DEMO_FOLDERS.slice(0, SIDEBAR_FOLDERS).map((f) => ({
+            color: f.color,
+            label: f.name,
+          }))}
           moreFolders={DEMO_FOLDERS.length - SIDEBAR_FOLDERS}
           sections
         />
@@ -67,7 +94,9 @@ export function FoldersPageReplica({ className }: { className?: string }) {
                 <Funnel size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <span className="truncate">Filter folders</span>
               </span>
-              <span className="hidden flex-none text-[12px] text-muted sm:inline">{folders.length} folders</span>
+              <span className="hidden flex-none text-[12px] text-muted sm:inline">
+                {folders.length} folders
+              </span>
               <span className="hidden flex-1 sm:block" />
               <span className="hidden items-center gap-2 text-[12px] text-muted md:flex">
                 Sort

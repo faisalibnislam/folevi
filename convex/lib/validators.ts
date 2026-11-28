@@ -92,6 +92,18 @@ export const vDocumentKind = v.union(
   // A synced block's content (convex/lib/synced.ts): never listed as a page.
   v.literal("synced"),
 );
+/** A note's first blocks, trimmed, for page-thumbnail cards (documents.preview; derived, lib/documents.ts buildPreview). */
+export const vPreviewLines = v.array(
+  v.object({
+    t: v.string(),
+    x: v.string(),
+    l: v.optional(v.number()),
+    c: v.optional(v.boolean()),
+    d: v.optional(v.number()),
+    rows: v.optional(v.array(v.array(v.string()))),
+  }),
+);
+
 export const vDocumentStyle = v.object({
   font: v.union(v.literal("sans"), v.literal("serif"), v.literal("mono"), v.literal("rounded")),
   width: v.union(v.literal("narrow"), v.literal("default"), v.literal("wide")),

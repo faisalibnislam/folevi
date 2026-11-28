@@ -21,7 +21,7 @@ const MOVE_WORDS = { self: "A folder can't go inside itself.", descendant: "A fo
 
 export const MORE_COMMANDS = {
   // Home's Customize (HomeDashboard.tsx, homeLayout.ts): the block order and the hidden blocks, the same on every
-  // device (homePrefs.setLayout); null is Reset. And the note the Pinned note block shows (revision 37).
+  // device (homePrefs.setLayout); null is Reset. And the note the Pinned note block shows (revision 38).
   "home.setLayout": {
     async run(deps, args) {
       only(args, ["layout"]);

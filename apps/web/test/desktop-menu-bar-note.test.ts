@@ -1,10 +1,11 @@
-// The Mac's menu bar note, the page's side (lib/desktop/menuBarNote.ts): where new notes can go (Personal and the
-// workspaces, each folder under its parent), the empty page's target, the panel mode, and a screenshot put into the
-// note as a paste.
+// The Mac's menu bar note, the page's side (lib/desktop/menuBarNote.ts): where a note can go (Personal and the
+// workspaces with their marks, each folder under its parent), the checks on what the Mac sends, and the note's title
+// and content as Home's quick note makes them, with screenshots.
 import { describe, expect, it, vi } from "vitest";
-import { composerTarget, folderTree, inMenuBarPanel, noteSpaces, pasteImage, scopeOfSpace } from "@/lib/desktop/menuBarNote";
+import { noteFromText } from "@/lib/desktop/capabilities";
+import { folderTree, inMenuBarPanel, menuNoteContent, noteSpaces, scopeOfSpace, validateMenuNote } from "@/lib/desktop/menuBarNote";
 
-describe("menu bar note: where new notes go", () => {
+describe("menu bar note: where a note goes", () => {
   it("puts each folder under its parent, in sidebar order", () => {
     const tree = folderTree([
       { id: "b", name: "Later", parentFolderId: "a" },
@@ -22,69 +23,47 @@ describe("menu bar note: where new notes go", () => {
     ]);
   });
 
-  it("lists Personal first, then the workspaces, leaving out locked folder names", async () => {
+  it("lists Personal first with your mark, then the workspaces with their logos, leaving out locked folder names", async () => {
     const query = vi.fn(async (_fn: never, args: never) => {
       const scope = (args as { scope: { kind: string } }).scope;
       return { folders: scope.kind === "personal" ? [{ id: "p1", name: "Ideas", parentFolderId: null }, { id: "p2", name: "", parentFolderId: null, sealedName: { c: "x" } }] : [{ id: "w1", name: "Projects", parentFolderId: null }] };
     });
-    const spaces = await noteSpaces({ query }, [{ id: "ws_1", name: "Studio", canEdit: true, logoUrl: "https://files/studio.png" }, { id: "ws_2", name: "Clients", canEdit: false }], { displayName: "Faisal", avatarUrl: null });
-    expect(spaces.map((s) => [s.id, s.name, s.canEdit])).toEqual([
-      ["personal", "Personal", true],
-      ["ws_1", "Studio", true],
-      ["ws_2", "Clients", false],
-    ]);
-    expect(spaces.map((s) => [s.imageUrl, s.markName])).toEqual([
-      [null, "Faisal"],
-      ["https://files/studio.png", "Studio"],
-      [null, "Clients"],
+    const spaces = await noteSpaces({ query }, [{ id: "ws_1", name: "Studio", canEdit: true, logoUrl: "https://files/studio.png" }, { id: "ws_2", name: "Clients", canEdit: false }], { displayName: "Sam", avatarUrl: null });
+    expect(spaces.map((s) => [s.id, s.name, s.canEdit, s.imageUrl, s.markName])).toEqual([
+      ["personal", "Personal", true, null, "Sam"],
+      ["ws_1", "Studio", true, "https://files/studio.png", "Studio"],
+      ["ws_2", "Clients", false, null, "Clients"],
     ]);
     expect(spaces[0]!.folders).toEqual([{ id: "p1", name: "Ideas", depth: 0 }]);
-    expect(spaces[1]!.folders).toEqual([{ id: "w1", name: "Projects", depth: 0 }]);
   });
 
-  it("reads the empty page's target: Drafts unless a folder is named", () => {
-    expect(composerTarget(new URLSearchParams("panel=1&space=personal"))).toEqual({ space: "personal", folderId: null });
-    expect(composerTarget(new URLSearchParams("panel=1&space=ws_1&folder=fld_s"))).toEqual({ space: "ws_1", folderId: "fld_s" });
-    expect(composerTarget(new URLSearchParams("panel=1"))).toEqual({ space: "personal", folderId: null });
+  it("knows the panel's page and the server's scopes", () => {
     expect(inMenuBarPanel(new URLSearchParams("panel=1"))).toBe(true);
     expect(inMenuBarPanel(new URLSearchParams(""))).toBe(false);
-  });
-
-  it("names Personal and workspaces as the server's scope", () => {
     expect(scopeOfSpace("personal")).toEqual({ kind: "personal" });
     expect(scopeOfSpace("ws_1")).toEqual({ kind: "workspace", workspaceId: "ws_1" });
   });
 });
 
-describe("menu bar note: a screenshot into the note", () => {
-  it("is pasted into the note's editor as a file", () => {
-    // jsdom has no DataTransfer and its ClipboardEvent takes no data (WebKit, where this runs, has both).
-    class FakeTransfer {
-      files: File[] = [];
-      items = { add: (f: File) => void this.files.push(f) };
-    }
-    class FakeClipboardEvent extends Event {
-      clipboardData: FakeTransfer | null;
-      constructor(type: string, init: EventInit & { clipboardData?: FakeTransfer }) {
-        super(type, init);
-        this.clipboardData = init.clipboardData ?? null;
-      }
-    }
-    vi.stubGlobal("DataTransfer", FakeTransfer);
-    vi.stubGlobal("ClipboardEvent", FakeClipboardEvent);
-    document.body.innerHTML = `<div class="ProseMirror" contenteditable="true"></div>`;
-    const editor = document.querySelector<HTMLElement>(".ProseMirror")!;
-    const seen: { files: File[] }[] = [];
-    editor.addEventListener("paste", (e) => seen.push({ files: [...((e as ClipboardEvent).clipboardData?.files ?? [])] }));
-    expect(pasteImage(document, btoa("png"), "image/png", "Screenshot.png")).toBe(true);
-    expect(seen).toHaveLength(1);
-    expect(seen[0]!.files[0]!.name).toBe("Screenshot.png");
-    expect(seen[0]!.files[0]!.type).toBe("image/png");
-    vi.unstubAllGlobals();
+describe("menu bar note: saving", () => {
+  it("checks what the Mac sends", () => {
+    expect(validateMenuNote(null)).toBeNull();
+    expect(validateMenuNote({ space: "personal", text: "   " })).toBeNull();
+    expect(validateMenuNote({ space: "personal", text: "a", images: [{ mime: "text/html", data: "" }] })).toBeNull();
+    expect(validateMenuNote({ space: "personal", text: "Hello", folderId: "f1" })).toEqual({ space: "personal", folderId: "f1", text: "Hello", images: [] });
+    expect(validateMenuNote({ space: "ws_1", text: "", images: [{ mime: "image/png", data: "eA==" }] })).toEqual({ space: "ws_1", folderId: null, text: "", images: [{ mime: "image/png", name: "Screenshot", data: "eA==" }] });
   });
 
-  it("says no when the page has no editor (the empty page)", () => {
-    document.body.innerHTML = `<textarea></textarea>`;
-    expect(pasteImage(document, btoa("png"), "image/png", "Screenshot.png")).toBe(false);
+  it("makes the note as Home does: first line the title, each other line a paragraph", () => {
+    expect(menuNoteContent("Groceries\nmilk\n\neggs", 0, noteFromText)).toEqual({ title: "Groceries", content: "milk\n\neggs", format: "text" });
+  });
+
+  it("adds the screenshots after the text, the text kept as typed", () => {
+    expect(menuNoteContent("Bug\n- not a list *really*\nsee #2", 2, noteFromText)).toEqual({
+      title: "Bug",
+      content: "\\- not a list \\*really\\*\n\nsee \\#2\n\n![](menu-note-image-1)\n\n![](menu-note-image-2)",
+      format: "markdown",
+    });
+    expect(menuNoteContent("", 1, noteFromText)).toEqual({ title: "Screenshot", content: "![](menu-note-image-1)", format: "markdown" });
   });
 });

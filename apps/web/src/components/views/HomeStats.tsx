@@ -54,14 +54,16 @@ function WeekBars({ week }: { week: number[] }) {
   return (
     <div className="flex min-w-0 flex-col justify-center gap-1 bg-surface px-4 py-3">
       <dt className="text-caption-1 font-medium text-muted">This week</dt>
-      <dd role="img" aria-label={`New notes on each of the last 7 days: ${said}`} className="flex h-6 items-end gap-1">
-        {week.map((n, i) => (
-          <span
-            key={i}
-            className={`flex-1 rounded-tiny ${i === 6 ? "bg-heading" : "bg-[color-mix(in_oklab,var(--color-ink)_22%,transparent)]"}`}
-            style={{ height: `${n ? Math.max(16, (n / max) * 100) : 8}%` }}
-          />
-        ))}
+      <dd className="m-0">
+        <span role="img" aria-label={`New notes on each of the last 7 days: ${said}`} className="flex h-6 items-end gap-1">
+          {week.map((n, i) => (
+            <span
+              key={i}
+              className={`flex-1 rounded-tiny ${i === 6 ? "bg-heading" : "bg-[color-mix(in_oklab,var(--color-ink)_22%,transparent)]"}`}
+              style={{ height: `${n ? Math.max(16, (n / max) * 100) : 8}%` }}
+            />
+          ))}
+        </span>
       </dd>
       <dd className="truncate text-caption-1 text-faint">{total ? `${plural(total, "new note", "new notes")}` : "No new notes yet"}</dd>
     </div>

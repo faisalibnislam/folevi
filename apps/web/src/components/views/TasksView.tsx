@@ -150,6 +150,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
           {task.priority !== "none" ? (
             <Flag
               size={12}
+              role="img"
               aria-label={`${PRIORITY_LABEL[task.priority as Priority] ?? task.priority} priority`}
               className={`ml-2 inline-block -translate-y-px fill-current ${task.priority === "high" ? "text-[var(--color-coral-ink)]" : task.priority === "medium" ? "text-[var(--color-marigold-ink)]" : "text-faint"}`}
             />

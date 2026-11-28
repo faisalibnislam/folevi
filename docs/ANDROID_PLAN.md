@@ -1,5 +1,9 @@
 # Folevi for Android: plan (2026-10-22)
 
+> **Paused (2026-11-28, owner decision):** the Windows, Linux and Android apps are paused. folevi.com shows them as
+> coming soon, with no download links. Folevi is available on the Mac, iPhone and iPad (iPhone Duo too), the web and
+> Folevi Server. The technical notes below are kept as they are for when the work picks up again.
+
 ## Owner decisions
 
 - **Approach:** a Capacitor shell like the iPhone app, with the web app inside, so every feature matches the web (local mode and end-to-end encryption included). Kotlin for the native extras. Lives in `apps/android`.

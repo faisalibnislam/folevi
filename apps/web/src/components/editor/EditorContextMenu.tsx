@@ -265,9 +265,11 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       if (!view.hasFocus() && !held) view.focus();
       const line = held && phoneRef.current ? (blockElements(dom)[target.index] ?? null) : null;
       const box = line?.getBoundingClientRect();
-      // (A block taller than most of the screen doesn't lift; its menu opens at the finger.)
+      // (A block taller than most of the screen doesn't lift; its menu opens at the finger.) The menu keeps 12 px
+      // clear of the line, so a finger moving on from the line crosses open page, not the menu's first row, and the
+      // block lifts (touchContextMenu.ts): with 6 px a 17 px line put "Turn into" under the first move.
       if (line && box && box.height < window.innerHeight * 0.6) {
-        setMenu({ x: Math.max(16, box.left), y: box.bottom + 6, top: box.top - 6, target, keyboard: false, held: line });
+        setMenu({ x: Math.max(16, box.left), y: box.bottom + 12, top: box.top - 12, target, keyboard: false, held: line });
       } else setMenu({ x: e.clientX, y: e.clientY, top: e.clientY, target, keyboard: false });
     };
     const onKey = (e: KeyboardEvent) => {

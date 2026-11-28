@@ -1,7 +1,7 @@
 {
   "kind": "command",
   "name": "ai.settingsSearch",
-  "description": "Settings' Ask Foli AI: the settings that turn on dark mode (revision 36).",
+  "description": "Settings' Ask Foli AI: the settings that turn on dark mode (revision 37).",
   "args": {
     "query": "how do I turn on dark mode",
     "options": [

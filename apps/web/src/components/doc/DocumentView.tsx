@@ -1862,31 +1862,11 @@ function DocumentHeader({
   const focusedOnce = useRef(false);
   const freshTitle = useRef(false);
   useEffect(() => {
-    const fresh = search.get("new");
-    if (focusedOnce.current || (fresh !== "1" && fresh !== "typed" && fresh !== "body")) return;
+    if (focusedOnce.current || search.get("new") !== "1") return;
     focusedOnce.current = true;
-    // "body": the Mac's menu bar note was started from its text line: the caret goes to the note's text.
-    if (fresh === "body") {
-      // The editor may still be on its way: tried until the text has the caret (two seconds at most).
-      let tries = 0;
-      const tick = () => {
-        if (document.activeElement?.closest(".fb-editor")) return;
-        onEnter();
-        if (++tries < 20) timer = setTimeout(tick, 100);
-      };
-      let timer = setTimeout(tick, 0);
-      return () => clearTimeout(timer);
-    }
-    const el = titleRef.current;
-    el?.focus();
-    // "typed": the Mac's menu bar note was made from what was just typed (components/app/MenuBarNote.tsx): the caret
-    // goes after it and typing carries on, nothing is selected.
-    if (fresh === "typed") {
-      if (el) el.setSelectionRange(el.value.length, el.value.length);
-      return;
-    }
+    titleRef.current?.focus();
     freshTitle.current = true;
-  }, [search, onEnter]);
+  }, [search]);
   // A new page from a template already has a title: it's selected (typing replaces it), also when it arrives
   // a moment after the page opens. Once the person types or moves the caret, it's theirs.
   useEffect(() => {

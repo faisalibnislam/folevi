@@ -82,7 +82,7 @@ const tagsIndex: ValueViewDef = {
   },
 };
 
-// ---- home.stats, home.prefs (revision 37): Home's At a glance and this person's Home layout
+// ---- home.stats, home.prefs (revision 38): Home's At a glance and this person's Home layout
 
 const BLOCK_ID = /^[a-z][a-z0-9-]{0,39}$/;
 

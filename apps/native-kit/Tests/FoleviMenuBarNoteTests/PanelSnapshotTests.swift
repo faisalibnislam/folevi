@@ -1,6 +1,6 @@
 // The menu bar note's panel drawn offscreen (a borderless window far off the screen, never key, never in front of the
-// owner's work), light and dark, with a destination picked: the bar (where new notes go, New, Screenshot, Pin, Window,
-// "…") over the note. The note is Folevi's web editor in the app; here a stand-in view takes its place. Compared to 1x references in __Snapshots__ (written when missing or with
+// owner's work), light and dark: Home's quick note with words in the box and a folder picked, "Saves to", Add as a
+// task, Screenshot and Save, and Pin, Window and "…" at the top. Compared to 1x references in __Snapshots__ (written when missing or with
 // FOLEVI_RECORD_SNAPSHOTS=1), written at 2x to FOLEVI_SCREENS_OUT when set. Liquid Glass is drawn by the window
 // server, so the pictures use Reduce Transparency's solid look (the panel's own fallback), not the glass itself.
 import AppKit
@@ -19,16 +19,18 @@ struct PanelSnapshotTests {
         // of the view can't show it, while the solid fallback is drawn by the view itself.
         UserDefaults.standard.set(true, forKey: "FoleviMenuBarNoteForceReduceTransparency")
         defer { UserDefaults.standard.removeObject(forKey: "FoleviMenuBarNoteForceReduceTransparency") }
-        for scheme in [ColorScheme.light, .dark] {
-            let host = FakeHost()
-            let page = NSTextField(wrappingLabelWithString: "Trip ideas\n\nLisbon in May. Book the train.")
-            page.font = FoleviFonts.nsFont(.ui, size: 16)
-            page.frame = CGRect(x: 18, y: 0, width: 340, height: 380)
-            host.noteView.addSubview(page)
-            let (model, _, _) = makeNote(host: host)
-            model.settings.panelSize = MenuBarNoteSettings.PanelSize.medium.size
+        let cases: [(name: String, size: CGSize, scheme: ColorScheme)] = [
+            ("light", MenuBarNoteSettings.PanelSize.medium.size, .light),
+            ("dark", MenuBarNoteSettings.PanelSize.medium.size, .dark),
+            // The smallest the panel resizes to: everything still fits (the owner, 2026-11-28).
+            ("smallest", MenuBarNoteSettings.minimumPanelSize, .light),
+        ]
+        for (caseName, size, scheme) in cases {
+            let (model, _, _) = makeNote()
+            model.settings.panelSize = size
+            model.images = [MenuNoteImage(mime: "image/png", name: "Shot.png", data: Self.swatch())]
+            model.text = "Trip ideas\nLisbon in May. Book the train."
             model.choose(NoteDestination(space: "ws_1", spaceName: "Studio", folderId: "fld_s", folderName: "Projects"))
-            let size = MenuBarNoteSettings.PanelSize.medium.size
             let root = PanelRootView().environment(model).environment(\.colorScheme, scheme).frame(width: size.width, height: size.height)
             let view = NSHostingView(rootView: root)
             view.frame = CGRect(origin: .zero, size: size)
@@ -42,10 +44,21 @@ struct PanelSnapshotTests {
                 view.layoutSubtreeIfNeeded()
                 try? await Task.sleep(for: .milliseconds(120))
             }
-            let label = "menu-bar-note-panel-\(scheme == .dark ? "dark" : "light")"
+            let label = "menu-bar-note-panel-\(caseName)"
             let image = try #require(Self.image(view, scale: 1), "\(label): couldn't draw")
             Self.check(image, view: view, named: label)
         }
+    }
+
+    /// A small picture standing in for a screenshot.
+    static func swatch() -> Data {
+        let image = NSImage(size: NSSize(width: 120, height: 80), flipped: false) { r in
+            NSColor.systemTeal.setFill()
+            r.fill()
+            return true
+        }
+        guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return Data() }
+        return rep.representation(using: .png, properties: [:]) ?? Data()
     }
 
     static func image(_ view: NSView, scale: CGFloat) -> CGImage? {

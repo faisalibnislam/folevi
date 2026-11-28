@@ -1,14 +1,14 @@
 // The Beta badge and its one-line note inside the product: Folevi for Linux (Settings > About) and Folevi Server's
 // own setup and admin pages. The website draws its own (components/marketing/Beta.tsx) with the same words, lib/beta.ts.
-import { BETA_FEEDBACK_LABEL, BETA_FEEDBACK_URL, BETA_NOTE } from "@/lib/beta";
+import { BETA_FEEDBACK_LABEL, BETA_FEEDBACK_URL, BETA_LABEL, BETA_NOTE } from "@/lib/beta";
 
-/** A small "Beta" chip, styled like the admin panel's "Admin" chip. */
+/** A small "Early Beta" chip, styled like the admin panel's "Admin" chip. */
 export function BetaBadge({ className = "" }: { className?: string }) {
-  return <span className={`inline-flex flex-none items-center rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-footnote font-semibold text-muted ${className}`}>Beta</span>;
+  return <span className={`inline-flex flex-none items-center rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-footnote font-semibold text-muted ${className}`}>{BETA_LABEL}</span>;
 }
 
 /**
- * "Beta: works, but expect rough edges. Send feedback", the link opening Folevi's support page. A block-level span,
+ * "Early Beta: works, but expect rough edges. Send feedback", the link opening Folevi's support page. A block-level span,
  * so it can sit inside a paragraph (a settings card's description) as well as on its own.
  */
 export function BetaNote({ className = "", badge = false }: { className?: string; badge?: boolean }) {

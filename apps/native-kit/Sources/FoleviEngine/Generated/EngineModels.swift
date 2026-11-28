@@ -806,12 +806,41 @@ public struct FolderPreview: Codable, Hashable, Sendable {
     public var cover: CardCover
     /// Revision 33: when the note was created ("Created Nov 3" on the page peeking out of the card); 0 when unknown.
     public var createdAt: Double
+    /// Revision 36: when the note last changed ("Edited 2 days ago" on its card); 0 when unknown.
+    public var updatedAt: Double
+    /// Revision 36: the note's look, so the page peeking out of the folder is drawn as the note's own card (NoteRow's
+    /// style, preview, shape and kind). Null when the server has none for it yet (the default look).
+    public var style: CardStyle?
+    /// Revision 36: the note's first blocks, as NoteRow.preview.
+    public var preview: [PreviewLine]?
+    /// Revision 36: what kind of page it is, as NoteRow.shape.
+    public var shape: String?
+    /// Revision 36: "document", "daily" or "template", as NoteRow.kind.
+    public var kind: String
 
-    public init(title: String, excerpt: String, cover: CardCover, createdAt: Double = 0) {
+    public init(title: String, excerpt: String, cover: CardCover, createdAt: Double = 0, updatedAt: Double = 0, style: CardStyle? = nil, preview: [PreviewLine]? = nil, shape: String? = nil, kind: String = "document") {
         self.title = title
         self.excerpt = excerpt
         self.cover = cover
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.style = style
+        self.preview = preview
+        self.shape = shape
+        self.kind = kind
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.excerpt, forKey: .excerpt)
+        try container.encode(self.cover, forKey: .cover)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.style, forKey: .style)
+        try container.encode(self.preview, forKey: .preview)
+        try container.encode(self.shape, forKey: .shape)
+        try container.encode(self.kind, forKey: .kind)
     }
 }
 
@@ -4949,7 +4978,7 @@ public struct ChatMemoryArgs: Codable, Hashable, Sendable {
     }
 }
 
-/// One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 36).
+/// One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 37).
 public struct SettingsAskOption: Codable, Hashable, Sendable {
     /// The setting's key, as the app knows it ("appearance/Theme"); only keys from the list come back.
     public var key: String
@@ -4964,7 +4993,7 @@ public struct SettingsAskOption: Codable, Hashable, Sendable {
     }
 }
 
-/// `ai.settingsSearch` (revision 36): Settings' Ask Foli AI. The person's words and the settings this person has;
+/// `ai.settingsSearch` (revision 37): Settings' Ask Foli AI. The person's words and the settings this person has;
 /// Foli AI picks up to three that do what they asked (convex/ai.ts settingsSearch). An account's only.
 public struct SettingsAskArgs: Codable, Hashable, Sendable {
     public var space: SpaceRef?
@@ -4989,7 +5018,7 @@ public struct SettingsAskResult: Codable, Hashable, Sendable {
     }
 }
 
-/// `home.stats` (revision 37): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
+/// `home.stats` (revision 38): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
 /// `todayStart` is local midnight (ms), so the week's last bar is this person's today.
 public struct HomeStatsArgs: Codable, Hashable, Sendable {
     public var space: SpaceRef?
@@ -5036,7 +5065,7 @@ public struct HomeLayout: Codable, Hashable, Sendable {
     }
 }
 
-/// `home.prefs` (revision 37): this person's Home layout (null: the default) and pinned note (homePrefs.get).
+/// `home.prefs` (revision 38): this person's Home layout (null: the default) and pinned note (homePrefs.get).
 public struct HomePrefsValue: Codable, Hashable, Sendable {
     public var layout: HomeLayout?
     public var pinnedNote: String?
@@ -5053,7 +5082,7 @@ public struct HomePrefsValue: Codable, Hashable, Sendable {
     }
 }
 
-/// `home.setLayout` (revision 37): saves the layout (homePrefs.setLayout); null puts Home back to its default.
+/// `home.setLayout` (revision 38): saves the layout (homePrefs.setLayout); null puts Home back to its default.
 public struct HomeSetLayoutArgs: Codable, Hashable, Sendable {
     public var layout: HomeLayout?
 
@@ -5067,7 +5096,7 @@ public struct HomeSetLayoutArgs: Codable, Hashable, Sendable {
     }
 }
 
-/// `home.setPinnedNote` (revision 37): the note the Pinned note block shows (homePrefs.setPinnedNote), or null.
+/// `home.setPinnedNote` (revision 38): the note the Pinned note block shows (homePrefs.setPinnedNote), or null.
 public struct HomeSetPinnedNoteArgs: Codable, Hashable, Sendable {
     public var noteId: String?
 

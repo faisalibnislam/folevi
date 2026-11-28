@@ -79,7 +79,17 @@ public enum CardMapping {
             count: f.noteCount,
             ageText: f.updatedAt > 0 ? AgeText.age(Date(timeIntervalSince1970: f.updatedAt / 1000), now: now) : "",
             notes: f.previews.prefix(5).map { p in
-                FolderCardModel.Note(title: p.title, excerpt: p.excerpt, cover: cover(p.cover, images: false), createdText: p.createdAt > 0 ? "Created \(AgeText.relative(Date(timeIntervalSince1970: p.createdAt / 1000), now: now))" : "")
+                FolderCardModel.Note(
+                    title: p.title,
+                    excerpt: p.excerpt,
+                    cover: cover(p.cover, images: false),
+                    createdText: p.createdAt > 0 ? "Created \(AgeText.relative(Date(timeIntervalSince1970: p.createdAt / 1000), now: now))" : "",
+                    preview: previewLines(p.preview),
+                    fontType: p.style.map(fontType) ?? .system,
+                    timeText: p.updatedAt > 0 ? "Edited \(AgeText.relative(Date(timeIntervalSince1970: p.updatedAt / 1000), now: now))" : "",
+                    shape: p.shape,
+                    template: p.kind == "template"
+                )
             },
             parentName: parentName,
             subfolders: f.childCount,

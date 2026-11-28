@@ -199,11 +199,13 @@ struct GlassIconButton: View {
 
 struct CapsuleItemButtonStyle: ButtonStyle {
     var on = false
+    /// The highlight's size: 28 by 24 inside a group, the whole button for the round "…".
+    var size = CGSize(width: 28, height: 24)
     @State private var hovering = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .frame(width: 28, height: 24)
+            .frame(width: size.width, height: size.height)
             .background {
                 if on { Capsule().fill(Color.accentColor.opacity(0.16)) }
                 Capsule().fill(Color.primary.opacity(configuration.isPressed ? 0.14 : (hovering ? 0.07 : 0)))
@@ -251,10 +253,9 @@ struct PanelMenuButton: View {
         } label: {
             QNIcon(.ellipsis, size: 15).frame(width: 18, height: 18)
         }
-        .buttonStyle(CapsuleItemButtonStyle())
-        .padding(3)
-        .frame(height: 30)
-        .quickGlass(.regular.interactive(), in: Capsule())
+        // A round glass button as tall as the groups beside it (Notlet's "…").
+        .buttonStyle(CapsuleItemButtonStyle(size: CGSize(width: 30, height: 30)))
+        .quickGlass(.regular.interactive(), in: Circle())
         .background(MenuAnchorView(anchor: anchor))
         .fixedSize()
         .foleviTooltip("More")

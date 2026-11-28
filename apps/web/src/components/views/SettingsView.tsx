@@ -548,7 +548,8 @@ function NoWorkspaceCard() {
 function SettingsSearch({ items, query, setQuery }: { items: Item[]; query: string; setQuery: (q: string) => void }) {
   const { navigate } = useAppRouter();
   const { scope } = useAppState();
-  const aiOn = useAiEnabled();
+  // "Ask Foli AI" asks Folevi's server: not in a local library (lib/local/registry.ts, LOCAL_HIDDEN).
+  const aiOn = useAiEnabled() && useCapabilities().aiServer;
   const askAi = useAiAction(api.ai.settingsSearch);
   const [at, setAt] = useState(0);
   const input = useRef<HTMLInputElement>(null);

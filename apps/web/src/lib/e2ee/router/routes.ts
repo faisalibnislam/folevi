@@ -58,6 +58,12 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "clock:*": pass,
   "unsplash:*": pass,
   "externalCalendars:*": pass,
+  // Home's layout and pinned note: block ids and a note id, never note content (the note itself is read with
+  // documents.get, which has its own route).
+  ...each(pass, "homePrefs", "get setLayout setPinnedNote"),
+  // Home's stats: counts the server already holds (notes, words, images, folders, tasks); a sealed note's words
+  // aren't known to the server, so an encrypted space's word count is lower. No titles or text.
+  "homeStats:get": pass,
   "calendarFeeds:*": pass,
   "emailNotes:*": pass,
   "aiDigest:*": pass,

@@ -75,12 +75,12 @@ extension MenuBarNoteModel {
             menu.addItem(.sectionHeader(title: space.canEdit ? space.name : "\(space.name) (view only)"))
             let drafts = NoteDestination(space: space.id, spaceName: space.name)
             let d = ActionMenuItem("Drafts", state: current.space == space.id && current.folderId == nil ? .on : .off, enabled: space.canEdit) { [weak self] in self?.choose(drafts) }
-            d.image = NSImage(systemSymbolName: "tray", accessibilityDescription: nil)
+            d.image = QNStyle.menuImage(.inbox)
             menu.addItem(d)
             for folder in space.folders {
                 let target = NoteDestination(space: space.id, spaceName: space.name, folderId: folder.id, folderName: folder.name)
                 let item = ActionMenuItem(folder.name, state: current.space == space.id && current.folderId == folder.id ? .on : .off, enabled: space.canEdit) { [weak self] in self?.choose(target) }
-                item.image = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)
+                item.image = QNStyle.menuImage(.folder)
                 item.indentationLevel = min(folder.depth, 6)
                 menu.addItem(item)
             }

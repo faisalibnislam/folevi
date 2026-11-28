@@ -34,3 +34,24 @@ struct QNIcon: View {
         WebIconView(icon, size: size, strokeWidth: QNStyle.iconStroke, absoluteStrokeWidth: true)
     }
 }
+
+extension QNStyle {
+    /// A Folevi line icon as a template image for menu items (lines 1.5 pt, like the buttons').
+    @MainActor
+    static func menuImage(_ icon: WebIcon, size: CGFloat = 15) -> NSImage {
+        let rect = CGRect(x: 0, y: 0, width: size, height: size)
+        let path = WebIconShape(icon: icon).path(in: rect).cgPath
+        let image = NSImage(size: rect.size, flipped: true) { _ in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+            ctx.addPath(path)
+            ctx.setLineWidth(iconStroke)
+            ctx.setLineCap(.round)
+            ctx.setLineJoin(.round)
+            ctx.setStrokeColor(NSColor.black.cgColor)
+            ctx.strokePath()
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+}

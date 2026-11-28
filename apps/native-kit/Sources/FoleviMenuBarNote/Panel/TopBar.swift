@@ -24,27 +24,27 @@ struct PanelRootView: View {
         }
         .overlay(alignment: .bottom) {
             if let toast = model.toast {
-                HStack(spacing: 10) {
+                HStack(alignment: .center, spacing: 12) {
                     Text(toast)
                         .font(QNStyle.label)
-                        .lineLimit(3)
+                        .foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     if let action = model.toastAction {
                         Button(action.title) {
-                            model.toast = nil
+                            Motion.animate(Motion.fade) { model.toast = nil }
                             action.run()
                         }
-                        .font(QNStyle.labelStrong)
-                        .buttonStyle(.glass)
-                        .controlSize(.small)
+                        .buttonStyle(ToastButtonStyle())
                     }
                 }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .quickGlass(in: Capsule())
-                    .padding(12)
-                    .onTapGesture { Motion.animate(Motion.fade) { model.toast = nil } }
-                    .transition(Motion.isEnabled ? .move(edge: .bottom).combined(with: .opacity) : .opacity)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .quickGlass(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(10)
+                .onTapGesture { Motion.animate(Motion.fade) { model.toast = nil } }
+                .transition(Motion.isEnabled ? .move(edge: .bottom).combined(with: .opacity) : .opacity)
+                .accessibilityElement(children: .contain)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: model.settings.isDetached ? 0 : Self.cornerRadius, style: .continuous))
@@ -125,8 +125,8 @@ struct TopBar: View {
 
     private var pinButton: some View {
         let pinned = model.settings.isPinned
-        return GlassIconButton(icon: pinned ? .pinOff : .pin, help: pinned ? "Unpin (⇧⌘P)" : "Pin on top (⇧⌘P)",
-                               label: pinned ? "Unpin" : "Pin on top", tint: pinned ? Color.accentColor : nil) {
+        return GlassIconButton(icon: .pin, help: pinned ? "Unpin (⇧⌘P)" : "Pin on top (⇧⌘P)",
+                               label: pinned ? "Unpin" : "Pin on top", tint: pinned ? Color.accentColor : nil, on: pinned) {
             model.panel?.togglePin()
         }
     }
@@ -180,6 +180,8 @@ struct GlassIconButton: View {
     let help: String
     let label: String
     var tint: Color?
+    /// A toggle that's on (Pin on top): a soft accent fill behind the icon.
+    var on = false
     let action: () -> Void
 
     var body: some View {
@@ -188,19 +190,24 @@ struct GlassIconButton: View {
                 .foregroundStyle(tint ?? .primary)
                 .frame(width: 18, height: 18)
         }
-        .buttonStyle(CapsuleItemButtonStyle())
+        .buttonStyle(CapsuleItemButtonStyle(on: on))
+        .accessibilityAddTraits(on ? .isSelected : [])
         .foleviTooltip(help)
         .accessibilityLabel(label)
     }
 }
 
 struct CapsuleItemButtonStyle: ButtonStyle {
+    var on = false
     @State private var hovering = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .frame(width: 28, height: 24)
-            .background { Capsule().fill(Color.primary.opacity(configuration.isPressed ? 0.14 : (hovering ? 0.07 : 0))) }
+            .background {
+                if on { Capsule().fill(Color.accentColor.opacity(0.16)) }
+                Capsule().fill(Color.primary.opacity(configuration.isPressed ? 0.14 : (hovering ? 0.07 : 0)))
+            }
             .contentShape(Capsule())
             .scaleEffect(configuration.isPressed && Motion.isEnabled ? 0.92 : 1)
             .animation(Motion.quick, value: configuration.isPressed)
@@ -252,5 +259,24 @@ struct PanelMenuButton: View {
         .fixedSize()
         .foleviTooltip("More")
         .accessibilityLabel("More actions and Folevi")
+    }
+}
+
+/// The toast's button: accent text on a light fill, clear in an inactive panel (the system's glass button greys out
+/// when Folevi isn't the active app).
+struct ToastButtonStyle: ButtonStyle {
+    @State private var hovering = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(QNStyle.labelStrong)
+            .foregroundStyle(Color.accentColor)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 10)
+            .frame(height: 26)
+            .background(Capsule().fill(Color.accentColor.opacity(configuration.isPressed ? 0.22 : (hovering ? 0.16 : 0.1))))
+            .contentShape(Capsule())
+            .onHover { hovering = $0 }
     }
 }

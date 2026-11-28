@@ -18,6 +18,10 @@ export interface NoteSpace {
   name: string;
   kind: "personal" | "workspace";
   canEdit: boolean;
+  /** Its mark, as the app's workspace menu shows it: your picture for Personal, the workspace's logo; null for the initial. */
+  imageUrl: string | null;
+  /** The name the initial comes from when there's no picture (your name for Personal). */
+  markName: string;
   folders: NoteFolder[];
 }
 
@@ -83,9 +87,16 @@ export function pasteImage(doc: Document, data: string, mime: string, name: stri
   return true;
 }
 
-/** The spaces of this place a new note can go to, each with its folders. */
-export async function noteSpaces(client: { query: (fn: never, args: never) => Promise<unknown> }, workspaces: readonly { id: string; name: string; canEdit?: boolean }[]): Promise<NoteSpace[]> {
-  const list: Omit<NoteSpace, "folders">[] = [{ id: "personal", name: "Personal", kind: "personal", canEdit: true }, ...workspaces.map((w) => ({ id: w.id, name: w.name, kind: "workspace" as const, canEdit: w.canEdit !== false }))];
+/** The spaces of this place a new note can go to, each with its mark and folders. */
+export async function noteSpaces(
+  client: { query: (fn: never, args: never) => Promise<unknown> },
+  workspaces: readonly { id: string; name: string; canEdit?: boolean; logoUrl?: string | null }[],
+  personal: { displayName?: string | null; avatarUrl?: string | null } = {},
+): Promise<NoteSpace[]> {
+  const list: Omit<NoteSpace, "folders">[] = [
+    { id: "personal", name: "Personal", kind: "personal", canEdit: true, imageUrl: personal.avatarUrl ?? null, markName: personal.displayName || "Personal" },
+    ...workspaces.map((w) => ({ id: w.id, name: w.name, kind: "workspace" as const, canEdit: w.canEdit !== false, imageUrl: w.logoUrl ?? null, markName: w.name })),
+  ];
   return Promise.all(
     list.map(async (s) => {
       try {

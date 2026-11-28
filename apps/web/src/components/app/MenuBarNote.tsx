@@ -78,11 +78,12 @@ async function discardEmpty(client: ReturnType<typeof useConvex>, id: string) {
 /** The Mac app's commands to the panel's page, answered with commandDone. */
 export function useMenuBarCommands(enabled: boolean) {
   const client = useConvex();
-  const { workspaces } = useAppState();
+  const { workspaces, profile } = useAppState();
   const { navigate, route } = useAppRouter();
   const current = route.name === "float" && route.id !== "new" ? route.id : null;
-  const latest = useRef({ client, workspaces, navigate, current });
-  latest.current = { client, workspaces, navigate, current };
+  const personal = { displayName: profile.displayName, avatarUrl: profile.avatarUrl ?? null };
+  const latest = useRef({ client, workspaces, navigate, current, personal });
+  latest.current = { client, workspaces, navigate, current, personal };
   useEffect(() => {
     const bridge = desktop() as (ReturnType<typeof desktop> & { commandDone?: (id: string, value: Record<string, unknown>) => void }) | null;
     if (!enabled || !bridge?.onCommand || !bridge.commandDone) return;
@@ -100,7 +101,7 @@ export function useMenuBarCommands(enabled: boolean) {
       if (typeof c.id !== "string") return;
       const id = c.id;
       if (c.type === "menu-note-destinations") {
-        void noteSpaces(latest.current.client as never, latest.current.workspaces).then(
+        void noteSpaces(latest.current.client as never, latest.current.workspaces, latest.current.personal).then(
           (spaces) => bridge.commandDone!(id, { ok: true, spaces }),
           (e) => bridge.commandDone!(id, { ok: false, message: e instanceof Error ? e.message : String(e) }),
         );

@@ -27,11 +27,16 @@ describe("menu bar note: where new notes go", () => {
       const scope = (args as { scope: { kind: string } }).scope;
       return { folders: scope.kind === "personal" ? [{ id: "p1", name: "Ideas", parentFolderId: null }, { id: "p2", name: "", parentFolderId: null, sealedName: { c: "x" } }] : [{ id: "w1", name: "Projects", parentFolderId: null }] };
     });
-    const spaces = await noteSpaces({ query }, [{ id: "ws_1", name: "Studio", canEdit: true }, { id: "ws_2", name: "Clients", canEdit: false }]);
+    const spaces = await noteSpaces({ query }, [{ id: "ws_1", name: "Studio", canEdit: true, logoUrl: "https://files/studio.png" }, { id: "ws_2", name: "Clients", canEdit: false }], { displayName: "Faisal", avatarUrl: null });
     expect(spaces.map((s) => [s.id, s.name, s.canEdit])).toEqual([
       ["personal", "Personal", true],
       ["ws_1", "Studio", true],
       ["ws_2", "Clients", false],
+    ]);
+    expect(spaces.map((s) => [s.imageUrl, s.markName])).toEqual([
+      [null, "Faisal"],
+      ["https://files/studio.png", "Studio"],
+      [null, "Clients"],
     ]);
     expect(spaces[0]!.folders).toEqual([{ id: "p1", name: "Ideas", depth: 0 }]);
     expect(spaces[1]!.folders).toEqual([{ id: "w1", name: "Projects", depth: 0 }]);

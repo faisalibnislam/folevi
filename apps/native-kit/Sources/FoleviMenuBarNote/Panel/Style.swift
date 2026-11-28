@@ -5,7 +5,9 @@ import FoleviDesign
 import SwiftUI
 
 enum QNStyle {
-    static let iconStroke: CGFloat = 1.5
+    /// The web app's line width for every icon (`--control-icon-stroke`: 1.25 px on the desktop, the same at any icon
+    /// size, `vector-effect: non-scaling-stroke`): the web is the standard, the panel matches it.
+    static let iconStroke: CGFloat = 1.25
 
     /// A role's face at its Folevi size.
     static func font(_ style: FoleviTextStyle) -> Font {
@@ -20,7 +22,7 @@ enum QNStyle {
     static let title = font(.headline)
 }
 
-/// A Folevi line icon at `size`, its lines 1.5 pt wide.
+/// A Folevi line icon at `size`, its lines 1.25 pt wide as on the web.
 struct QNIcon: View {
     let icon: WebIcon
     var size: CGFloat = 15
@@ -36,7 +38,7 @@ struct QNIcon: View {
 }
 
 extension QNStyle {
-    /// A Folevi line icon as a template image for menu items (lines 1.5 pt, like the buttons').
+    /// A Folevi line icon as a template image for menu items (lines 1.25 pt, like the buttons').
     @MainActor
     static func menuImage(_ icon: WebIcon, size: CGFloat = 15) -> NSImage {
         let rect = CGRect(x: 0, y: 0, width: size, height: size)

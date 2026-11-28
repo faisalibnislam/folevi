@@ -192,8 +192,6 @@ export function FolderCardArt({
       {[...shown].reverse().map((p, i) => (
         <FolderNote key={i} note={p} depth={shown.length - 1 - i} top={noteTop} />
       ))}
-      {/* the frost: the notes blurred behind the whole front (globals.css) */}
-      <div data-fc="frost" className="pointer-events-none absolute inset-x-0 bottom-0 rounded-folder" style={{ top: `${FOLDER_FRONT_TOP}%` }} />
       {/* the front, with the name, the counts and the last change */}
       <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-folder px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
         <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.1] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />

@@ -988,14 +988,7 @@ public struct WebFolderCard: View {
         let frontShape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)
         return ZStack(alignment: .topLeading) {
             inside(w: w, h: h, cq: cq, tone: tone).flattened()
-            // The frost (globals.css data-fc="frost"): what's behind the whole front, blurred (7 px on the web's 232 px card).
-            inside(w: w, h: h, cq: cq, tone: tone)
-                .blur(radius: 7 * w / 232, opaque: false)
-                .mask(alignment: .topLeading) {
-                    frontShape.frame(width: w, height: frontH).offset(y: h * Self.frontTop)
-                }
-                .flattened()
-                .allowsHitTesting(false)
+            // The front is opaque (no frost behind it since 28 November 2026: the owner, "no transparency").
             front(w: w, h: frontH, cq: cq, tone: tone, shape: frontShape)
                 .offset(y: h * Self.frontTop)
         }
@@ -1017,10 +1010,11 @@ public struct WebFolderCard: View {
     /// bottom, so the folder's name reads cleanly over the notes (the owner, 21 November 2026).
     private func front(w: CGFloat, h frontH: CGFloat, cq: CGFloat, tone: RGBA, shape: RoundedRectangle) -> some View {
         let white = RGBA(255, 255, 255)
-        var top = dark ? tone.oklabMix(RGBA(58, 58, 66), 0.48) : tone.oklabMix(white, 0.5)
-        top.a = dark ? 0.82 : 0.62
-        var bottom = dark ? tone.oklabMix(RGBA(31, 31, 36), 0.4) : tone.oklabMix(RGBA(58, 58, 72), 0.92)
-        bottom.a = dark ? 0.78 : 0.66
+        // Opaque (the owner, 28 November 2026: "no transparency"): each tint mixed with the folder's own colour, what
+        // used to show through, instead of with transparency (globals.css --fc-a and --fc-b).
+        let behind = dark ? tone.oklabMix(RGBA(34, 34, 39), 0.5) : tone
+        let top = (dark ? tone.oklabMix(RGBA(58, 58, 66), 0.48) : tone.oklabMix(white, 0.5)).oklabMix(behind, dark ? 0.82 : 0.62)
+        let bottom = (dark ? tone.oklabMix(RGBA(31, 31, 36), 0.4) : tone.oklabMix(RGBA(58, 58, 72), 0.92)).oklabMix(behind, dark ? 0.78 : 0.66)
         // The top-to-bottom shift at a fifth of its first strength (the owner, 28 November 2026): each end moved
         // toward the middle, as globals.css's --fc-f1 and --fc-f2.
         let f1 = top.oklabMix(bottom, 0.6).color

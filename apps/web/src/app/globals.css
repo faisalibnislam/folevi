@@ -1242,16 +1242,15 @@
    behind in the folder's muted colour, a little darker at the top-left; a see-through front with its words in the
    colour's darkest tone (white in dark). The whole front is fully frosted (the owner, 21 November 2026): a strong
    tint and a 7 px blur from top to bottom, so the folder's name reads cleanly over the notes. The blur is its own
-   layer, data-fc="frost", under the front. On the phone the name is set at Headline size, 17/22. */
+   layer, data-fc="frost", under the front. On the phone the name is set at Headline size, 17/22.
+   Since 28 November 2026 the front is opaque (the owner: "no transparency"): its tint is mixed with the folder's own
+   colour, what used to show through, instead of with transparency, so it looks as before with nothing behind it
+   showing, and the frost layer is gone. */
 [data-fc="back"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fc-tone) 84%, #2c2c3a), color-mix(in oklab, var(--fc-tone) 86%, #ffffff)); }
 [data-fc="sub"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fs) 80%, #2c2c3a), color-mix(in oklab, var(--fs) 80%, #ffffff)); }
-[data-fc="frost"] {
-  -webkit-backdrop-filter: blur(7px) saturate(1.1);
-  backdrop-filter: blur(7px) saturate(1.1);
-}
 [data-fc="front"] {
-  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 50%, #ffffff) 62%, transparent);
-  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 92%, #3a3a48) 66%, transparent);
+  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 50%, #ffffff) 62%, var(--fc-tone));
+  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 92%, #3a3a48) 66%, var(--fc-tone));
   /* The top-to-bottom shift is a fifth of its first strength (the owner, 28 November 2026): each end is moved
      toward the middle, so the front keeps its colour and only the gradient is softer. */
   --fc-f1: color-mix(in oklab, var(--fc-a) 60%, var(--fc-b));
@@ -1264,8 +1263,8 @@
 :root[data-theme="dark"] [data-fc="back"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fc-tone) 44%, #1a1a1e), color-mix(in oklab, var(--fc-tone) 56%, #2a2a2f)); }
 :root[data-theme="dark"] [data-fc="sub"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fs) 40%, #1a1a1e), color-mix(in oklab, var(--fs) 52%, #2a2a2f)); }
 :root[data-theme="dark"] [data-fc="front"] {
-  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 48%, #3a3a42) 82%, transparent);
-  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 40%, #1f1f24) 78%, transparent);
+  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 48%, #3a3a42) 82%, color-mix(in oklab, var(--fc-tone) 50%, #222227));
+  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 40%, #1f1f24) 78%, color-mix(in oklab, var(--fc-tone) 50%, #222227));
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1.2px 0 rgb(255 255 255 / 0.175), 0 -2px 10px -6px rgb(0 0 0 / 0.5);
   color: #f6f6f8;
 }

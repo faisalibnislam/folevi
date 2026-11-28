@@ -158,7 +158,7 @@ export function FolderCardArt({
   /** The card has its "…" in the front's top-right corner (FOLDER_CARD_MENU): the name stops short of the 32 px chip. */
   menuRoom?: boolean;
   /**
-   * How many lines the name may take. Left out: two, or one on a card under 144 px wide, where two lines, the counts
+   * How many lines the name may take. Left out: two, or one on a card under 150 px wide, where two lines, the counts
    * and the Edited date don't all fit on the front (as the Mac's WebFolderCard.nameLines), so the date never gets cut.
    */
   nameLines?: 1 | 2;
@@ -195,7 +195,7 @@ export function FolderCardArt({
       {/* the front, with the name, the counts and the last change */}
       <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-folder px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
         <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.1] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
-        <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} ${nameLines === 1 ? "block truncate" : nameLines === 2 ? "line-clamp-2" : "line-clamp-2 @max-[144px]:block @max-[144px]:truncate"} text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)*var(--fc-name,1)),30px)] font-semibold leading-[1.15]`}>
+        <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} ${nameLines === 1 ? "block truncate" : nameLines === 2 ? "line-clamp-2" : "line-clamp-2 @max-[150px]:block @max-[150px]:truncate"} text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)*var(--fc-name,1)),30px)] font-semibold leading-[1.25]`}>
           {name}
         </span>
         <span data-fc="age" className="relative flex min-h-0 flex-1 flex-col tabular-nums">

@@ -1024,9 +1024,9 @@ public struct WebFolderCard: View {
         // A folder page's subfolders (labels scaled up): the name 20% smaller than the other labels, on one line
         // (FolderCard.tsx's SUBFOLDER_NAME and nameLines; the owner, 28 November 2026).
         let subfolder = labelScale > 1
-        // The name: clamp(14px, 8cqw, 30px), semibold, 1.15; the phone's at Headline, 17/22 (globals.css).
+        // The name: clamp(14px, 8cqw, 30px), semibold, 1.25 (1.15 until 28 November 2026); the phone's at Headline, 17/22 (globals.css).
         let nameSize = min(30, max(14, 8 * cq * k * (subfolder ? 0.8 : 1)))
-        let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.15, weight: 600)
+        let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.25, weight: 600)
         let countSize = min(18, max(11, 4.9 * cq * k))
         // The Edited date at the card-time size, as a note card's time.
         let countStyle = WebTextStyle(size: countSize, leading: countSize * 1.3, weight: 400).cardInterface(chrome?.forText != nil)

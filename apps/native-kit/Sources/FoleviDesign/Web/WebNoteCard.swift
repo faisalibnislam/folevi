@@ -555,7 +555,10 @@ public struct WebNoteCard: View {
     }
 
     private func footer(cq: CGFloat, heading: RGBA, muted: RGBA, chip: RGBA) -> some View {
-        let footStyle = WebTextStyle(size: 3.8 * cq, leading: 3.8 * cq * 1.55).cardInterface(chrome?.forText != nil)
+        // At Footnote, as a folder card's Edited date and the list views' dates: one size for a card's time everywhere
+        // (DocumentCard.tsx; the owner, 28 November 2026).
+        let footStyle = WebTextStyle.role(.footnote).cardInterface(chrome?.forText != nil)
+        let footH = max(8.6 * cq, 20)
         return HStack(spacing: 2 * cq) {
             if unsynced {
                 HStack(spacing: 4) {
@@ -573,22 +576,22 @@ public struct WebNoteCard: View {
             if model.showsFolder {
                 HStack(spacing: 1.8 * cq) {
                     if let name = model.folderName {
-                        FolderGlyph(colorId: model.folderColorId, size: 4.4 * cq)
+                        FolderGlyph(colorId: model.folderColorId, size: footStyle.size * 1.15)
                         Text(name).webText(footStyle.weight(600).cardInterface(chrome?.forText != nil)).lineLimit(1)
                     } else {
-                        WebIconView(.pencilLine, size: 3.8 * cq)
+                        WebIconView(.pencilLine, size: footStyle.size)
                         Text("Draft").webText(footStyle.weight(600).cardInterface(chrome?.forText != nil)).lineLimit(1)
                     }
                 }
                 .foregroundStyle(heading.color)
-                .padding(.horizontal, 3 * cq)
-                .frame(height: 8.6 * cq)
+                .padding(.horizontal, 6)
+                .frame(height: footH)
                 .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill(chip.color))
                 .frame(maxWidth: (100 - 13) * cq * 0.62 * 0.94, alignment: .trailing)
                 .fixedSize(horizontal: true, vertical: false)
             }
         }
-        .frame(height: 8.6 * cq)
+        .frame(height: footH)
     }
 
     /// `white-space: pre-line`: runs of spaces become one, line breaks stay.
@@ -1032,9 +1035,9 @@ public struct WebFolderCard: View {
         let nameSize = min(30, max(14, 8 * cq * k * (subfolder ? 0.8 : 1)))
         let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.15, weight: 600)
         let countSize = min(18, max(11, 4.9 * cq * k))
-        let editedSize = min(16, max(10.5, 4.3 * cq * k))
+        // The Edited date at Footnote, as a note card's time (one size for a card's time everywhere: the owner, 28 November 2026).
         let countStyle = WebTextStyle(size: countSize, leading: countSize * 1.3, weight: 500).cardInterface(chrome?.forText != nil)
-        let editedStyle = WebTextStyle(size: editedSize, leading: editedSize * 1.3).cardInterface(chrome?.forText != nil)
+        let editedStyle = WebTextStyle.role(.footnote).cardInterface(chrome?.forText != nil)
         let nameW = Self.nameWidth(w, menuRoom: menuRoom && !phone)
         let nameLines = subfolder ? 1 : Self.nameLines(front: frontH, cq: cq, name: nameStyle.leading, count: countStyle.leading, edited: model.editedText.isEmpty ? 0 : editedStyle.leading)
         return ZStack(alignment: .topLeading) {

@@ -212,12 +212,14 @@ export function NoteCardFace({
           // A sleeve over the lower part of the page, the note peeking out of it.
           <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[44%] border-t border-[color-mix(in_oklab,var(--color-heading)_14%,transparent)]" style={{ background: tint(7) }} />
         ) : null}
-        <div className="relative mt-[3.5cqw] flex h-[8.6cqw] flex-none items-center gap-[2cqw] text-[3.8cqw]">
+        {/* The footer's words at Footnote, as a folder card's Edited date and the list views' dates: one size for a
+            card's time everywhere (the owner, 28 November 2026). */}
+        <div className="relative mt-[3.5cqw] flex h-[max(8.6cqw,20px)] flex-none items-center gap-[2cqw] text-footnote">
           {extra}
           <span className="min-w-0 flex-1 truncate text-muted">{time}</span>
           {showFolder ? (
-            <span className={`inline-flex h-full min-w-0 max-w-[62%] flex-none items-center gap-[1.8cqw] rounded-tiny px-[3cqw] font-semibold text-heading ${chip}`}>
-              {folder ? <FolderGlyph color={folder.color} className="h-[4.4cqw] w-auto" /> : <PencilLine aria-hidden className="h-[3.8cqw] w-[3.8cqw] flex-none" strokeWidth={2} />}
+            <span className={`inline-flex h-full min-w-0 max-w-[62%] flex-none items-center gap-[1.8cqw] rounded-tiny px-1.5 font-semibold text-heading ${chip}`}>
+              {folder ? <FolderGlyph color={folder.color} className="h-[1.15em] w-auto" /> : <PencilLine aria-hidden className="h-[1em] w-[1em] flex-none" strokeWidth={2} />}
               <span className="truncate">
                 {folder ? (
                   <>

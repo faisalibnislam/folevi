@@ -204,7 +204,7 @@ export function FolderCardArt({
           <span data-fc="count" className="mt-[1cqw] truncate text-[clamp(11px,calc(4.9cqw*var(--fc-text,1)),18px)] font-medium leading-[1.3] opacity-90">
             {folderCountText(count, subfolders)}
           </span>
-          <span data-fc="edited" className="mt-auto truncate text-[clamp(10.5px,calc(4.3cqw*var(--fc-text,1)),16px)] leading-[1.3] opacity-85">
+          <span data-fc="edited" className="mt-auto truncate text-footnote opacity-85">
             Edited {age}
           </span>
         </span>

@@ -1,8 +1,8 @@
 "use client";
 
-// Home's Foli AI summary (the owner, 28 November 2026, Home design version 14): a sentence or two on the week and
-// three points, each linking to the note (or the open tasks) it comes from, from the notes edited since Monday
-// (convex/ai.ts homeSummary). Home shows the block only while Foli AI is on. It is written once a day per place and
+// Home's Foli AI summary (the owner, 28 November 2026, Home design version 16): the opening's lede under the greeting,
+// a sentence or two on the week and three points, each linking to the note (or the open tasks) it comes from, from
+// the notes edited since Monday (convex/ai.ts homeSummary). Home shows it only while Foli AI is on. It is written once a day per place and
 // kept for this tab's visit under the Catch me up brief's prefix (lib/ai/catchUpStore.ts), so it goes when the
 // account signs out; Refresh writes it again.
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,7 +15,6 @@ import { useAiAction } from "@/components/ai/useAiAction";
 import { AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
 import { FOLDER_COLORS } from "@/lib/folderColors";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { BlockLink, BlockTitle } from "./HomeBlocks";
 
 type Point = { text: string; note?: { id: string; title: string }; tasks?: boolean };
 type Kept = { summary: string; points: Point[]; edited: number; at: number; day: string };
@@ -86,32 +85,35 @@ export function HomeSummary() {
 
   return (
     <section aria-labelledby="home-summary-title">
-      <BlockTitle
-        id="home-summary-title"
-        icon={<AiIcon size={17} aria-hidden />}
-        action={
-          <span className="flex flex-none items-center gap-1">
-            {data && !busy ? (
-              <button type="button" onClick={() => void run()} aria-label="Refresh the summary" title="Refresh" className="ui-btn ui-btn-quiet size-control p-0">
-                <RotateCcw size={14} aria-hidden />
-              </button>
-            ) : null}
-            <BlockLink href="/ai">Ask a follow-up</BlockLink>
-          </span>
-        }
-      >
-        Foli AI summary
-      </BlockTitle>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-footnote text-muted">
+        <AiIcon size={14} aria-hidden />
+        <h2 id="home-summary-title" className="text-footnote font-semibold text-ink">
+          Foli AI summary
+        </h2>
+        {data && !busy ? (
+          <>
+            <span>
+              · {data.edited ? `from ${data.edited === 1 ? "1 note" : `${data.edited} notes`} edited since Monday · ` : ""}updated {clock(data.at)}
+            </span>
+            <button type="button" onClick={() => void run()} aria-label="Refresh the summary" title="Refresh" className="ui-btn ui-btn-quiet size-control-sm p-0">
+              <RotateCcw size={12} aria-hidden />
+            </button>
+          </>
+        ) : null}
+      </div>
       <SummaryBody data={data} busy={busy} error={error} />
+      <AppLink href="/ai" className="mt-3 inline-block text-subheadline font-medium text-muted hover:text-heading">
+        Ask a follow-up →
+      </AppLink>
     </section>
   );
 }
 
 function SummaryBody({ data, busy, error }: { data: Kept | null; busy: boolean; error: AiProblem | null }) {
-  if (error && !data) return <AiProblemNotice problem={error} className={error.kind === "other" ? "text-subheadline text-danger" : ""} />;
+  if (error && !data) return <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-2.5 text-subheadline text-danger" : "mt-2.5"} />;
   if (!data || busy) {
     return (
-      <div className="space-y-2.5 py-1" aria-live="polite" aria-busy="true">
+      <div className="mt-3 space-y-2.5" aria-live="polite" aria-busy="true">
         <p className="text-subheadline text-muted">Reading this week’s notes…</p>
         {[92, 78, 84, 60].map((w) => (
           <div key={w} className="h-3 animate-pulse rounded-chip bg-[var(--glass-hover)] motion-reduce:animate-none" style={{ width: `${w}%` }} />
@@ -120,8 +122,8 @@ function SummaryBody({ data, busy, error }: { data: Kept | null; busy: boolean; 
     );
   }
   return (
-    <div className="flex flex-col gap-3">
-      <p className="font-serif text-body leading-relaxed text-heading">{data.summary}</p>
+    <div className="mt-2.5 flex flex-col gap-3">
+      <p className="text-pretty font-serif text-title-3 font-normal leading-normal text-ink">{data.summary}</p>
       {data.points.length ? (
         <ul className="flex flex-col gap-2">
           {data.points.map((p, i) => (
@@ -130,11 +132,11 @@ function SummaryBody({ data, busy, error }: { data: Kept | null; busy: boolean; 
               <span>
                 {p.text}{" "}
                 {p.note ? (
-                  <AppLink href={`/d/${p.note.id}`} className="text-muted underline-offset-2 hover:text-heading hover:underline">
+                  <AppLink href={`/d/${p.note.id}`} className="text-muted underline decoration-[var(--color-line)] underline-offset-[3px] hover:text-heading">
                     {p.note.title}
                   </AppLink>
                 ) : p.tasks ? (
-                  <AppLink href="/tasks" className="text-muted underline-offset-2 hover:text-heading hover:underline">
+                  <AppLink href="/tasks" className="text-muted underline decoration-[var(--color-line)] underline-offset-[3px] hover:text-heading">
                     My tasks
                   </AppLink>
                 ) : null}
@@ -143,9 +145,6 @@ function SummaryBody({ data, busy, error }: { data: Kept | null; busy: boolean; 
           ))}
         </ul>
       ) : null}
-      <p className="text-footnote text-faint">
-        {data.edited ? `From ${data.edited === 1 ? "1 note" : `${data.edited} notes`} edited since Monday · ` : ""}updated {clock(data.at)}
-      </p>
       {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "text-subheadline text-danger" : ""} /> : null}
     </div>
   );

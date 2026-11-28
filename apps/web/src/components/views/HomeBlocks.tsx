@@ -1,11 +1,12 @@
 "use client";
 
-// Home's own blocks (the owner, 28 November 2026, from the Home concepts canvas): the centred greeting and capture
-// field (with where a capture saves), Up next, Today, My tasks, Foli DNA of the week, and the frame and Add-a-block
-// tile of Customize mode. The layout and the pinned note are one person's, synced (convex/homePrefs.ts).
+// Home's own pieces (the owner, 28 November 2026, Home design version 16): the top line (the date and Customize), the
+// greeting, the capture field (with where a capture saves), the Today card (today's events and due tasks on one
+// timeline), My tasks, Foli DNA of the week, the sections' heads, and the frame and Add-a-block tile of Customize
+// mode. The layout and the pinned note are one person's, synced (convex/homePrefs.ts).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation } from "convex/react";
-import { ArrowDown, ArrowUp, Check, ChevronDown, EyeOff, LayoutTemplate, NotebookPen, Plus, SquareCheckBig } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, EyeOff, LayoutTemplate, NotebookPen, PencilLine, Plus, SquareCheckBig } from "lucide-react";
 import { scopeIdKey, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -19,7 +20,7 @@ import { noteFromText } from "@/lib/desktop/capabilities";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { useToggleTask } from "./TasksView";
-import { greetingFor, moveHomeBlock, setHomeBlockHidden, upNext, type HomeBlock, type HomeBlockId, type SavedHomeLayout } from "@/lib/app/homeLayout";
+import { greetingFor, moveHomeBlock, setHomeBlockHidden, upNext, upNextTag, type HomeBlock, type HomeBlockId, type SavedHomeLayout } from "@/lib/app/homeLayout";
 
 /** This person's Home layout and pinned note, with the calls that change them. */
 export function useHomePrefs() {
@@ -29,57 +30,63 @@ export function useHomePrefs() {
   return { prefs, setLayout, setPinnedNote };
 }
 
-/** A block's heading, the same as Home's other sections (an icon in a chip, then the title in the display face). */
-export function BlockTitle({ id, icon, children, action }: { id: string; icon: ReactNode; children: ReactNode; action?: ReactNode }) {
+/** A section's head: its title in the serif face over a hairline, with See all (or another link) at the right. */
+export function SectionHead({ id, children, action }: { id: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3">
-      <h2 id={id} className="ui-display flex min-w-0 items-center gap-2.5 text-title-2">
-        <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
-          {icon}
-        </span>
-        <span className="truncate">{children}</span>
+    <div className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line)] pb-2.5">
+      <h2 id={id} className="min-w-0 truncate font-serif text-title-3 font-semibold text-heading">
+        {children}
       </h2>
       {action}
     </div>
   );
 }
 
-/** "See all"-style link at a block's top right. */
+/** "See all"-style link at a section's top right. */
 export function BlockLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <AppLink href={href} className="ui-hit inline-flex flex-none items-center gap-1 whitespace-nowrap rounded-chip px-2.5 py-1 text-subheadline font-medium text-ink transition-colors hover:bg-accent-soft">
+    <AppLink href={href} className="ui-hit inline-flex flex-none items-center gap-1 whitespace-nowrap rounded-chip px-2 py-0.5 text-subheadline text-muted transition-colors hover:bg-accent-soft hover:text-heading">
       {children}
     </AppLink>
   );
 }
 
-/** Home's top: the Customize switch, then the date and "Good morning, Faisal", centred. */
-export function HomeHeader({ editing, onToggle }: { editing: boolean; onToggle: () => void }) {
+/** Home's top line: the date at the left, Customize at the right. */
+export function HomeTopLine({ editing, onToggle }: { editing: boolean; onToggle: () => void }) {
+  const now = useNow();
+  const date = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <div className="flex h-control items-center justify-between gap-3">
+      <p className="text-subheadline text-faint">{date}</p>
+      <button type="button" aria-pressed={editing} onClick={onToggle} className={`ui-btn ${editing ? "ui-btn-primary" : "ui-btn-quiet"} h-control-sm gap-2 px-3 text-subheadline`}>
+        {editing ? <Check size={14} aria-hidden /> : <PencilLine size={14} aria-hidden />}
+        {editing ? "Done" : "Customize"}
+      </button>
+    </div>
+  );
+}
+
+/** "Good morning, Faisal" in the serif display face, the opening's first line. */
+export function HomeGreeting() {
   const { profile } = useAppState();
+  const now = useNow();
+  const first = (profile.displayName ?? "").trim().split(/\s+/)[0] ?? "";
+  return (
+    <h1 className="ui-display font-serif text-large-title font-medium leading-[1.08] @[860px]:text-[44px]">
+      {greetingFor(now.getHours())}
+      {first ? `, ${first}` : ""}
+    </h1>
+  );
+}
+
+/** The time, a minute at most behind. */
+function useNow() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
-  const first = (profile.displayName ?? "").trim().split(/\s+/)[0] ?? "";
-  const date = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
-  return (
-    <>
-      <div className="mt-4 flex justify-end">
-        <button type="button" aria-pressed={editing} onClick={onToggle} className={`ui-btn ${editing ? "ui-btn-primary" : "ui-btn-quiet"} h-control gap-2 px-3 text-callout`}>
-          {editing ? <Check size={14} aria-hidden /> : <NotebookPen size={14} aria-hidden />}
-          {editing ? "Done" : "Customize"}
-        </button>
-      </div>
-      <header className="mx-auto mt-4 max-w-[680px] text-center">
-        <p className="text-subheadline text-faint">{date}</p>
-        <h1 className="ui-display mt-2 text-large-title">
-          {greetingFor(now.getHours())}
-          {first ? `, ${first}` : ""}
-        </h1>
-      </header>
-    </>
-  );
+  return now;
 }
 
 /** Where a capture saves: a space (Personal or a workspace) and a folder in it (null: its Drafts). */
@@ -204,7 +211,7 @@ export function CaptureField() {
   };
   const tool = "ui-btn ui-btn-quiet size-control p-0 text-muted disabled:opacity-40";
   return (
-    <div className="relative mx-auto mt-7 max-w-[680px] rounded-container border border-[var(--color-line)] bg-surface px-5 pb-3 pt-4 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_32px_-18px_rgb(20_20_40/0.25)]">
+    <div className="relative rounded-container border border-[var(--color-line)] bg-surface px-5 pb-3 pt-4 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_32px_-18px_rgb(20_20_40/0.25)]">
       <label htmlFor="home-capture" className="sr-only">
         New note
       </label>
@@ -268,100 +275,101 @@ function useTodayEvents() {
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
-/** Today: the day's events, in time order. */
-export function TodayAgenda() {
-  const events = useTodayEvents();
-  if (events === undefined) return <p className="text-subheadline text-muted">Loading…</p>;
-  const sorted = [...events].sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start - b.start);
-  if (!sorted.length)
-    return (
-      <p className="text-subheadline text-muted">
-        Nothing on your calendar today.{" "}
-        <AppLink href="/calendar" className="font-medium text-ink underline underline-offset-2">
-          Open Calendar
-        </AppLink>
-      </p>
-    );
-  return (
-    <ul className="flex flex-col gap-2">
-      {sorted.slice(0, 6).map((e) => (
-        <li key={e.id} className="grid grid-cols-[48px_minmax(0,1fr)] gap-3">
-          <span className="pt-2 text-footnote tabular-nums text-muted">{e.allDay ? "All day" : clock(e.start)}</span>
-          <span className="min-w-0 rounded-chip px-3 py-2" style={{ background: `color-mix(in oklab, ${e.color || "#6b7280"} 14%, var(--color-surface))` }}>
-            <span className="block truncate text-subheadline font-semibold text-heading">{e.title || "Untitled event"}</span>
-            <span className="block truncate text-footnote text-muted">{[e.allDay ? null : `${clock(e.start)} to ${clock(e.end)}`, e.location || e.calendarName].filter(Boolean).join(" · ")}</span>
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /** The open tasks of this space (the Tasks page's "All", soonest due first). */
 function useOpenTasks() {
   const { scope, today } = useAppState();
   return useCachedQuery(api.tasks.list, { scope, view: "all", today }).data;
 }
 
-/** My tasks: the next open tasks by due date, ticked off right here. */
+/**
+ * The Today card: today's events still to come and the tasks due (today or overdue) on one timeline, in time order
+ * (lib/app/homeLayout.ts upNext), the first one still to come tagged "Up next · in 25 min"; due tasks in red.
+ */
+export function TodayCard() {
+  const { today } = useAppState();
+  const events = useTodayEvents();
+  const tasks = useOpenTasks();
+  const now = useNow().getTime();
+  const items = events === undefined || tasks === undefined ? undefined : upNext(events, tasks, today, now, clock).slice(0, 6);
+  const nEvents = items?.filter((i) => i.kind === "event").length ?? 0;
+  const nTasks = items?.filter((i) => i.kind === "task").length ?? 0;
+  const tagged = items?.find((i) => upNextTag(i, now) !== null);
+  return (
+    <section aria-labelledby="home-today-title" className="rounded-container border border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_1.5%)] px-5 pb-2 pt-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="home-today-title" className="font-serif text-title-3 font-semibold text-heading">
+          <AppLink href="/calendar" className="hover:underline hover:underline-offset-4">
+            Today
+          </AppLink>
+        </h2>
+        {items?.length ? (
+          <span className="text-footnote text-muted">{[nEvents ? `${nEvents} ${nEvents === 1 ? "event" : "events"}` : null, nTasks ? `${nTasks} ${nTasks === 1 ? "task" : "tasks"} due` : null].filter(Boolean).join(" · ")}</span>
+        ) : null}
+      </div>
+      {items === undefined ? (
+        <p className="py-4 text-subheadline text-muted">Loading…</p>
+      ) : !items.length ? (
+        <p className="py-4 text-subheadline text-muted">
+          Nothing else today.{" "}
+          <AppLink href="/calendar" className="font-medium text-ink underline underline-offset-2">
+            Open Calendar
+          </AppLink>
+        </p>
+      ) : (
+        <ol aria-label="Today" className="mt-4">
+          {items.map((i, n) => {
+            const task = i.kind === "task";
+            const tag = i === tagged ? upNextTag(i, now) : null;
+            return (
+              <li key={i.key} className="grid grid-cols-[48px_12px_minmax(0,1fr)] gap-2.5 pb-4">
+                <span className={`pt-0.5 text-footnote font-semibold tabular-nums ${task ? "text-[var(--color-danger,#b4432c)]" : "text-heading"}`}>{i.time}</span>
+                <span aria-hidden className="relative flex justify-center">
+                  {n < items.length - 1 ? <span className="absolute top-2.5 h-[calc(100%+16px)] w-px bg-[var(--color-line)]" /> : null}
+                  <span className="relative mt-1 size-2 rounded-tiny shadow-[0_0_0_3px_var(--color-surface)]" style={{ background: task ? "var(--color-danger,#b4432c)" : i.color || "var(--color-ink-muted)" }} />
+                </span>
+                <AppLink href={i.href} className="flex min-w-0 flex-col gap-0.5 hover:opacity-80">
+                  <span className="truncate text-subheadline text-heading">{i.title}</span>
+                  <span className="truncate text-footnote text-muted">{i.meta}</span>
+                  {tag ? <span className="mt-1.5 self-start rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-caption-1 font-semibold text-heading">{tag}</span> : null}
+                </AppLink>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+/** My tasks: the next open tasks by due date in two columns of one-line rows, the due date at the right, ticked off here. */
 export function TasksPreview() {
   const { today } = useAppState();
   const data = useOpenTasks();
   const toggle = useToggleTask();
-  if (data === undefined) return <p className="text-subheadline text-muted">Loading…</p>;
-  if (!data.length) return <p className="text-subheadline text-muted">No open tasks.</p>;
+  if (data === undefined) return <p className="pt-3 text-subheadline text-muted">Loading…</p>;
+  if (!data.length) return <p className="pt-3 text-subheadline text-muted">No open tasks.</p>;
   return (
-    <ul className="flex flex-col">
-      {data.slice(0, 5).map((t) => {
+    <ul aria-label="Open tasks" className="mt-1 grid grid-cols-1 gap-x-10 @[640px]:grid-cols-2">
+      {data.slice(0, 6).map((t) => {
         const due = !!t.dueDate && t.dueDate <= today;
         return (
-          <li key={t.blockId} className="flex items-start gap-3 border-b border-[var(--color-line)] py-2.5 last:border-b-0">
+          <li key={t.blockId} className="flex min-h-11 items-center gap-3 border-b border-[var(--color-line)]">
             <button
               type="button"
               aria-label={`Complete “${t.title || "Untitled task"}”`}
               title="Complete"
               onClick={() => toggle(t)}
-              className="mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-small border border-[var(--color-ink-muted)] text-transparent transition-colors hover:text-muted"
+              className="grid h-4 w-4 flex-none place-items-center rounded-small border border-[var(--color-ink-muted)] text-transparent transition-colors hover:text-muted"
             >
               <Check size={10} aria-hidden />
             </button>
-            <span className="min-w-0">
-              <span className="block text-subheadline text-ink">{t.title || "Untitled task"}</span>
-              <span className={`block text-footnote ${due ? "text-[var(--color-danger,#b4432c)]" : "text-muted"}`}>{t.dueDate ? dueLabel(t.dueDate, today) : "No date"}</span>
-            </span>
+            <AppLink href="/tasks" className="min-w-0 flex-1 truncate text-subheadline text-ink hover:text-heading">
+              {t.title || "Untitled task"}
+            </AppLink>
+            <span className={`flex-none text-footnote ${due ? "text-[var(--color-danger,#b4432c)]" : t.dueDate ? "text-muted" : "text-faint"}`}>{t.dueDate ? dueLabel(t.dueDate, today) : "No date"}</span>
           </li>
         );
       })}
-    </ul>
-  );
-}
-
-/** Up next: today's events still to come and the tasks due, in time order (lib/app/homeLayout.ts upNext). */
-export function UpNextList() {
-  const { today } = useAppState();
-  const events = useTodayEvents();
-  const tasks = useOpenTasks();
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, []);
-  if (events === undefined || tasks === undefined) return <p className="text-subheadline text-muted">Loading…</p>;
-  const items = upNext(events, tasks, today, now, clock).slice(0, 5);
-  if (!items.length) return <p className="text-subheadline text-muted">Nothing else today.</p>;
-  return (
-    <ul className="flex flex-col">
-      {items.map((i) => (
-        <li key={i.key} className="border-b border-[var(--color-line)] last:border-b-0">
-          <AppLink href={i.href} className="flex items-start gap-3 py-2.5 hover:opacity-80">
-            <span className={`min-w-12 flex-none pt-px text-footnote font-semibold tabular-nums ${i.kind === "task" ? "text-[var(--color-danger,#b4432c)]" : "text-heading"}`}>{i.time}</span>
-            <span className="min-w-0">
-              <span className="block truncate text-subheadline text-ink">{i.title}</span>
-              <span className="block truncate text-footnote text-muted">{i.meta}</span>
-            </span>
-          </AppLink>
-        </li>
-      ))}
     </ul>
   );
 }
@@ -453,8 +461,6 @@ export function HomeBlockFrame({
   saved,
   saveLayout,
   children,
-  panel,
-  without = [],
 }: {
   block: HomeBlock;
   hidden: boolean;
@@ -464,21 +470,16 @@ export function HomeBlockFrame({
   saved: SavedHomeLayout;
   saveLayout: (layout: { order: string[]; hidden: string[] }) => Promise<unknown>;
   children: ReactNode;
-  /** The small blocks sit on a panel; the wide ones (rows of cards, the map) on the page. */
-  panel: boolean;
-  /** Blocks left off Home for now (the Foli AI summary while Foli AI is off), which moves step over. */
-  without?: readonly HomeBlockId[];
 }) {
   const toast = useToast();
   if (hidden) return null;
   const save = (l: { order: string[]; hidden: string[] }) => saveLayout(l).catch((e) => toast.show(errorMessage(e), { tone: "error" }));
-  const move = (dir: -1 | 1) => void save(moveHomeBlock(saved, block.id as HomeBlockId, dir, without));
+  const move = (dir: -1 | 1) => void save(moveHomeBlock(saved, block.id as HomeBlockId, dir));
   const tool = "ui-btn ui-btn-quiet size-control p-0 disabled:opacity-40";
-  const span = block.span === 3 ? "col-span-full" : block.span === 2 ? "@[760px]:col-span-2" : "";
   return (
-    <div className={`relative min-w-0 ${span} ${panel ? "rounded-container border border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_1.5%)] p-5" : ""} ${editing ? "rounded-container outline-dashed outline-[1.5px] outline-offset-4 outline-[var(--color-ink-faint)]" : ""}`}>
+    <div className={`relative min-w-0 ${editing ? "rounded-panel outline-dashed outline-[1.5px] outline-offset-[10px] outline-[var(--color-ink-faint)]" : ""}`}>
       {editing ? (
-        <div className="absolute -top-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-control bg-surface px-1 shadow-[0_1px_4px_rgb(0_0_0/0.12)]">
+        <div className="absolute -top-7 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-control bg-surface px-1 shadow-[0_1px_4px_rgb(0_0_0/0.12)]">
           <button type="button" className={tool} disabled={first} onClick={() => move(-1)} aria-label={`Move ${block.label} earlier`} title="Move earlier">
             <ArrowUp size={14} aria-hidden />
           </button>
@@ -499,7 +500,7 @@ export function HomeBlockFrame({
 export function AddBlockTile({ blocks, saved, saveLayout }: { blocks: HomeBlock[]; saved: SavedHomeLayout; saveLayout: (layout: { order: string[]; hidden: string[] }) => Promise<unknown> }) {
   const toast = useToast();
   return (
-    <div className="col-span-full flex min-h-24 flex-wrap items-center gap-2 rounded-container border-[1.5px] border-dashed border-[var(--color-ink-faint)] px-5 py-4">
+    <div className="flex min-h-24 flex-wrap items-center gap-2 rounded-container border-[1.5px] border-dashed border-[var(--color-ink-faint)] px-5 py-4">
       <span className="mr-2 inline-flex items-center gap-2 text-callout font-medium text-muted">
         <Plus size={16} aria-hidden /> Add a block
       </span>

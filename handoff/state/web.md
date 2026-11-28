@@ -4,7 +4,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Current state
 
-- Home is a customizable dashboard (2026-11-28): greeting and capture field, then blocks (Recent notes; Foli AI summary, only while Foli AI is on, and Bookmarks; Up next, Today, My tasks; Foli DNA; Recent folders; Shared with me, Pinned note and Templates to add) that Customize moves, removes and adds, saved per person in `convex/homePrefs.ts` (`apps/web/src/lib/app/homeLayout.ts`, `HomeBlocks.tsx`, `HomeSummary.tsx`, `HomeLists.tsx`).
+- Home is a customizable dashboard (2026-11-28): design version 16: the greeting, the Foli AI summary (only while Foli AI is on) and the capture field beside the Today timeline, then sections (Recent notes, Bookmarks, My tasks, Recent folders, Foli DNA; Shared with me, Pinned note and Templates to add) that Customize moves, removes and adds, saved per person in `convex/homePrefs.ts` (`apps/web/src/lib/app/homeLayout.ts`, `HomeBlocks.tsx`, `HomeSummary.tsx`, `HomeLists.tsx`).
 
 - Live at folevi.com and app.folevi.com from `main`; the sign-in page offers "Sign in to your own server", and `/downloads` lists every download.
 - Closing a dialog or the command palette: the dialog closes first and its picture fades as an inert popover (`components/ui/closing.ts`), so the page takes the keyboard back at once.

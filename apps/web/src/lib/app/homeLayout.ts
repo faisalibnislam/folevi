@@ -1,33 +1,28 @@
-// Home's blocks (the owner, 28 November 2026, from the Home concepts: the widget grid, with the calm start's greeting
-// and capture field and the briefing's Up next and Recent notes; design version 14 took the scratch pad off and added
-// the Foli AI summary and the Bookmarks list): what Home can show, in which order by default, and how one person's
-// saved layout (convex/homePrefs.ts) is laid over that. A block the saved order doesn't name (one added to the apps
-// later) takes its default place, shown or hidden as its default says; an id the apps no longer know is dropped.
+// Home's blocks (the owner, 28 November 2026, Home design version 16): under the opening (the greeting, the Foli AI
+// summary, the capture field and the Today timeline, always there), full-width sections this person can move, take
+// off Home and add back: what they are, in which order by default, and how one person's saved layout
+// (convex/homePrefs.ts) is laid over that. A block the saved order doesn't name (one added to the apps later) takes its
+// default place, shown or hidden as its default says; an id the apps no longer know (the earlier designs' scratch,
+// summary, upnext and today) is dropped.
 
-export type HomeBlockId = "recent" | "summary" | "bookmarks" | "upnext" | "today" | "tasks" | "dna" | "folders" | "shared" | "pinned" | "templates";
+export type HomeBlockId = "recent" | "bookmarks" | "tasks" | "folders" | "dna" | "shared" | "pinned" | "templates";
 
 export type HomeBlock = {
   id: HomeBlockId;
   label: string;
-  /** Columns of Home's three it spans (one column on a narrow window). */
-  span: 1 | 2 | 3;
   /** Off until the person adds it (Customize, Add a block). */
   hiddenByDefault?: boolean;
 };
 
 export const HOME_BLOCKS: readonly HomeBlock[] = [
-  { id: "recent", label: "Recent notes", span: 3 },
-  // Only while Foli AI is on (Home leaves it out otherwise).
-  { id: "summary", label: "Foli AI summary", span: 2 },
-  { id: "bookmarks", label: "Bookmarks", span: 1 },
-  { id: "upnext", label: "Up next", span: 1 },
-  { id: "today", label: "Today", span: 1 },
-  { id: "tasks", label: "My tasks", span: 1 },
-  { id: "dna", label: "Foli DNA", span: 3 },
-  { id: "folders", label: "Recent folders", span: 3 },
-  { id: "shared", label: "Shared with me", span: 1, hiddenByDefault: true },
-  { id: "pinned", label: "Pinned note", span: 1, hiddenByDefault: true },
-  { id: "templates", label: "Templates", span: 1, hiddenByDefault: true },
+  { id: "recent", label: "Recent notes" },
+  { id: "bookmarks", label: "Bookmarks" },
+  { id: "tasks", label: "My tasks" },
+  { id: "folders", label: "Recent folders" },
+  { id: "dna", label: "Foli DNA" },
+  { id: "shared", label: "Shared with me", hiddenByDefault: true },
+  { id: "pinned", label: "Pinned note", hiddenByDefault: true },
+  { id: "templates", label: "Templates", hiddenByDefault: true },
 ];
 
 export type SavedHomeLayout = { order: string[]; hidden: string[] } | null | undefined;
@@ -37,9 +32,9 @@ const KNOWN = new Map(HOME_BLOCKS.map((b, i) => [b.id as string, i]));
 /**
  * The blocks in this person's order with whether each is hidden. Unknown ids are dropped; blocks the saved order
  * doesn't name go in at their default place (after the block that comes before them by default), shown or hidden
- * as their default says. Blocks in `without` (the Foli AI summary while Foli AI is off) are left out.
+ * as their default says.
  */
-export function arrangeHome(saved: SavedHomeLayout, without: readonly HomeBlockId[] = []): { block: HomeBlock; hidden: boolean }[] {
+export function arrangeHome(saved: SavedHomeLayout): { block: HomeBlock; hidden: boolean }[] {
   const named = new Set(saved?.order ?? []);
   const hidden = new Set(saved?.hidden ?? []);
   const order: HomeBlockId[] = [];
@@ -57,7 +52,7 @@ export function arrangeHome(saved: SavedHomeLayout, without: readonly HomeBlockI
     }
     order.splice(at, 0, b.id);
   }
-  return order.filter((id) => !without.includes(id)).map((id) => {
+  return order.map((id) => {
     const block = HOME_BLOCKS[KNOWN.get(id)!]!;
     return { block, hidden: hidden.has(id) || (!named.has(id) && !!block.hiddenByDefault) };
   });
@@ -65,13 +60,10 @@ export function arrangeHome(saved: SavedHomeLayout, without: readonly HomeBlockI
 
 const layoutOf = (rows: { block: HomeBlock; hidden: boolean }[]) => ({ order: rows.map((r) => r.block.id as string), hidden: rows.filter((r) => r.hidden).map((r) => r.block.id as string) });
 
-/**
- * The layout to save after moving block `id` one place earlier (-1) or later (+1) among the shown blocks (blocks in
- * `without`, left off Home for now, keep their place and are stepped over).
- */
-export function moveHomeBlock(saved: SavedHomeLayout, id: HomeBlockId, dir: -1 | 1, without: readonly HomeBlockId[] = []): { order: string[]; hidden: string[] } {
+/** The layout to save after moving block `id` one place earlier (-1) or later (+1) among the shown blocks. */
+export function moveHomeBlock(saved: SavedHomeLayout, id: HomeBlockId, dir: -1 | 1): { order: string[]; hidden: string[] } {
   const rows = arrangeHome(saved);
-  const shown = rows.filter((r) => !r.hidden && !without.includes(r.block.id)).map((r) => r.block.id);
+  const shown = rows.filter((r) => !r.hidden).map((r) => r.block.id);
   const j = shown.indexOf(id) + dir;
   if (shown.indexOf(id) >= 0 && j >= 0 && j < shown.length) {
     const a = rows.findIndex((r) => r.block.id === id);
@@ -99,14 +91,14 @@ export function greetingFor(hour: number): string {
   return "Good evening";
 }
 
-export type UpNextItem = { key: string; at: number | null; time: string; title: string; meta: string; kind: "event" | "task"; href: string };
+export type UpNextItem = { key: string; at: number | null; end?: number; time: string; title: string; meta: string; kind: "event" | "task"; href: string; color?: string };
 
 /**
  * Up next: today's events that haven't ended and the open tasks due today or earlier, in time order (tasks without a
  * time after the timed ones, overdue first). `now` in ms; `time` formats a timestamp for the viewer.
  */
 export function upNext(
-  events: { id: string; title: string; start: number; end: number; allDay: boolean; location: string; calendarName: string }[],
+  events: { id: string; title: string; start: number; end: number; allDay: boolean; location: string; calendarName: string; color?: string }[],
   tasks: { blockId: string; title: string; dueDate: string | null; dueTime?: string | null; documentId?: string | null; documentTitle?: string | null }[],
   today: string,
   now: number,
@@ -115,7 +107,7 @@ export function upNext(
   const items: UpNextItem[] = [];
   for (const e of events) {
     if (e.end <= now && !e.allDay) continue;
-    items.push({ key: `e:${e.id}`, at: e.allDay ? null : e.start, time: e.allDay ? "All day" : time(e.start), title: e.title || "Untitled event", meta: [e.location, e.calendarName].filter(Boolean).join(" · ") || "Event", kind: "event", href: "/calendar" });
+    items.push({ key: `e:${e.id}`, at: e.allDay ? null : e.start, end: e.end, color: e.color, time: e.allDay ? "All day" : time(e.start), title: e.title || "Untitled event", meta: [e.location, e.calendarName].filter(Boolean).join(" · ") || "Event", kind: "event", href: "/calendar" });
   }
   for (const t of tasks) {
     if (!t.dueDate || t.dueDate > today) continue;
@@ -138,4 +130,18 @@ export function upNext(
   }
   const rank = (i: UpNextItem) => (i.at !== null ? 1 : i.time === "Overdue" ? 0 : i.kind === "event" ? 0.5 : 2);
   return items.sort((a, b) => rank(a) - rank(b) || (a.at ?? 0) - (b.at ?? 0));
+}
+
+/**
+ * The Today card's tag on the first item still to come: "Now" while it's on, "Up next · in 25 min" (or "in 2 h",
+ * "in 1 h 10 min") before it starts. Null for an item without a time.
+ */
+export function upNextTag(item: Pick<UpNextItem, "at" | "end">, now: number): string | null {
+  if (item.at === null) return null;
+  if (item.at <= now) return item.end !== undefined && item.end > now ? "Now" : null;
+  const min = Math.max(1, Math.round((item.at - now) / 60_000));
+  if (min < 60) return `Up next · in ${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `Up next · in ${h} h${m ? ` ${m} min` : ""}`;
 }

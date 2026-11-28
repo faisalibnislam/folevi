@@ -29,6 +29,7 @@ Yes = built, Partial = built with less, No = missing.
 | Text menu (spelling, Learn Word, Look Up) | Yes | Partial | Partial | Spelling in the note is Folevi's own in all three since 2026-11-26 (docs/SPELLING_PLAN.md); Look Up is Mac-only |
 | Spell check, suggestions, next-word prediction | Yes | Yes | Yes | Same web code everywhere (docs/SPELLING_PLAN.md). Settings > Writing: the Mac's native Settings, and the Windows and Linux app's web Settings |
 | Quick Add shortcut and panel | Yes | Yes | Yes | Wayland uses the GlobalShortcuts portal (not tested on real Wayland) |
+| Menu bar quick notes (Notlet-style coloured dots, Save to note; 2026-11-28) | Yes | No | No | Mac only, by the owner's decision (2026-11-28): `apps/native-kit/Sources/FoleviQuickNotes`, `apps/mac/Folevi/Chrome/QuickNotesHost.swift`. On the Mac the global shortcut (⌥Space) opens them; Windows and Linux keep it for Quick Add |
 | Tray / menu bar icon | Yes | Yes | Yes | Tray lacks Search and a place switcher |
 | Dock menu / Jump List / launcher actions | Yes | Yes | Yes | Windows Jump List (`jumplist.rs`, PR 120); Linux .desktop actions. New Note, Quick Add, Today's Tasks |
 | Notifications | Yes | Yes | Partial | `notify.rs` (PR 123): Reply, Mark as Read, Open, Complete, three Snoozes; Windows groups by note. Linux has no typed Reply (D-Bus has none) |

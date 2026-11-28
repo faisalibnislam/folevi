@@ -25,6 +25,7 @@ let package = Package(
         .library(name: "FoleviMac", targets: ["FoleviMac"]),
         .library(name: "FoleviPhone", targets: ["FoleviPhone"]),
         .library(name: "FoleviEngineDemo", targets: ["FoleviEngineDemo"]),
+        .library(name: "FoleviQuickNotes", targets: ["FoleviQuickNotes"]),
     ],
     targets: [
         .target(
@@ -64,6 +65,19 @@ let package = Package(
         .target(
             name: "FoleviPhone",
             dependencies: ["FoleviEngine", "FoleviDesign", "FoleviScreens"],
+            swiftSettings: strict
+        ),
+        // The Mac menu bar's quick notes (Notlet's panel, dots, editor and screenshots, made Folevi's): AppKit and
+        // SwiftUI, Mac only; the Mac app hands it its place, pages and menus (QuickNotesHost).
+        .target(
+            name: "FoleviQuickNotes",
+            dependencies: ["FoleviDesign"],
+            swiftSettings: strict
+        ),
+        .testTarget(
+            name: "FoleviQuickNotesTests",
+            dependencies: ["FoleviQuickNotes"],
+            exclude: ["__Snapshots__"],
             swiftSettings: strict
         ),
         .testTarget(

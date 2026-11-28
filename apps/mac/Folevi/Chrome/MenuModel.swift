@@ -126,8 +126,9 @@ enum MenuModel {
                 page("file.new-from-template", "New Note from Template…", k("n", [.cmd, .opt, .shift])),
                 page("file.new-folder", "New Folder", k("n", [.cmd, .ctrl])),
                 page("file.quick-add-task", "Quick Add Task…", k("a", [.cmd, .shift])),
-                // Its key is the global shortcut from Settings (MainMenu fills it in); the panel opens over any app.
                 app("file.quick-add-anywhere", "Quick Add from Any App"),
+                // Its key is the global shortcut from Settings (MainMenu fills it in); the menu bar's quick notes.
+                app("file.quick-notes", "Quick Notes"),
                 .separator,
                 page("file.new-tab", "New Tab", k("t")),
                 app("file.new-window", "New Window", k("n", [.cmd, .shift])),

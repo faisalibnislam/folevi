@@ -1,7 +1,7 @@
 # 1.9.80 released for Windows and Linux
 
 - Date: 2026-11-28 01:29 UTC
-- Area: linux (and windows)
+- Area: linux
 - Branch: claude/release-1.9.80-desktop
 
 The owner's OK: "release all" in the PR manager session, and "Yes, publish all" in this session for the Windows and

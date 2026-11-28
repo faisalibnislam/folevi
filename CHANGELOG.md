@@ -4,6 +4,24 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.9.80: Big update
+
+Released 2026-11-28 06:10:42+06:00 (build 111, tag v1.9.80)
+
+Every Folevi app is free now, with new Folevi Cloud plans, and Foli AI works on your own AI key.
+
+### Added
+
+- New plans: every app is free, and you pay only for Folevi Cloud. Free, Core ($2 a month), Pro ($4) and Pro AI ($10), with no device limit on any plan and credit packs on every plan.
+- Foli AI on your own Anthropic, OpenAI or Google Gemini key, on every plan, with no credits used.
+- A switch to turn Foli AI off for a whole workspace, in Settings > Workspace > Privacy.
+
+### Improved
+
+- Core no longer blocks Foli AI: turning it off is a setting, for yourself or for a workspace.
+- About, sign-up and emails name Folevi's operator, Space Cherries LLC.
+- On a public or shared computer, your AI key is never saved to disk.
+
 ## Version 1.8.80: Small update
 
 Released 2026-11-27 09:48:23+06:00 (build 110, tag v1.8.80)

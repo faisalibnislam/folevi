@@ -181,7 +181,7 @@ jobs:
           sudo apt-get install -y -qq patchelf jq libxml2-utils xz-utils dpkg-dev
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@${NFPM_VERSION}
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: bundle-${{ matrix.arch }}
           path: ${{ runner.temp }}/in
@@ -253,7 +253,7 @@ jobs:
           git clone --depth 1 https://github.com/qnap-dev/QDK "$RUNNER_TEMP/QDK"
           cd "$RUNNER_TEMP/QDK" && sudo ./InstallToUbuntu.sh install
           command -v qbuild
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: bundle-${{ matrix.arch }}
           path: ${{ runner.temp }}/in
@@ -286,7 +286,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Tools
         run: sudo apt-get update -qq && sudo apt-get install -y -qq dpkg-dev createrepo-c jq
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: packages-*
           path: ${{ runner.temp }}/pk
@@ -316,7 +316,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: packages-*
           path: ${{ runner.temp }}/pk
@@ -342,7 +342,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: bundle-*
           path: ${{ runner.temp }}/in

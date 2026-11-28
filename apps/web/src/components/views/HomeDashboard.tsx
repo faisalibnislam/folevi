@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { useAiEnabled } from "@/components/ai/useAi";
-import { ArrowRight, Layers } from "lucide-react";
+import { ArrowRight, Bookmark, ChartColumn, Clock, Folder, Layers, LayoutTemplate, ListChecks, Users, Waypoints } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -23,6 +23,7 @@ import { useQuery } from "@/lib/convex/queries";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { AddBlockTile, BlockLink, CaptureField, DnaWeek, HomeBlockFrame, HomeGreeting, HomeTopLine, SectionHead, TasksPreview, TodayCard, useHomePrefs } from "./HomeBlocks";
 import { HomeSummary } from "./HomeSummary";
+import { HomeStats } from "./HomeStats";
 import { SharedList, TemplatesList } from "./HomeLists";
 
 const GAP = 32;
@@ -225,8 +226,8 @@ export function HomeDashboard() {
   const rows = arrangeHome(layout);
   const shown = rows.filter((r) => !r.hidden);
   const saveLayout = (l: { order: string[]; hidden: string[] }) => setLayout({ layout: l });
-  const head = (id: string, text: string, href: string, link = "See all") => (
-    <SectionHead id={id} action={<BlockLink href={href}>{link}</BlockLink>}>
+  const head = (id: string, text: string, href: string, link = "See all", icon?: typeof Clock) => (
+    <SectionHead id={id} icon={icon} action={<BlockLink href={href}>{link}</BlockLink>}>
       {text}
     </SectionHead>
   );
@@ -236,15 +237,35 @@ export function HomeDashboard() {
       case "recent":
         return (
           <section aria-labelledby="home-recent-title">
-            {head("home-recent-title", "Recent notes", "/notes")}
+            {head("home-recent-title", "Recent notes", "/notes", "See all", Clock)}
             <NoteRow docs={recent} label="Recent notes" recent empty={<EmptyState size="inline" title="No notes yet" body="Notes you open show up here." />} />
           </section>
         );
       case "bookmarks":
         return (
           <section aria-labelledby="home-bookmarks-title">
-            {head("home-bookmarks-title", "Bookmarks", "/starred")}
-            <NoteRow docs={starred} label="Bookmarked notes" empty={<EmptyState size="inline" title="No bookmarks yet" body="Bookmark a note to keep it here." />} />
+            {head("home-bookmarks-title", "Bookmarks", "/starred", "See all", Bookmark)}
+            <NoteRow docs={starred} label="Bookmarked notes" empty={
+                <div className="flex items-center gap-3 rounded-container border border-dashed border-[var(--color-line)] px-4 py-3.5">
+                  <span aria-hidden className="grid size-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-muted">
+                    <Bookmark size={15} />
+                  </span>
+                  <p className="text-subheadline text-muted">
+                    <span className="font-medium text-ink">No bookmarks yet.</span> Bookmark a note from its “…” menu and it stays here, one click away.
+                  </p>
+                </div>
+              } />
+          </section>
+        );
+      case "stats":
+        return (
+          <section aria-labelledby="home-stats-title">
+            <SectionHead id="home-stats-title" icon={ChartColumn}>
+              At a glance
+            </SectionHead>
+            <div className="mt-4">
+              <HomeStats />
+            </div>
           </section>
         );
       case "today":
@@ -252,14 +273,14 @@ export function HomeDashboard() {
       case "tasks":
         return (
           <section aria-labelledby="home-tasks-title">
-            {head("home-tasks-title", "My tasks", "/tasks")}
+            {head("home-tasks-title", "My tasks", "/tasks", "See all", ListChecks)}
             <TasksPreview twoColumns={!paired} />
           </section>
         );
       case "folders":
         return (
           <section aria-labelledby="home-folders-title">
-            {head("home-folders-title", "Recent folders", "/folders")}
+            {head("home-folders-title", "Recent folders", "/folders", "See all", Folder)}
             {org && !org.total ? (
               <div className="pt-4">
                 <EmptyState size="inline" title="No folders yet" body="Folders keep related notes together." />
@@ -280,7 +301,7 @@ export function HomeDashboard() {
       case "dna":
         return (
           <section aria-labelledby="home-dna-title">
-            {head("home-dna-title", "Foli DNA · this week", "/graph", "Open Foli DNA")}
+            {head("home-dna-title", "Foli DNA · this week", "/graph", "Open Foli DNA", Waypoints)}
             <div className="mt-4">
               <DnaWeek load={allCards} />
             </div>
@@ -289,14 +310,14 @@ export function HomeDashboard() {
       case "shared":
         return (
           <section aria-labelledby="home-shared-title">
-            {head("home-shared-title", "Shared with me", "/shared")}
+            {head("home-shared-title", "Shared with me", "/shared", "See all", Users)}
             <SharedList />
           </section>
         );
       case "templates":
         return (
           <section aria-labelledby="home-templates-title">
-            {head("home-templates-title", "Templates", "/templates")}
+            {head("home-templates-title", "Templates", "/templates", "See all", LayoutTemplate)}
             <TemplatesList />
           </section>
         );
@@ -322,7 +343,7 @@ export function HomeDashboard() {
       <div className="@container mx-auto max-w-[1100px] px-4 pb-[max(4rem,var(--fab-clearance))] pt-3 sm:px-8 xl:px-11">
         <HomeTopLine editing={editing} onToggle={() => setEditing((e) => !e)} />
         {/* The opening, the page's full width: the greeting, the Foli AI summary (while Foli AI is on), the capture field. */}
-        <div className="mt-6 flex min-w-0 flex-col gap-6">
+        <div className="mt-1 flex min-w-0 flex-col gap-6">
           <HomeGreeting />
           {aiOn ? <HomeSummary /> : null}
           <CaptureField />

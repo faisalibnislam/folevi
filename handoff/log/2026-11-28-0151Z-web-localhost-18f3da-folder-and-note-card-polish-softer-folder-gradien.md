@@ -55,3 +55,19 @@ The owner filled in sizes on https://claude.ai/artifact/TN7Mz8Q9SqVi5hWMMD3S9G. 
 - Card time and folder chip: `--type-card-time` is a flat 10px (leading 13.3); `WebTextStyle.cardTime` is 10 pt.
 - Editor body (serif) 17px, so headings land at 24.
 Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `WebNoteCard.swift`.
+
+## Home: PR 194 merged in, then polished, with an "At a glance" stats block
+
+- Merged PR 194's branch (`claude/dazzling-sanderson-1d2975`, Home design v19) into this branch.
+- Order now: opening, Recent notes, Bookmarks, Recent folders, then two-column rows: At a glance beside Foli DNA,
+  Today beside My tasks (`homeLayout.ts`: a left-hand block after a right-hand one starts a new row).
+- At a glance (`HomeStats.tsx`, `convex/homeStats.ts`, local mode `lib/local/functions/homeStats.ts`): notes (new
+  today), words (reading time at 238 wpm), images, folders, tasks done (still open), new notes over the last 7 days.
+  Read-only figures (the owner: not clickable). Counts stop at 5,000 rows a table. Same height as the DNA map (288px).
+  Pushed to the dev deployment with `npx convex dev --once` (never `--prod`).
+- Section heads: an icon in a small bordered tile and a serif title, no hairline; "See all →".
+- Today is a calendar day: a date tile, today's events as time rows with their calendar colour and the Up next tag,
+  and one line for the tasks due. My tasks uses the Tasks page's own `TaskItem` row.
+- Bookmarks empty state is one compact dashed row. The Foli AI summary's errors are muted, not red.
+- Not done: the Mac's native Home (gap in DESKTOP_PARITY.md); no calendar is connected on the test account, so the
+  event rows and Up next tag weren't seen with real events.

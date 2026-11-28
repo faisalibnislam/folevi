@@ -4,9 +4,9 @@
 // greeting, the capture field (with where a capture saves), the Today card (today's events and due tasks on one
 // timeline), My tasks, Foli DNA of the week, the sections' heads, and the frame and Add-a-block tile of Customize
 // mode. The layout and the pinned note are one person's, synced (convex/homePrefs.ts).
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useMutation } from "convex/react";
-import { ArrowDown, ArrowUp, Check, ChevronDown, EyeOff, LayoutTemplate, NotebookPen, PencilLine, Plus, SquareCheckBig } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, CalendarDays, Check, ChevronDown, EyeOff, LayoutTemplate, NotebookPen, PencilLine, Plus, SquareCheckBig } from "lucide-react";
 import { scopeIdKey, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -19,7 +19,7 @@ import { folderHex } from "@/lib/folderColors";
 import { noteFromText } from "@/lib/desktop/capabilities";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
-import { useToggleTask } from "./TasksView";
+import { TaskItem, useToggleTask } from "./TasksView";
 import { greetingFor, moveHomeBlock, setHomeBlockHidden, upNext, upNextTag, type HomeBlock, type HomeBlockId, type SavedHomeLayout } from "@/lib/app/homeLayout";
 
 /** This person's Home layout and pinned note, with the calls that change them. */
@@ -31,11 +31,16 @@ export function useHomePrefs() {
 }
 
 /** A section's head: its title in the serif face over a hairline, with See all (or another link) at the right. */
-export function SectionHead({ id, children, action }: { id: string; children: ReactNode; action?: ReactNode }) {
+export function SectionHead({ id, children, action, icon: Icon }: { id: string; children: ReactNode; action?: ReactNode; icon?: ComponentType<{ size?: number; "aria-hidden"?: boolean }> }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line)] pb-2.5">
-      <h2 id={id} className="min-w-0 truncate font-serif text-title-3 font-semibold text-heading">
-        {children}
+    <div className="flex items-center justify-between gap-3">
+      <h2 id={id} className="flex min-w-0 items-center gap-2.5 font-serif text-title-3 font-semibold leading-tight text-heading">
+        {Icon ? (
+          <span aria-hidden className="grid size-7 flex-none place-items-center rounded-small border border-[var(--color-line)] bg-surface text-muted shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+            <Icon size={14} aria-hidden />
+          </span>
+        ) : null}
+        <span className="truncate">{children}</span>
       </h2>
       {action}
     </div>
@@ -45,8 +50,9 @@ export function SectionHead({ id, children, action }: { id: string; children: Re
 /** "See all"-style link at a section's top right. */
 export function BlockLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <AppLink href={href} className="ui-hit inline-flex flex-none items-center gap-1 whitespace-nowrap rounded-chip px-2 py-0.5 text-subheadline text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+    <AppLink href={href} className="ui-hit group/link -mr-2 inline-flex flex-none items-center gap-0.5 whitespace-nowrap rounded-chip px-2 py-0.5 text-subheadline text-muted transition-colors hover:bg-accent-soft hover:text-heading">
       {children}
+      <ArrowRight size={13} aria-hidden className="transition-transform duration-200 ease-[var(--ease-folio)] group-hover/link:translate-x-0.5" />
     </AppLink>
   );
 }
@@ -246,6 +252,7 @@ export function CaptureField() {
           ) : null}
         </div>
         <span className="ml-auto flex items-center gap-1">
+          {value ? <span className="mr-1 hidden text-caption-1 text-faint @[640px]:inline">⌘↩ to save</span> : null}
           <button type="button" className={tool} disabled={!value || busy} onClick={() => void addTask()} aria-label="Add as a task" title="Add as a task">
             <SquareCheckBig size={16} aria-hidden />
           </button>
@@ -282,61 +289,67 @@ function useOpenTasks() {
 }
 
 /**
- * The Today card: today's events still to come and the tasks due (today or overdue) on one timeline, in time order
- * (lib/app/homeLayout.ts upNext), the first one still to come tagged "Up next · in 25 min"; due tasks in red.
+ * Today, as a calendar day (the owner, 28 November 2026: "redesign properly, calendar"): the date on a tile at the
+ * left, today's events at the right as time rows with their calendar's colour, the next one tagged "Up next · in
+ * 25 min", and one line for the tasks due (they're listed in My tasks beside it). Same head as the other sections.
  */
 export function TodayCard() {
   const { today } = useAppState();
   const events = useTodayEvents();
   const tasks = useOpenTasks();
-  const now = useNow().getTime();
-  const items = events === undefined || tasks === undefined ? undefined : upNext(events, tasks, today, now, clock).slice(0, 6);
-  const nEvents = items?.filter((i) => i.kind === "event").length ?? 0;
-  const nTasks = items?.filter((i) => i.kind === "task").length ?? 0;
-  const tagged = items?.find((i) => upNextTag(i, now) !== null);
+  const nowDate = useNow();
+  const now = nowDate.getTime();
+  const items = events === undefined || tasks === undefined ? undefined : upNext(events, tasks, today, now, clock);
+  const agenda = items?.filter((i) => i.kind === "event").slice(0, 5);
+  const due = items?.filter((i) => i.kind === "task").length ?? 0;
+  const tagged = agenda?.find((i) => upNextTag(i, now) !== null);
   return (
-    <section aria-labelledby="home-today-title" className="rounded-container border border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_1.5%)] px-5 pb-2 pt-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id="home-today-title" className="font-serif text-title-3 font-semibold text-heading">
-          <AppLink href="/calendar" className="hover:underline hover:underline-offset-4">
-            Today
-          </AppLink>
-        </h2>
-        {items?.length ? (
-          <span className="text-footnote text-muted">{[nEvents ? `${nEvents} ${nEvents === 1 ? "event" : "events"}` : null, nTasks ? `${nTasks} ${nTasks === 1 ? "task" : "tasks"} due` : null].filter(Boolean).join(" · ")}</span>
-        ) : null}
+    <section aria-labelledby="home-today-title">
+      <SectionHead id="home-today-title" icon={CalendarDays} action={<BlockLink href="/calendar">Calendar</BlockLink>}>
+        Today
+      </SectionHead>
+      <div className="mt-4 flex overflow-hidden rounded-container border border-[var(--color-line)] bg-surface">
+        <div className="flex w-28 flex-none flex-col items-center justify-center gap-0.5 border-r border-[var(--color-line)] px-3 py-5 text-center">
+          <span className="text-caption-1 font-semibold uppercase tracking-[0.08em] text-[var(--color-danger,#b4432c)]">{nowDate.toLocaleDateString(undefined, { weekday: "short" })}</span>
+          <span className="font-serif text-large-title font-medium leading-none tabular-nums text-heading">{nowDate.getDate()}</span>
+          <span className="text-footnote text-muted">{nowDate.toLocaleDateString(undefined, { month: "long" })}</span>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {agenda === undefined ? (
+            <p className="px-4 py-5 text-subheadline text-muted">Loading…</p>
+          ) : !agenda.length ? (
+            <div className="flex flex-1 flex-col justify-center px-4 py-5">
+              <p className="text-subheadline font-medium text-ink">No more events today</p>
+              <p className="text-footnote text-muted">Your calendars are clear for the rest of the day.</p>
+            </div>
+          ) : (
+            <ol aria-label="Today’s events" className="flex-1">
+              {agenda.map((i) => {
+                const tag = i === tagged ? upNextTag(i, now) : null;
+                return (
+                  <li key={i.key} className="border-b border-[var(--color-line)] last:border-b-0">
+                    <AppLink href={i.href} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--glass-hover)]">
+                      <span className="w-14 flex-none text-footnote font-medium tabular-nums text-muted">{i.time}</span>
+                      <span aria-hidden className="h-8 w-[3px] flex-none rounded-tiny" style={{ background: i.color || "var(--color-ink-faint)" }} />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-subheadline text-heading">{i.title}</span>
+                        {i.meta ? <span className="truncate text-footnote text-muted">{i.meta}</span> : null}
+                      </span>
+                      {tag ? <span className="flex-none rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-caption-1 font-semibold text-heading">{tag}</span> : null}
+                    </AppLink>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {due ? (
+            <AppLink href="/tasks" className="flex items-center gap-2 border-t border-[var(--color-line)] px-4 py-2.5 text-footnote text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+              <span aria-hidden className="size-1.5 flex-none rounded-tiny bg-[var(--color-danger,#b4432c)]" />
+              {due === 1 ? "1 task due today or overdue" : `${due} tasks due today or overdue`}
+            </AppLink>
+          ) : null}
+        </div>
       </div>
-      {items === undefined ? (
-        <p className="py-4 text-subheadline text-muted">Loading…</p>
-      ) : !items.length ? (
-        <p className="py-4 text-subheadline text-muted">
-          Nothing else today.{" "}
-          <AppLink href="/calendar" className="font-medium text-ink underline underline-offset-2">
-            Open Calendar
-          </AppLink>
-        </p>
-      ) : (
-        <ol aria-label="Today" className="mt-4">
-          {items.map((i, n) => {
-            const task = i.kind === "task";
-            const tag = i === tagged ? upNextTag(i, now) : null;
-            return (
-              <li key={i.key} className="grid grid-cols-[48px_12px_minmax(0,1fr)] gap-2.5 pb-4">
-                <span className={`pt-0.5 text-footnote font-semibold tabular-nums ${task ? "text-[var(--color-danger,#b4432c)]" : "text-heading"}`}>{i.time}</span>
-                <span aria-hidden className="relative flex justify-center">
-                  {n < items.length - 1 ? <span className="absolute top-2.5 h-[calc(100%+16px)] w-px bg-[var(--color-line)]" /> : null}
-                  <span className="relative mt-1 size-2 rounded-tiny shadow-[0_0_0_3px_var(--color-surface)]" style={{ background: task ? "var(--color-danger,#b4432c)" : i.color || "var(--color-ink-muted)" }} />
-                </span>
-                <AppLink href={i.href} className="flex min-w-0 flex-col gap-0.5 hover:opacity-80">
-                  <span className="truncate text-subheadline text-heading">{i.title}</span>
-                  <span className="truncate text-footnote text-muted">{i.meta}</span>
-                  {tag ? <span className="mt-1.5 self-start rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-caption-1 font-semibold text-heading">{tag}</span> : null}
-                </AppLink>
-              </li>
-            );
-          })}
-        </ol>
-      )}
     </section>
   );
 }
@@ -352,27 +365,10 @@ export function TasksPreview({ twoColumns }: { twoColumns: boolean }) {
   if (data === undefined) return <p className="pt-3 text-subheadline text-muted">Loading…</p>;
   if (!data.length) return <p className="pt-3 text-subheadline text-muted">No open tasks.</p>;
   return (
-    <ul aria-label="Open tasks" className={`mt-1 grid grid-cols-1 gap-x-10 ${twoColumns ? "@[640px]:grid-cols-2" : ""}`}>
-      {data.slice(0, twoColumns ? 6 : 5).map((t) => {
-        const due = !!t.dueDate && t.dueDate <= today;
-        return (
-          <li key={t.blockId} className="flex min-h-11 items-center gap-3 border-b border-[var(--color-line)]">
-            <button
-              type="button"
-              aria-label={`Complete “${t.title || "Untitled task"}”`}
-              title="Complete"
-              onClick={() => toggle(t)}
-              className="grid h-4 w-4 flex-none place-items-center rounded-small border border-[var(--color-ink-muted)] text-transparent transition-colors hover:text-muted"
-            >
-              <Check size={10} aria-hidden />
-            </button>
-            <AppLink href="/tasks" className="min-w-0 flex-1 truncate text-subheadline text-ink hover:text-heading">
-              {t.title || "Untitled task"}
-            </AppLink>
-            <span className={`flex-none text-footnote ${due ? "text-[var(--color-danger,#b4432c)]" : t.dueDate ? "text-muted" : "text-faint"}`}>{t.dueDate ? dueLabel(t.dueDate, today) : "No date"}</span>
-          </li>
-        );
-      })}
+    <ul aria-label="Open tasks" className={`-mx-3 mt-3 grid grid-cols-1 gap-x-10 ${twoColumns ? "@[640px]:grid-cols-2" : ""}`}>
+      {data.slice(0, twoColumns ? 6 : 5).map((t) => (
+        <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} draggable={false} />
+      ))}
     </ul>
   );
 }
@@ -425,7 +421,7 @@ export function DnaWeek({ load }: { load: boolean }) {
     );
   const chip = "absolute inline-flex max-w-[40%] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-panel px-2.5 py-1 text-footnote font-medium transition-[filter] hover:brightness-95";
   return (
-    <div className="relative h-72 overflow-hidden rounded-container border border-[var(--color-line)] bg-[var(--glass-hover)]">
+    <div className="relative h-72 overflow-hidden rounded-container border border-[var(--color-line)] bg-surface bg-[radial-gradient(circle,color-mix(in_oklab,var(--color-ink)_14%,transparent)_1px,transparent_1.2px)] bg-[length:16px_16px] shadow-[0_1px_2px_rgb(0_0_0/0.03),0_10px_28px_-20px_rgb(20_20_40/0.3)]">
       <svg aria-hidden width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0">
         <g fill="none" stroke="var(--color-ink-faint)" strokeOpacity="0.45" strokeWidth="1">
           {week.around.map((_, i) => {
@@ -444,7 +440,7 @@ export function DnaWeek({ load }: { load: boolean }) {
           <span className="truncate">{n.label}</span>
         </AppLink>
       ))}
-      <span className="absolute bottom-3 left-4 text-footnote text-muted">
+      <span className="absolute bottom-3 left-4 rounded-chip bg-surface/90 px-2 py-0.5 text-footnote text-muted backdrop-blur-sm">
         {week.count ? `${week.count} new ${week.count === 1 ? "link" : "links"} between your notes this week` : "No new links this week: your most linked notes"}
       </span>
     </div>

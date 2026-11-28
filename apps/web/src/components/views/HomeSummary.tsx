@@ -110,7 +110,7 @@ export function HomeSummary() {
 }
 
 function SummaryBody({ data, busy, error }: { data: Kept | null; busy: boolean; error: AiProblem | null }) {
-  if (error && !data) return <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-2.5 text-subheadline text-danger" : "mt-2.5"} />;
+  if (error && !data) return <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-2.5 text-subheadline text-muted" : "mt-2.5"} />;
   if (!data || busy) {
     return (
       <div className="mt-3 space-y-2.5" aria-live="polite" aria-busy="true">
@@ -145,7 +145,7 @@ function SummaryBody({ data, busy, error }: { data: Kept | null; busy: boolean; 
           ))}
         </ul>
       ) : null}
-      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "text-subheadline text-danger" : ""} /> : null}
+      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "text-subheadline text-muted" : ""} /> : null}
     </div>
   );
 }

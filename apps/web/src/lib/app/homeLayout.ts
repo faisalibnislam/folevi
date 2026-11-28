@@ -5,7 +5,7 @@
 // default place, shown or hidden as its default says; an id the apps no longer know (the earlier designs' scratch,
 // summary, upnext and today) is dropped.
 
-export type HomeBlockId = "recent" | "bookmarks" | "today" | "tasks" | "dna" | "folders" | "shared" | "pinned" | "templates";
+export type HomeBlockId = "recent" | "bookmarks" | "stats" | "today" | "tasks" | "dna" | "folders" | "shared" | "pinned" | "templates";
 
 export type HomeBlock = {
   id: HomeBlockId;
@@ -23,9 +23,10 @@ export const HOME_BLOCKS: readonly HomeBlock[] = [
   { id: "recent", label: "Recent notes" },
   { id: "bookmarks", label: "Bookmarks" },
   { id: "folders", label: "Recent folders" },
-  { id: "today", label: "Today", pair: "main" },
-  { id: "tasks", label: "My tasks", pair: "main" },
+  { id: "stats", label: "At a glance", pair: "main" },
   { id: "dna", label: "Foli DNA", pair: "side" },
+  { id: "today", label: "Today", pair: "main" },
+  { id: "tasks", label: "My tasks", pair: "side" },
   { id: "shared", label: "Shared with me", hiddenByDefault: true },
   { id: "pinned", label: "Pinned note", hiddenByDefault: true },
   { id: "templates", label: "Templates", hiddenByDefault: true },
@@ -81,6 +82,8 @@ export function homeRows<T extends { block: HomeBlock }>(shown: readonly T[]): (
     run = [];
   };
   for (const r of shown) {
+    // A left-hand block after a right-hand one starts the next two-column row.
+    if (r.block.pair === "main" && run.some((x) => x.block.pair === "side")) flush();
     if (r.block.pair) run.push(r);
     else {
       flush();

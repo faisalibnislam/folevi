@@ -20,6 +20,33 @@ const MOVE_CODES = { self: "folder_self", descendant: "folder_descendant", depth
 const MOVE_WORDS = { self: "A folder can't go inside itself.", descendant: "A folder can't go inside one of its subfolders.", depth: "Folders can be nested only so deep." } as const;
 
 export const MORE_COMMANDS = {
+  // Home's Customize (HomeDashboard.tsx, homeLayout.ts): the block order and the hidden blocks, the same on every
+  // device (homePrefs.setLayout); null is Reset. And the note the Pinned note block shows (revision 38).
+  "home.setLayout": {
+    async run(deps, args) {
+      only(args, ["layout"]);
+      const l = args.layout;
+      let layout: { order: string[]; hidden: string[] } | null = null;
+      if (l !== null) {
+        const x = l as Record<string, unknown> | undefined;
+        const list = (v: unknown) => Array.isArray(v) && v.length <= 50 && v.every((b) => typeof b === "string" && /^[a-z][a-z0-9-]{0,39}$/.test(b));
+        if (!x || typeof x !== "object" || !list(x.order) || !list(x.hidden)) throw new BridgeError("invalid_args", "layout must be { order, hidden } of block ids, or null.");
+        layout = { order: [...new Set(x.order as string[])], hidden: [...new Set(x.hidden as string[])] };
+      }
+      await deps.client.mutation(api.homePrefs.setLayout, { layout });
+      return { ok: true };
+    },
+  },
+  "home.setPinnedNote": {
+    async run(deps, args) {
+      only(args, ["noteId"]);
+      const noteId = nullableId(args, "noteId");
+      if (noteId === undefined) throw new BridgeError("invalid_args", "noteId must be an id or null.");
+      await deps.client.mutation(api.homePrefs.setPinnedNote, { documentId: noteId });
+      return { ok: true };
+    },
+  },
+
   "note.deleteForever": {
     async run(deps, args) {
       only(args, ["ids"]);

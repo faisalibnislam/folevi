@@ -627,53 +627,280 @@ struct WebHomeScreen: View {
     let home: HomeModel
     let list: NotesListModel
     let allFolders: ValueStore<FolderCardsValue>
+    @State private var planner: PlannerTasks
     @Environment(\.colorScheme) private var scheme
     /// The Mac's native look (NativeChrome): system type, native buttons, flat panels.
     @Environment(\.nativeChrome) private var chrome
     @Environment(\.screenNavigator) private var navigator
     @Environment(\.screenFeedback) private var feedback
 
+    init(frame: FrameModel, home: HomeModel, list: NotesListModel, allFolders: ValueStore<FolderCardsValue>) {
+        self.frame = frame
+        self.home = home
+        self.list = list
+        self.allFolders = allFolders
+        _planner = State(initialValue: PlannerTasks(frame: frame, host: home.dashboard.tasks))
+    }
+
+    private var dash: HomeDashboardModel { home.dashboard }
+
+    /// Home's page: at most 1,320 pt wide (HomeDashboard.tsx `max-w-[1320px]`).
+    static let maxWidth: CGFloat = 1320
+    /// The gap between the cards of a row (24 px).
+    static let cardGap: CGFloat = 24
+
+    /// Recent notes, Bookmarks and Recent folders are one row of cards: six at full width, fewer when narrower.
+    static func columns(_ width: CGFloat) -> Int { max(1, min(6, Int((width + cardGap) / (168 + cardGap)))) }
+
     var body: some View {
         let content = notesStyle("home.content", scheme)
         GeometryReader { geo in
-            let inner = min(1400, geo.size.width) - content.padding.left - content.padding.right
+            let inner = min(Self.maxWidth, geo.size.width) - content.padding.left - content.padding.right
             QuietScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: 0) {
-                    if chrome != nil {
-                        // The Mac's native look: the page's title is the toolbar's (HIG toolbars), not repeated here.
-                        Color.clear.frame(height: 12)
-                    }
-                    catchUp
-                    reviews
-                    section("Recent notes", icon: .clock3, route: .notes(.all), top: 28, count: nil) {
-                        if home.recentsLoaded && home.recents.isEmpty {
-                            WebEmptyState(icon: nil, title: "No notes yet", message: "Press New to write your first one.", page: false)
-                        } else if !home.recentsLoaded && home.recents.isEmpty {
-                            ListSkeleton(shape: .carousel(width: inner))
-                        } else {
-                            WebNoteCarousel(label: "Recent notes", rows: Array(home.recents.prefix(10)), width: inner, list: list, frame: frame, recent: true)
-                        }
-                    }
-                    section("Bookmarks", icon: .bookmark, route: .notes(.starred), top: 28, count: nil) {
-                        if home.value != nil && home.starred.isEmpty {
-                            WebEmptyState(icon: nil, title: "No bookmarks yet", message: "Bookmark notes you come back to often and they’ll appear here.", page: false)
-                        } else {
-                            WebNoteCarousel(label: "Bookmarked notes", rows: home.starred, width: inner, list: list, frame: frame, recent: false)
-                        }
-                    }
-                    foldersSection(width: inner)
+                TimelineView(.periodic(from: .now, by: 60)) { tl in
+                    let now = ScreenClock.fixed ?? tl.date
+                    page(width: inner, now: now)
                 }
                 .padding(content.padding.edgeInsets)
-                .frame(maxWidth: 1400, alignment: .topLeading)
+                .frame(maxWidth: Self.maxWidth, alignment: .topLeading)
                 .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.automatic)
         }
         .folderDialogs(home.dialogs, actions: home.actions, tree: home.tree.value?.folders ?? [])
         .notesListSheets(list)
-        .onAppear { home.setVisible(true) }
-        .onDisappear { home.setVisible(false) }
+        .onAppear {
+            home.setVisible(true)
+            dash.setVisible(true)
+            dash.openNote = { [frame] id in frame.open(.note(id)) }
+            dash.loadFolders()
+        }
+        .onDisappear {
+            home.setVisible(false)
+            dash.setVisible(false)
+        }
         .accessibilityIdentifier("screen.home")
+    }
+
+    @ViewBuilder private func page(width: CGFloat, now: Date) -> some View {
+        let wide = width >= 860
+        VStack(alignment: .leading, spacing: 0) {
+            if chrome != nil {
+                // The Mac's native look: the page's title is the toolbar's (HIG toolbars), not repeated here.
+                Color.clear.frame(height: 12)
+            }
+            HomeTopLine(now: now, editing: dash.editing, toggle: { withAnimation(.easeOut(duration: 0.18)) { dash.editing.toggle() } }, reset: { dash.reset() })
+            // The opening: the greeting, Catch me up (while Foli AI is on), the capture field, today's reviews.
+            VStack(alignment: .leading, spacing: 24) {
+                HomeGreeting(HomeWords.greeting(hour: Calendar.current.component(.hour, from: now), name: home.profileName), size: wide ? 44 : WebTypeRole.largeTitle.metrics.size)
+                catchUp
+                HomeCaptureField(model: dash, templates: { frame.open(.web("/templates"), .newTab) }) { destinationMenu }
+                reviews
+            }
+            .padding(.top, 4)
+            // This person's blocks in their order; Customize moves them, takes them off Home and adds them back.
+            VStack(alignment: .leading, spacing: 56) {
+                ForEach(dash.rows, id: \.self) { row in
+                    switch row {
+                    case .one(let b):
+                        block(b, width: width, paired: false, now: now)
+                    case .pair(let main, let side):
+                        if wide {
+                            let gap: CGFloat = 40
+                            let left = ((width - gap) / 2.15).rounded(.down)
+                            HStack(alignment: .top, spacing: gap) {
+                                VStack(alignment: .leading, spacing: 40) { ForEach(main, id: \.self) { block($0, width: left, paired: true, now: now) } }
+                                    .frame(width: left)
+                                VStack(alignment: .leading, spacing: 40) { ForEach(side, id: \.self) { block($0, width: width - gap - left, paired: true, now: now) } }
+                                    .frame(width: width - gap - left)
+                            }
+                        } else {
+                            VStack(alignment: .leading, spacing: 40) {
+                                ForEach(main + side, id: \.self) { block($0, width: width, paired: false, now: now) }
+                            }
+                        }
+                    }
+                }
+                if dash.editing {
+                    HomeAddBlockTile(hidden: dash.hiddenBlocks) { dash.show($0) }
+                }
+            }
+            .padding(.top, 56)
+            .padding(.bottom, 48)
+        }
+    }
+
+    // MARK: blocks
+
+    private func block(_ b: HomeBlockId, width: CGFloat, paired: Bool, now: Date) -> some View {
+        HomeBlockFrame(block: b, editing: dash.editing, first: dash.isFirst(b), last: dash.isLast(b), move: { dash.move(b, by: $0) }, hide: { dash.hide(b) }) {
+            VStack(alignment: .leading, spacing: 16) {
+                blockBody(b, width: width, paired: paired, now: now)
+            }
+            .frame(width: width, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder private func blockBody(_ b: HomeBlockId, width: CGFloat, paired: Bool, now: Date) -> some View {
+        switch b {
+        case .recent:
+            HomeSectionHead("Recent notes", icon: .clock3) { frame.open(.notes(.all), .newTab) }
+            if home.recentsLoaded && home.recents.isEmpty {
+                WebEmptyState(icon: nil, title: "No notes yet", message: "Notes you open show up here.", page: false)
+            } else if !home.recentsLoaded && home.recents.isEmpty {
+                ListSkeleton(shape: .carousel(width: width))
+            } else {
+                noteRow(home.recents, width: width, recent: true)
+            }
+        case .bookmarks:
+            HomeSectionHead("Bookmarks", icon: .bookmark) { frame.open(.notes(.starred), .newTab) }
+            if home.value != nil && home.starred.isEmpty {
+                HomeBookmarksEmpty()
+            } else {
+                noteRow(home.starred, width: width, recent: false)
+            }
+        case .folders:
+            HomeSectionHead("Recent folders", icon: .folder) { frame.open(.web("/folders"), .newTab) }
+            foldersRow(width: width)
+        case .stats:
+            HomeSectionHead("At a glance", icon: .chartColumn, link: nil)
+            HomeStatsGrid(stats: dash.stats.value, now: now)
+        case .dna:
+            HomeSectionHead("Foli DNA · this week", icon: .waypoints, link: "Open Foli DNA") { frame.open(.web("/graph"), .newTab) }
+            HomeDnaMap(week: dash.dnaWeek(now: now), folderColor: folderColor) { frame.open(.note($0)) }
+                .onAppear { dash.loadGraph() }
+        case .today:
+            HomeSectionHead("Today", icon: .calendarDays, link: "Calendar") { frame.open(.calendar(nil), .newTab) }
+            HomeTodayCard(now: now, agenda: dash.agenda(now: now, time: { $0.formatted(date: .omitted, time: .shortened) }), due: dash.dueCount,
+                          color: { calendarColor($0).resolve(scheme).color }, openCalendar: { frame.open(.calendar(nil)) }, openTasks: { frame.open(.tasks(.today)) })
+        case .tasks:
+            HomeSectionHead("My tasks", icon: .listChecks) { frame.open(.tasks(.all), .newTab) }
+            tasksList(twoColumns: !paired && width >= 640, width: width)
+        case .shared:
+            HomeSectionHead("Shared with me", icon: .users) { frame.open(.shared, .newTab) }
+            hint("Notes people share with you are in Shared with me.")
+        case .templates:
+            HomeSectionHead("Templates", icon: .layoutTemplate) { frame.open(.web("/templates"), .newTab) }
+            hint("Start a note from one of your templates or a built-in one.")
+        case .pinned:
+            HomeSectionHead("Pinned note", icon: .pin, link: nil)
+            pinned(width: width)
+        }
+    }
+
+    private func hint(_ text: String) -> some View {
+        Text(text).webText(.role(.subheadline)).foregroundStyle(webVar("color-ink-muted", scheme).color)
+    }
+
+    private func folderColor(_ id: String?) -> Color {
+        guard let id, let f = home.tree.value?.folders.first(where: { $0.id == id }) else { return FoleviTokens.Chrome.inkFaint.resolve(scheme).color }
+        return FolderColor.resolve(f.color).color.color
+    }
+
+    /// One row of note cards (as many as fit, six at most).
+    private func noteRow(_ rows: [NoteRow], width: CGFloat, recent: Bool) -> some View {
+        let cols = Self.columns(width)
+        let colW = ((width - Self.cardGap * CGFloat(cols - 1)) / CGFloat(cols)).rounded(.down)
+        return HStack(alignment: .top, spacing: Self.cardGap) {
+            ForEach(Array(rows.prefix(cols)), id: \.id) { row in
+                WebNoteCell(card: list.card(row), drag: NoteDragItem(id: row.id, title: row.title, folderId: row.folder?.id), selected: false, compact: false, unsynced: row.sync != .saved, menu: {
+                    noteMenuEntries(row, list: list, frame: frame, recent: recent, canSelect: false, arrange: false)
+                }, open: { frame.open(.note(row.id)) })
+                .frame(width: colW)
+            }
+        }
+        .padding(.top, 8)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(recent ? "Recent notes" : "Bookmarked notes")
+    }
+
+    /// Recent folders (organization.recentFolders): the most recently changed first, one row; nested ones say where
+    /// they are.
+    @ViewBuilder private func foldersRow(width: CGFloat) -> some View {
+        let cols = Self.columns(width)
+        let colW = ((width - Self.cardGap * CGFloat(cols - 1)) / CGFloat(cols)).rounded(.down)
+        let all = allFolders.value?.folders ?? home.folders
+        let recent = all.sorted { $0.updatedAt != $1.updatedAt ? $0.updatedAt > $1.updatedAt : $0.createdAt < $1.createdAt }
+        if (allFolders.value != nil || home.value != nil) && all.isEmpty {
+            WebEmptyState(icon: nil, title: "No folders yet", message: "Folders keep related notes together.", page: false)
+        } else {
+            HStack(alignment: .top, spacing: Self.cardGap) {
+                ForEach(Array(recent.prefix(cols)), id: \.id) { f in
+                    let model = CardMapping.folderCard(f, parentName: f.path)
+                    WebFolderCell(card: model, menu: {
+                        folderMenuEntries(MenuFolder(f), context: FolderMenuContext(session: home.session.value, places: home.places.value, links: home.folderLinks, locks: home.locks.error == nil ? home.locks.value : nil), actions: home.actions, dialogs: home.dialogs, navigator: navigator, feedback: feedback, frame: frame)
+                    }, open: { frame.openFolder(f.id, name: f.name) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
+                       dropFolder: { item in Task { await home.dropFolder(item, on: f, zone: .inside) } }, parentId: f.parentId)
+                    .onMiddleClick { frame.openInBackground(.folder(f.id), title: f.name) }
+                    .frame(width: colW)
+                }
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    /// My tasks: the next open tasks by due date as the Tasks page's rows, in two columns when the block has the row
+    /// to itself.
+    @ViewBuilder private func tasksList(twoColumns: Bool, width: CGFloat) -> some View {
+        if let open = dash.openTasks {
+            if open.isEmpty {
+                hint("No open tasks.")
+            } else {
+                let shown = Array(open.prefix(twoColumns ? 6 : 5))
+                if twoColumns {
+                    let half = (shown.count + 1) / 2
+                    HStack(alignment: .top, spacing: 40) {
+                        VStack(spacing: 0) { ForEach(shown.prefix(half), id: \.id) { PlannerTaskRow(raw: $0, tasks: planner) } }
+                        VStack(spacing: 0) { ForEach(shown.dropFirst(half), id: \.id) { PlannerTaskRow(raw: $0, tasks: planner) } }
+                    }
+                } else {
+                    VStack(spacing: 0) { ForEach(shown, id: \.id) { PlannerTaskRow(raw: $0, tasks: planner) } }
+                }
+            }
+        } else {
+            hint("Loading…")
+        }
+    }
+
+    /// The Pinned note: the note this person pinned (homePrefs), or a menu of recent notes to pin.
+    @ViewBuilder private func pinned(width: CGFloat) -> some View {
+        let pinnedRow = dash.pinnedNote.flatMap { id in (home.recents + home.starred).first { $0.id == id } }
+        HStack(alignment: .center, spacing: 16) {
+            if let row = pinnedRow {
+                WebNoteCell(card: list.card(row), drag: NoteDragItem(id: row.id, title: row.title, folderId: row.folder?.id), selected: false, compact: false, unsynced: false,
+                            menu: { [WebMenuEntry(.item("Unpin from Home", icon: .pinOff)) { Task { await dash.pin(nil) } }] }, open: { frame.open(.note(row.id)) })
+                    .frame(width: (width - Self.cardGap * 5) / 6)
+            } else {
+                hint(dash.pinnedNote == nil ? "Pin a note to keep it here." : "The pinned note isn\u{2019}t in your recent notes.")
+            }
+            WebMenuButton(width: 260, align: .start, entries: {
+                home.recents.prefix(12).map { r in WebMenuEntry(.item(r.title.isEmpty ? "Untitled" : r.title, checked: r.id == dash.pinnedNote)) { Task { await dash.pin(r.id) } } }
+            }) {
+                HomeDestinationLabel(pinnedRow == nil ? "Choose a note" : "Change", folderColor: nil)
+            }
+        }
+    }
+
+    /// "Saves to: Drafts ▾": Personal and each workspace, then Drafts or a folder in it.
+    private var destinationMenu: some View {
+        let w = dash.where_
+        let folder = w.flatMap { w in w.folderId.flatMap { id in dash.folders(in: w.space).first { $0.id == id } } }
+        return WebMenuButton(width: 260, align: .start, entries: {
+            dash.loadFolders()
+            var out: [WebMenuEntry] = []
+            for s in dash.spaces {
+                if !out.isEmpty { out.append(.separator(out.count)) }
+                out.append(.heading(s.name))
+                out.append(WebMenuEntry(.item("Drafts", icon: .notebookText, checked: w?.space == s.id && w?.folderId == nil, id: "\(s.id):drafts")) { dash.pick(HomeCaptureDest(space: s.id, folderId: nil)) })
+                for f in dash.folders(in: s.id) {
+                    let name = String(repeating: "  ", count: f.depth) + f.name
+                    out.append(WebMenuEntry(.item(name, checked: w?.space == s.id && w?.folderId == f.id, swatch: FolderColor.resolve(f.color).color.color, id: "\(s.id):\(f.id)")) { dash.pick(HomeCaptureDest(space: s.id, folderId: f.id)) })
+                }
+            }
+            return out
+        }) {
+            HomeDestinationLabel(dash.destLabel, folderColor: folder.map { FolderColor.resolve($0.color).color.color })
+        }
     }
 
     // MARK: Catch me up (ai/CatchUp.tsx: the button, then the "Your week" card in its place on Home)
@@ -713,7 +940,6 @@ struct WebHomeScreen: View {
                 Text(error).webText(.role(.subheadline)).foregroundStyle(webVar("color-danger", scheme).color)
             }
         }
-        .padding(.top, bs.margin.top + 24)
         .accessibilityIdentifier("home.catchUp")
     }
 
@@ -786,7 +1012,6 @@ struct WebHomeScreen: View {
             .padding(.vertical, 16)
             // (The Mac's native look: a flat panel fill, as the inspector's.)
             .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).fill(chrome != nil ? NativeLook.hover.opacity(0.6) : webVar("glass-active", scheme).color))
-            .padding(.top, 24)
         }
     }
 
@@ -871,33 +1096,6 @@ struct WebHomeScreen: View {
         }
     }
 
-    /// Recent folders (organization.recentFolders): every folder, the most recently changed first, two whole
-    /// rows at the width there is; nested ones say where they are.
-    private func foldersSection(width: CGFloat) -> some View {
-        let gap = MacCards.g(32)
-        let cols = max(1, Int((width + gap) / (MacCards.s(210) + gap)))
-        let all = allFolders.value?.folders ?? home.folders
-        let recent = all.sorted { $0.updatedAt != $1.updatedAt ? $0.updatedAt > $1.updatedAt : $0.createdAt < $1.createdAt }
-        let shown = Array(recent.prefix(cols * 2))
-        let colW = (width - gap * CGFloat(cols - 1)) / CGFloat(cols)
-        return section("Recent folders", icon: .folder, route: .web("/folders"), top: 40, count: allFolders.value != nil || home.value != nil ? "\(all.count)" : nil) {
-            if (allFolders.value != nil || home.value != nil) && all.isEmpty {
-                WebEmptyState(icon: nil, title: "No folders yet", message: "Create one from the sidebar to group related notes.", page: false)
-            } else {
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(colW), spacing: gap, alignment: .top), count: cols), alignment: .leading, spacing: MacCards.g(40)) {
-                    ForEach(shown, id: \.id) { f in
-                        let model = CardMapping.folderCard(f, parentName: f.path)
-                        WebFolderCell(card: model, menu: {
-                            folderMenuEntries(MenuFolder(f), context: FolderMenuContext(session: home.session.value, places: home.places.value, links: home.folderLinks, locks: home.locks.error == nil ? home.locks.value : nil), actions: home.actions, dialogs: home.dialogs, navigator: navigator, feedback: feedback, frame: frame)
-                        }, open: { frame.openFolder(f.id, name: f.name) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
-                           dropFolder: { item in Task { await home.dropFolder(item, on: f, zone: .inside) } }, parentId: f.parentId)
-                        .onMiddleClick { frame.openInBackground(.folder(f.id), title: f.name) }
-                        .frame(width: colW)
-                    }
-                }
-            }
-        }
-    }
 }
 
 /// One row of note cards scrolling sideways (NoteCarousel), with arrow buttons and fades at the ends while there's
@@ -1106,6 +1304,10 @@ struct WebNoteBrowser: View {
                         } else if model.total == 0 || (model.isFiltering && model.slots.isEmpty) {
                             empty
                         } else {
+                            // A folder with folders and notes names both sections (the owner, 28 November 2026).
+                            if !model.subfolders.isEmpty && !model.isFiltering {
+                                caps("Notes").accessibilityAddTraits(.isHeader)
+                            }
                             // Grid, Compact cards and List trade places with a short crossfade.
                             Group {
                                 switch layout {
@@ -1301,8 +1503,11 @@ struct WebNoteBrowser: View {
                     WebPathMenuButton(title: model.title, color: model.folder?.color, path: path) { frame.open(.web("/folders")) }
                     WebRowTrayDivider()
                 }
-                WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
-                WebRowTrayDivider()
+                // Nothing to sort in an empty list (the owner, 28 November 2026).
+                if hasNotes {
+                    WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
+                    WebRowTrayDivider()
+                }
                 WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar", height: WebListPageHeaderMetrics.trayItemHeight)
                 WebRowTrayDivider()
                 if frame.session.value?.capabilities.sharing ?? false {
@@ -1322,7 +1527,7 @@ struct WebNoteBrowser: View {
         if chrome != nil {
             WebListPageHeader(title: model.title, count: model.isLoading ? "" : statusText) {
                 rowFilter
-                WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
+                if hasNotes { WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort) }
                 WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
                 toolbarActions
             }
@@ -1361,7 +1566,7 @@ struct WebNoteBrowser: View {
             if showsFilter {
                 WebIndexSearch(placeholder: "Filter notes", text: $model.filter, width: 260)
             }
-            WebSortSelect(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
+            if hasNotes { WebSortSelect(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort) }
             WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
             if model.isTrash && model.total > 0 {
                 WebButton("Empty Trash", variant: .quiet) { model.confirmation = .emptyTrash(model.total) }
@@ -1385,6 +1590,9 @@ struct WebNoteBrowser: View {
         .frame(height: bar.height)
         .padding(.bottom, bar.margin.bottom)
     }
+
+    /// The list has notes (or is still loading them): Sort is shown only then.
+    private var hasNotes: Bool { model.isLoading || model.total > 0 }
 
     // MARK: subfolders (a folder's page)
 
@@ -1636,10 +1844,22 @@ struct WebNoteListRow: View {
             } else {
                 WebIconView(.fileText, size: 16).foregroundStyle(icon.color.color)
             }
-            // The note's title is the note's own: Folevi's font under the native look too.
-            Text(row.title.isEmpty ? "Untitled" : row.title).webText(title.text).lineLimit(1).foregroundStyle(title.color.color)
-                .noteContent()
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // Apple Notes-style (the web's list rows, the owner, 28 November 2026): the serif title over the note's
+            // first words on the left; the time over its folder and tags on the right.
+            VStack(alignment: .leading, spacing: 2) {
+                // The note's title is the note's own: Folevi's font under the native look too.
+                Text(row.title.isEmpty ? "Untitled" : row.title)
+                    .webText(WebTextStyle(family: .display, size: 15, leading: 20, weight: 600))
+                    .lineLimit(1)
+                    .foregroundStyle(title.color.color)
+                    .noteContent()
+                let firstWords = row.excerpt.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty } ?? ""
+                Text(firstWords.isEmpty ? "No additional text" : firstWords)
+                    .webText(.role(.footnote))
+                    .lineLimit(1)
+                    .foregroundStyle(webVar("color-ink-muted", scheme).color)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             if row.sync != .saved {
                 HStack(spacing: 4) {
                     Circle().fill(webVar("color-heading", scheme).color).frame(width: 6, height: 6)
@@ -1647,12 +1867,16 @@ struct WebNoteListRow: View {
                 }
                 .foregroundStyle(webVar("color-heading", scheme).color)
             }
-            if row.kind != "template" { WebFolderBadge(name: row.folder?.name, colorId: row.folder?.color) }
-            if !row.tags.isEmpty {
-                Text(row.tags.map { "#\($0.name)" }.joined(separator: " ")).webText(tags.text).lineLimit(1).foregroundStyle(tags.color.color)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(CardMapping.timeText(row, inTrash: model.isTrash)).webText(.role(.footnote)).lineLimit(1).foregroundStyle(time.color.color)
+                HStack(spacing: 6) {
+                    if row.kind != "template" { WebFolderBadge(name: row.folder?.name, colorId: row.folder?.color) }
+                    if !row.tags.isEmpty {
+                        Text(row.tags.map { "#\($0.name)" }.joined(separator: " ")).webText(tags.text).lineLimit(1).foregroundStyle(tags.color.color)
+                    }
+                }
             }
-            Text(CardMapping.timeText(row, inTrash: model.isTrash)).webText(time.text).lineLimit(1).foregroundStyle(time.color.color)
-                .frame(width: time.width, alignment: .trailing)
+            .fixedSize()
             if row.kind == "template" && !model.isTrash {
                 WebButton("Use", icon: .filePlusCorner, variant: .ghost, size: .sm) {
                     Task { if let id = await model.actions.create(folderId: nil, templateId: row.id, title: row.title) { frame.open(.note(id)) } }
@@ -1668,7 +1892,8 @@ struct WebNoteListRow: View {
             .accessibilityLabel(moreActionsLabel(row.title))
         }
         .padding(chrome != nil ? EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 4) : r.padding.edgeInsets)
-        .frame(height: r.height)
+        // Two lines a row.
+        .frame(height: max(r.height, 56))
         // Selected and hovered rows show on the list's own surface (MAC-19: glass-active and surface were white on
         // white, #1C1C1E on #1C1C1E): the Mac's selected and hover fills. The native look: a rounded highlight.
         .background {

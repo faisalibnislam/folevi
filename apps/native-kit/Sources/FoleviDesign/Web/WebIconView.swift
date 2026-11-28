@@ -16,7 +16,7 @@ public enum WebIconNode: Hashable, Sendable {
     case polyline(String)
     case polygon(String)
 
-    func add(to path: CGMutablePath) {
+    public func add(to path: CGMutablePath) {
         switch self {
         case .path(let d):
             SVGPath.add(d, to: path)

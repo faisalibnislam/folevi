@@ -1,0 +1,10 @@
+{
+  "kind": "view",
+  "name": "home.prefs",
+  "description": "The default Home: no saved layout (revision 38).",
+  "args": {},
+  "value": {
+    "layout": null,
+    "pinnedNote": "doc_00001"
+  }
+}

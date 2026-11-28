@@ -14,7 +14,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Next steps
 
-- Port the customizable Home (2026-11-28, web PR from `claude/dazzling-sanderson-1d2975`): design version 19: greeting, Foli AI summary, capture field with a Saves-to picker; then Recent notes, Bookmarks, Today and My tasks beside Foli DNA, Recent folders, Shared with me / Pinned note / Templates to add, and Customize (move, remove, add blocks). Data: `homePrefs.get`, `homePrefs.setLayout`, `homePrefs.setPinnedNote`, `ai.homeSummary`; block ids and defaults in `apps/web/src/lib/app/homeLayout.ts`. See docs/DESKTOP_PARITY.md.
+- The native Home (2026-11-28, branch `claude/native-port-1128`, not in a release): the web's design version 19 on Mac, iPad and iPhone (`FoleviScreens/Home/HomeDashboard*.swift`, engine revision 37). Left: the Shared with me and Templates blocks as lists, Pinned note beyond recent notes, Catch me up on `ai.homeSummary`, a look on a real iPad and iPhone.
 - The owner tries the menu bar note in the app: click the icon and ⌥Space, type on the empty page (a note appears in Drafts on the web), pick a workspace folder, New, a screenshot, pin and window mode, VoiceOver.
 
 - The owner tries Float this note on the Mac (several panels, pin off and on, over a full-screen app).

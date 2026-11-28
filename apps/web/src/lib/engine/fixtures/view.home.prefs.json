@@ -1,0 +1,24 @@
+{
+  "kind": "view",
+  "name": "home.prefs",
+  "description": "This person's Home layout: Foli DNA hidden, Templates added (revision 38).",
+  "args": {},
+  "value": {
+    "layout": {
+      "order": [
+        "recent",
+        "bookmarks",
+        "folders",
+        "stats",
+        "dna",
+        "today",
+        "tasks",
+        "templates"
+      ],
+      "hidden": [
+        "dna"
+      ]
+    },
+    "pinnedNote": null
+  }
+}

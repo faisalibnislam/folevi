@@ -2977,6 +2977,84 @@ data class ChatMemoryArgs(
     val save: Boolean,
 )
 
+/** One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 37). */
+@Serializable
+data class SettingsAskOption(
+    /** The setting's key, as the app knows it ("appearance/Theme"); only keys from the list come back. */
+    val key: String,
+    val title: String,
+    /** Its section's name as the list shows it ("Appearance"). */
+    val section: String,
+)
+
+/**
+ * `ai.settingsSearch` (revision 37): Settings' Ask Foli AI. The person's words and the settings this person has;
+ * Foli AI picks up to three that do what they asked (convex/ai.ts settingsSearch). An account's only.
+ */
+@Serializable
+data class SettingsAskArgs(
+    val space: SpaceRef? = null,
+    val query: String,
+    val options: List<SettingsAskOption>,
+)
+
+/** Foli AI's picks (keys from the options, best first) and one sentence on what to change. */
+@Serializable
+data class SettingsAskResult(
+    val keys: List<String>,
+    val answer: String,
+)
+
+/**
+ * `home.stats` (revision 38): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
+ * `todayStart` is local midnight (ms), so the week's last bar is this person's today.
+ */
+@Serializable
+data class HomeStatsArgs(
+    val space: SpaceRef? = null,
+    val todayStart: Long? = null,
+)
+
+@Serializable
+data class HomeStatsValue(
+    val notes: Long,
+    val words: Long,
+    val images: Long,
+    val folders: Long,
+    val tasksDone: Long,
+    val tasksOpen: Long,
+    /** Notes made on each of the last 7 days, oldest first; the last is today. */
+    val week: List<Long>,
+    /** Counting stopped at 5,000 rows of a kind. */
+    val capped: Boolean,
+)
+
+/** One person's Home blocks: their order and the hidden ones (block ids as homeLayout.ts names them). */
+@Serializable
+data class HomeLayout(
+    val order: List<String>,
+    val hidden: List<String>,
+)
+
+/** `home.prefs` (revision 38): this person's Home layout (null: the default) and pinned note (homePrefs.get). */
+@Serializable
+data class HomePrefsValue(
+    val layout: HomeLayout?,
+    val pinnedNote: String?,
+)
+
+/** `home.setLayout` (revision 38): saves the layout (homePrefs.setLayout); null puts Home back to its default. */
+@Serializable
+data class HomeSetLayoutArgs(
+    val layout: HomeLayout?,
+)
+
+/** `home.setPinnedNote` (revision 38): the note the Pinned note block shows (homePrefs.setPinnedNote), or null. */
+@Serializable
+data class HomeSetPinnedNoteArgs(
+    val noteId: String?,
+)
+
 /** R8.6: a macOS banner's action. */
 @Serializable
 data class NotificationActArgs(

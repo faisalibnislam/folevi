@@ -37,6 +37,11 @@ public final class DemoEngine {
     public var shownNote: String?
     /// The saved sidebar layout (`sidebarLayout.get`'s value: `{ order, more }`, null for the default).
     public var sidebarLayout: JSONValue = .null
+    /// Home's saved layout (`home.prefs`, nil: the default) and its pinned note.
+    public var homeLayout: HomeLayout?
+    public var pinnedNote: String?
+    /// Calendar events (`calendars.events`): two of the demo day's, made up.
+    public var events: [CalendarEvent] = []
     /// Every editor command the frame sent (tests read it).
     public private(set) var editorLog: [String] = []
     /// Every command name the frame sent.
@@ -166,7 +171,14 @@ public final class DemoEngine {
             return try .from(TasksRangeValue(tasks: taskRows.filter { ($0.dueDate ?? "") >= from && ($0.dueDate ?? "") <= to }))
         case "graph": return try .from(DemoEngine.graph)
         case "calendars.events":
-            return try .from(CalendarEventsValue(events: []))
+            let from = Int(args["from"]?.number ?? 0), to = Int(args["to"]?.number ?? .greatestFiniteMagnitude)
+            return try .from(CalendarEventsValue(events: events.filter { $0.end > from && $0.start < to }))
+        case "home.stats":
+            let live = notes.filter { !$0.inTrash && $0.kind != "template" }
+            let open = taskRows.filter { $0.status == "open" }.count
+            return try .from(HomeStatsValue(notes: live.count, words: live.count * 412, images: 7, folders: folders.count, tasksDone: taskRows.count - open, tasksOpen: open, week: [1, 0, 2, 1, 0, 3, 2], capped: false))
+        case "home.prefs":
+            return try .from(HomePrefsValue(layout: homeLayout, pinnedNote: pinnedNote))
         case "calendars.list":
             return try .from(CalendarsValue(calendars: []))
         case "notes.meta":
@@ -425,6 +437,12 @@ public final class DemoEngine {
             approval = .idle
             approvalCode = nil
             return .object(["ok": .bool(true)])
+        case "home.setLayout":
+            homeLayout = try? args["layout"]?.decode(HomeLayout.self)
+            return .object(["ok": .bool(true)])
+        case "home.setPinnedNote":
+            pinnedNote = args["noteId"]?.string
+            return .object(["ok": .bool(true)])
         case "engine.refresh", "catchUp.run", "catchUp.clear", "toast.action", "notification.act", "settings.update":
             return .object(["ok": .bool(true)])
         case _ where name.hasPrefix("task."):
@@ -506,6 +524,11 @@ public final class DemoEngine {
 
     private func seedData(now: Date) {
         func ago(_ h: Double) -> Date { now.addingTimeInterval(-h * 3600) }
+        let at = { (d: Date) in Int(d.timeIntervalSince1970 * 1000) }
+        events = [
+            CalendarEvent(id: "evt_1", calendarId: "cal_work", calendarName: "Work", color: "accent", title: "Design review", location: "Studio", description: "", start: at(now.addingTimeInterval(25 * 60)), end: at(now.addingTimeInterval(85 * 60)), allDay: false),
+            CalendarEvent(id: "evt_2", calendarId: "cal_home", calendarName: "Home", color: "moss", title: "Run with Sam", location: "", description: "", start: at(now.addingTimeInterval(4 * 3600)), end: at(now.addingTimeInterval(5 * 3600)), allDay: false),
+        ]
         folders = [
             FolderNode(id: "fld_work", name: "Work", color: "orange", parentId: nil, depth: 0, rank: "a", childCount: 1, noteCount: 0, encrypted: false, sync: .saved),
             FolderNode(id: "fld_projects", name: "Projects", color: nil, parentId: "fld_work", depth: 1, rank: "a", childCount: 1, noteCount: 0, encrypted: false, sync: .saved),

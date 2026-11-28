@@ -4978,6 +4978,138 @@ public struct ChatMemoryArgs: Codable, Hashable, Sendable {
     }
 }
 
+/// One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 37).
+public struct SettingsAskOption: Codable, Hashable, Sendable {
+    /// The setting's key, as the app knows it ("appearance/Theme"); only keys from the list come back.
+    public var key: String
+    public var title: String
+    /// Its section's name as the list shows it ("Appearance").
+    public var section: String
+
+    public init(key: String, title: String, section: String) {
+        self.key = key
+        self.title = title
+        self.section = section
+    }
+}
+
+/// `ai.settingsSearch` (revision 37): Settings' Ask Foli AI. The person's words and the settings this person has;
+/// Foli AI picks up to three that do what they asked (convex/ai.ts settingsSearch). An account's only.
+public struct SettingsAskArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    public var query: String
+    public var options: [SettingsAskOption]
+
+    public init(space: SpaceRef? = nil, query: String, options: [SettingsAskOption]) {
+        self.space = space
+        self.query = query
+        self.options = options
+    }
+}
+
+/// Foli AI's picks (keys from the options, best first) and one sentence on what to change.
+public struct SettingsAskResult: Codable, Hashable, Sendable {
+    public var keys: [String]
+    public var answer: String
+
+    public init(keys: [String], answer: String) {
+        self.keys = keys
+        self.answer = answer
+    }
+}
+
+/// `home.stats` (revision 38): Home's At a glance, as homeStats.get counts it for this Personal or workspace.
+/// `todayStart` is local midnight (ms), so the week's last bar is this person's today.
+public struct HomeStatsArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    public var todayStart: Int?
+
+    public init(space: SpaceRef? = nil, todayStart: Int? = nil) {
+        self.space = space
+        self.todayStart = todayStart
+    }
+}
+
+public struct HomeStatsValue: Codable, Hashable, Sendable {
+    public var notes: Int
+    public var words: Int
+    public var images: Int
+    public var folders: Int
+    public var tasksDone: Int
+    public var tasksOpen: Int
+    /// Notes made on each of the last 7 days, oldest first; the last is today.
+    public var week: [Int]
+    /// Counting stopped at 5,000 rows of a kind.
+    public var capped: Bool
+
+    public init(notes: Int, words: Int, images: Int, folders: Int, tasksDone: Int, tasksOpen: Int, week: [Int], capped: Bool) {
+        self.notes = notes
+        self.words = words
+        self.images = images
+        self.folders = folders
+        self.tasksDone = tasksDone
+        self.tasksOpen = tasksOpen
+        self.week = week
+        self.capped = capped
+    }
+}
+
+/// One person's Home blocks: their order and the hidden ones (block ids as homeLayout.ts names them).
+public struct HomeLayout: Codable, Hashable, Sendable {
+    public var order: [String]
+    public var hidden: [String]
+
+    public init(order: [String], hidden: [String]) {
+        self.order = order
+        self.hidden = hidden
+    }
+}
+
+/// `home.prefs` (revision 38): this person's Home layout (null: the default) and pinned note (homePrefs.get).
+public struct HomePrefsValue: Codable, Hashable, Sendable {
+    public var layout: HomeLayout?
+    public var pinnedNote: String?
+
+    public init(layout: HomeLayout? = nil, pinnedNote: String? = nil) {
+        self.layout = layout
+        self.pinnedNote = pinnedNote
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.layout, forKey: .layout)
+        try container.encode(self.pinnedNote, forKey: .pinnedNote)
+    }
+}
+
+/// `home.setLayout` (revision 38): saves the layout (homePrefs.setLayout); null puts Home back to its default.
+public struct HomeSetLayoutArgs: Codable, Hashable, Sendable {
+    public var layout: HomeLayout?
+
+    public init(layout: HomeLayout? = nil) {
+        self.layout = layout
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.layout, forKey: .layout)
+    }
+}
+
+/// `home.setPinnedNote` (revision 38): the note the Pinned note block shows (homePrefs.setPinnedNote), or null.
+public struct HomeSetPinnedNoteArgs: Codable, Hashable, Sendable {
+    public var noteId: String?
+
+    public init(noteId: String? = nil) {
+        self.noteId = noteId
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.noteId, forKey: .noteId)
+    }
+}
+
 /// R8.6: a macOS banner's action.
 public struct NotificationActArgs: Codable, Hashable, Sendable {
     /// The notification's id.

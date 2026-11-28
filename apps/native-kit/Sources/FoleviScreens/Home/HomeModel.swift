@@ -25,6 +25,9 @@ public final class HomeModel {
     public let vault: ValueStore<VaultSummaryValue>
     public var hasVault: Bool { vault.value.map { $0.state != .none } ?? false }
     #endif
+    /// The redesigned Home's blocks, At a glance, Today, My tasks, Foli DNA and the capture field (HomeDashboard.swift),
+    /// made when a Home first draws them.
+    @ObservationIgnored public private(set) lazy var dashboard = HomeDashboardModel(client: client, feedback: actions.feedback, space: actions.space)
     /// The folder menu's open dialog (rename, new folder, move, delete), shared by the screen and its toolbar.
     public let dialogs = FolderDialogState()
 

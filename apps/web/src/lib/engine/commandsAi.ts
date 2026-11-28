@@ -11,7 +11,7 @@ import { nativeToast } from "./toasts";
 import { toEngineError } from "./live";
 import { ownKeyArgs } from "@/lib/ai/ownKey";
 import { BridgeError, bool, id, oneOf, only, text } from "./validate";
-import type { ChatSendResult, CommandName } from "./protocol";
+import type { ChatSendResult, CommandName, SettingsAskOption, SettingsAskResult } from "./protocol";
 
 /** Runs an answer in the background; a failure the answer doesn't carry itself goes to native as a toast. */
 function background(p: Promise<unknown>): void {
@@ -158,6 +158,25 @@ export const AI_COMMANDS = {
       if (bool(args, "save")) await deps.client.mutation(api.aiMemory.saveProposal, { messageId });
       else await deps.client.mutation(api.aiMemory.dismissProposal, { messageId });
       return { ok: true };
+    },
+  },
+  // Settings' Ask Foli AI (SettingsView.tsx SettingsSearch): Foli AI picks the settings that do what was asked.
+  // An account's only: a library on this device has no Folevi Cloud to ask.
+  "ai.settingsSearch": {
+    async run(deps, args): Promise<SettingsAskResult> {
+      only(args, ["space", "query", "options"]);
+      const query = (text(args, "query", { max: 400 }) as string).trim();
+      const space = spaceArg(deps, args);
+      if (deps.app.mode !== "account" || !deps.app.capabilities.ai) throw new BridgeError("ai_unavailable", "Foli AI isn't on here.");
+      if (!Array.isArray(args.options) || args.options.length > 200) throw new BridgeError("invalid_args", "options must be a list of settings.");
+      const options: SettingsAskOption[] = args.options.map((o) => {
+        const x = o as Record<string, unknown>;
+        if (!x || typeof x !== "object" || typeof x.key !== "string" || typeof x.title !== "string" || typeof x.section !== "string") throw new BridgeError("invalid_args", "Each option is { key, title, section }.");
+        return { key: x.key, title: x.title, section: x.section };
+      });
+      if (!query) return { keys: [], answer: "" };
+      const r = (await deps.client.action(api.ai.settingsSearch, { scope: space.scope, query, options, ...(await ownKeyFor(deps)) })) as SettingsAskResult;
+      return { keys: r.keys, answer: r.answer };
     },
   },
 } satisfies Partial<Record<CommandName, CommandDef>>;

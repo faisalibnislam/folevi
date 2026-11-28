@@ -116,12 +116,19 @@ final class PlannerTasks {
 struct TaskBox: View {
     let status: String
     let toggle: () -> Void
+
+    /// The check's box with its corners fully round (a circle).
+    static func round(_ pair: WebStylePair) -> WebStylePair {
+        func circle(_ c: WebComputedStyle) -> WebComputedStyle { var r = c; r.radius = min(r.width, r.height) / 2; return r }
+        return WebStylePair(light: circle(pair.light), dark: circle(pair.dark))
+    }
     @Environment(\.colorScheme) private var scheme
     @State private var over = false
 
     var body: some View {
         let done = status == "done"
-        let style = PS(done ? "tasks.check.done" : "tasks.check")
+        // Round, as the web's Tasks page draws it (the owner, 28 November 2026: a Reminders-style row).
+        let style = Self.round(PS(done ? "tasks.check.done" : "tasks.check"))
         let s = style.resolve(scheme)
         Button(action: toggle) {
             ZStack {
@@ -190,26 +197,8 @@ struct PlannerTaskRow<Action: View>: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .topAligned()
+            // Priority as a small flag (the web's Tasks page); the date and repeat moved into the details line.
             if let p = t.priority, p != "none" { priority(p).topAligned() }
-            if let r = t.repeat, !r.isEmpty {
-                WebIconView(.repeat, size: 12)
-                    .foregroundStyle(muted)
-                    .frame(height: 16)
-                    .padding(.top, 2)
-                    .foleviTooltip(r)
-                    .topAligned()
-            }
-            if let d = t.dueDate {
-                let due = PS("tasks.due").resolve(scheme)
-                Text("\(overdue ? "Overdue · " : "")\(PlannerDates.dueLabel(d, today: today))\(t.dueTime.map { " \(PlannerDates.timeLabel($0))" } ?? "")")
-                    // (Its colour and weight by name: the style read may be of an overdue task.)
-                    .webText(due.text(weight: overdue ? 500 : 400))
-                    .lineLimit(1)
-                    .fixedSize()
-                    .foregroundStyle(overdue ? PV("color-danger").c(scheme) : muted)
-                    .padding(.top, due.margin.top)
-                    .topAligned()
-            }
             if editable { editButton(t).topAligned() }
         }
         .padding(row.padding.edgeInsets)
@@ -234,7 +223,25 @@ struct PlannerTaskRow<Action: View>: View {
         // The Mac's native look: each fact after a dot of its own, the same room on both sides of it ("Inbox · done
         // 6 hours ago"). Joined to the fact after it, the dot had the row's gap before it and one space after.
         let native = chrome != nil
+        let today = tasks.today
+        let overdue = t.status == "open" && (t.dueDate.map { $0 < today } ?? false)
         return HStack(spacing: native ? 5 : m.gap) {
+            // One quiet line: the due date (red when late), how it repeats, then the note it lives in.
+            if let d = t.dueDate {
+                Text("\(PlannerDates.dueLabel(d, today: today))\(t.dueTime.map { " \(PlannerDates.timeLabel($0))" } ?? "")")
+                    .webText(m.text)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .foregroundStyle(overdue ? PV("color-danger").c(scheme) : m.color.color)
+                Text("·").webText(m.text)
+            }
+            if let r = t.repeat, !r.isEmpty {
+                HStack(spacing: 3) {
+                    WebIconView(.repeat, size: 11)
+                    Text(r).webText(m.text).lineLimit(1).fixedSize()
+                }
+                Text("·").webText(m.text)
+            }
             Button { tasks.openNote(t) } label: {
                 HStack(spacing: link.gap) {
                     WebIconView(.fileText, size: 12)
@@ -265,15 +272,13 @@ struct PlannerTaskRow<Action: View>: View {
     }
 
     private func priority(_ p: String) -> some View {
-        let (bg, fg): (String, String) = p == "high" ? ("color-coral-soft", "color-coral-ink") : p == "medium" ? ("color-marigold-soft", "color-marigold-ink") : ("color-surface-sunken", "color-ink-muted")
-        return Text(p.prefix(1).uppercased() + p.dropFirst())
-            .webText(WebTextStyle(size: 12, leading: 16, weight: 500))
-            .lineLimit(1)
-            .fixedSize()
-            .foregroundStyle(PV(fg).c(scheme))
-            .padding(.horizontal, 8)
-            .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(PV(bg).c(scheme)))
+        let ink = p == "high" ? PV("color-danger").c(scheme) : p == "medium" ? PV("color-marigold-ink").c(scheme) : PV("color-ink-muted").c(scheme)
+        return WebIconView(.flag, size: 13)
+            .foregroundStyle(ink)
+            .frame(height: 16)
             .padding(.top, 2)
+            .foleviTooltip("\(p.prefix(1).uppercased() + p.dropFirst()) priority")
+            .accessibilityLabel("\(p.prefix(1).uppercased() + p.dropFirst()) priority")
     }
 
     private func editButton(_ t: TaskRow) -> some View {

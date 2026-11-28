@@ -386,9 +386,16 @@ public struct SidebarRow<Trailing: View>: View {
                     .font(.system(size: MacLook.rowSymbolSize))
                     .frame(width: MacLook.rowIconSlot, height: MacLook.rowIconSlot, alignment: .center)
             } else if let symbol {
-                MacSymbol(symbol, size: MacLook.rowSymbolSize)
-                    .foregroundStyle(selected ? MacLook.Colors.label : MacLook.Colors.secondary)
-                    .frame(width: MacLook.rowIconSlot, alignment: .center)
+                Group {
+                    // The selected row's icon filled, as the web sidebar draws it (the owner, 28 November 2026).
+                    if selected, let parts = FilledSidebarIcons.parts(for: symbol) {
+                        FilledSidebarIconView(parts: parts, size: (MacLook.rowSymbolSize * 1.15).rounded())
+                    } else {
+                        MacSymbol(symbol, size: MacLook.rowSymbolSize)
+                    }
+                }
+                .foregroundStyle(selected ? MacLook.Colors.label : MacLook.Colors.secondary)
+                .frame(width: MacLook.rowIconSlot, alignment: .center)
             }
             Text(title)
                 .font(selected ? MacLook.Text.body.weight(.semibold) : MacLook.Text.body)

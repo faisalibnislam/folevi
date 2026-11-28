@@ -21,7 +21,7 @@ func inkMix(_ p: Double, _ scheme: ColorScheme) -> Color {
 
 // MARK: The box and a task's row
 
-/// TaskBox: Folevi's rounded-square task box at the iPhone's size (22 pt, a 1.5 pt edge); checking it fills the box
+/// TaskBox: Folevi's round task box at the iPhone's size (22 pt, a 1.5 pt edge); checking it fills the box
 /// and draws the tick in 180 ms.
 public struct PhoneTaskBox: View {
     let status: String
@@ -34,9 +34,10 @@ public struct PhoneTaskBox: View {
         let done = status == "done"
         let canceled = status == "canceled"
         ZStack {
-            RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular)
+            // Round, as the web's Tasks page draws it (the owner, 28 November 2026: a Reminders-style row).
+            Circle()
                 .fill(done ? C(FoleviTokens.Chrome.heading, scheme) : canceled ? C(FoleviTokens.Chrome.surfaceSunken, scheme) : .clear)
-            RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular)
+            Circle()
                 .strokeBorder(done ? .clear : canceled ? C(FoleviTokens.Chrome.lineStrong, scheme) : inkMix(0.34, scheme), lineWidth: 1.5)
             if canceled {
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny).fill(C(FoleviTokens.Chrome.inkFaint, scheme)).frame(width: 10, height: 1.5)
@@ -96,7 +97,6 @@ public struct PhoneTaskLine: View {
         }
         if showNote { out.append(t.noteTitle.isEmpty ? "Untitled" : t.noteTitle) }
         if let a = t.assigneeName, !a.isEmpty { out.append(a) }
-        if let p = t.priority, p != "none", let first = p.first { out.append("\(first.uppercased())\(p.dropFirst()) priority") }
         return out
     }
 
@@ -148,6 +148,13 @@ public struct PhoneTaskLine: View {
             }
             .buttonStyle(.plain)
             .padding(.leading, -11)
+            // Priority as a small flag at the end (the web's Tasks page).
+            if let p = task.priority, p != "none" {
+                WebIconView(.flag, size: 15, strokeWidth: 2)
+                    .foregroundStyle(C(p == "high" ? FoleviTokens.Chrome.destructive : FoleviTokens.Chrome.inkMuted, scheme))
+                    .padding(.top, twoLines ? 14 : 18)
+                    .accessibilityLabel("\(p.prefix(1).uppercased() + p.dropFirst()) priority")
+            }
         }
         // (On its day's or note's card: 16 in from the card's edge.)
         .padding(.leading, 16)

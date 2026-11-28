@@ -1,0 +1,26 @@
+{
+  "kind": "command",
+  "name": "ai.settingsSearch",
+  "description": "Settings' Ask Foli AI: the settings that turn on dark mode (revision 37).",
+  "args": {
+    "query": "how do I turn on dark mode",
+    "options": [
+      {
+        "key": "appearance/Theme",
+        "title": "Theme",
+        "section": "Appearance"
+      },
+      {
+        "key": "notifications/Email delivery",
+        "title": "Email delivery",
+        "section": "Notifications"
+      }
+    ]
+  },
+  "result": {
+    "keys": [
+      "appearance/Theme"
+    ],
+    "answer": "Pick Dark under Theme in Appearance."
+  }
+}

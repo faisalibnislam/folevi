@@ -17,6 +17,7 @@ import AppKit
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
+import FoleviScreens
 
 // MARK: - Categories
 
@@ -53,6 +54,8 @@ public enum MacSettingsCategories {
     /// The action rows' ids.
     public static let help = "help"
     public static let contact = "contact"
+    /// The Workspace group's Create a workspace (in Personal, when workspaces are available).
+    public static let createWorkspace = "create-workspace"
 
     /// A category's symbol (the web's Settings icons, as SF Symbols).
     public static func symbol(_ id: String) -> String {
@@ -78,6 +81,7 @@ public enum MacSettingsCategories {
         case "this-device": "ipad"
         case help: "questionmark.circle"
         case contact: "lifepreserver"
+        case createWorkspace: "plus"
         default: "gearshape"
         }
     }
@@ -105,16 +109,23 @@ public enum MacSettingsCategories {
     @MainActor
     public static func isLocal(_ model: MacSettingsModel) -> Bool { model.isLocal }
 
-    /// The categories for the open place and space, as the web's Settings lists them (SettingsView.tsx), with the
-    /// Mac's General first; then the workspace's; then Support (Help, Contact support, About).
+    /// The categories for the open place and space, as the web's Settings lists them (SettingsView.tsx): the Mac's
+    /// General first with no heading; then Account, Security, App and Data (the owner, 28 November 2026: "divide you
+    /// into more categories"); the workspace's, or in Personal a Workspace group with Create a workspace; then
+    /// Support (Help, Contact support, About).
     @MainActor
     public static func groups(_ model: MacSettingsModel) -> [MacSettingsGroup] {
         func item(_ s: MacSettingsSection) -> MacSettingsCategory { MacSettingsCategory(id: s.rawValue, title: title(s.rawValue), symbol: symbol(s.rawValue)) }
         var out: [MacSettingsGroup] = []
-        for (i, g) in model.groups.enumerated() {
-            var items = g.items
-            if i == 0, let d = items.firstIndex(of: .desktop) { items.insert(items.remove(at: d), at: 0) }
-            out.append(MacSettingsGroup(label: i == 0 ? nil : g.label, items: items.map(item)))
+        let all = model.groups
+        // (The Mac's own settings open the window, as System Settings' first pane: General, alone, at the top.)
+        if all.contains(where: { $0.items.contains(.desktop) }) { out.append(MacSettingsGroup(label: nil, items: [item(.desktop)])) }
+        for g in all {
+            let items = g.items.filter { $0 != .desktop }
+            if !items.isEmpty { out.append(MacSettingsGroup(label: g.label, items: items.map(item))) }
+        }
+        if model.canCreateWorkspace {
+            out.append(MacSettingsGroup(label: "Workspace", items: [MacSettingsCategory(id: createWorkspace, title: "Create a workspace", symbol: symbol(createWorkspace), action: true)]))
         }
         out.append(MacSettingsGroup(label: "Support", items: [
             MacSettingsCategory(id: help, title: "Help", symbol: symbol(help), action: true),
@@ -148,9 +159,17 @@ public final class MacSettingsState {
     public private(set) var activeResult = 0
     /// Moves when ⌘F asks for the search field.
     public private(set) var focusSearchSerial = 0
+    /// Foli AI is on for this person (Ask Foli AI is offered in the search).
+    public var aiOn = false
+    /// Foli AI's answer to the search's words (Ask Foli AI).
+    public let ask = SettingsAsk()
     /// The app follows a category opened here (the window's title, the web page), and runs an action row.
     @ObservationIgnored public var onSelect: (String) -> Void = { _ in }
     @ObservationIgnored public var onAction: (String) -> Void = { _ in }
+    /// Create a workspace (the Workspace group's row): the new-workspace prompt. The page sets it.
+    @ObservationIgnored public var onCreateWorkspace: () -> Void = {}
+    /// Sends Ask Foli AI's question (`ai.settingsSearch`); the page sets it. Nil: no Ask Foli AI.
+    @ObservationIgnored public var onAsk: (@MainActor (String, [SettingsAskOption]) async throws -> SettingsAskResult)?
 
     public init() {}
 
@@ -171,9 +190,35 @@ public final class MacSettingsState {
         SettingsSearch.results(query, categories: categories.map { ($0.id, $0.title) }, local: local)
     }
 
+    /// Where Ask Foli AI is among the rows Return and the arrows move through: after the matches (so the first row
+    /// when nothing matches, and Return asks); nil while it isn't offered (Foli AI off, or its answer is showing).
+    public var askIndex: Int? {
+        guard onAsk != nil, SettingsMatch.canAsk(query, aiOn: aiOn), !ask.shows(query) else { return nil }
+        return results.count
+    }
+
+    /// Foli AI's picks for the words typed now, as results that open their section at the card.
+    public var askPicks: [SettingsSearchResult] {
+        guard ask.shows(query) else { return [] }
+        let cats = categories.map { ($0.id, $0.title) }
+        return ask.keys.compactMap { SettingsSearch.result(forKey: $0, categories: cats, local: local) }
+    }
+
+    /// Ask Foli AI: the words and every setting this window lists go to Foli AI.
+    public func askFoliAI() {
+        guard let send = onAsk else { return }
+        let q = query
+        let options = SettingsSearch.askOptions(categories: categories.map { ($0.id, $0.title) }, local: local)
+        Task { @MainActor in await ask.ask(q, options: options, send: send) }
+    }
+
     /// Opens a category (from the list, the keyboard, a link on a page or the app): the page starts at its top.
     public func select(_ id: String) {
         guard !id.isEmpty else { return }
+        if id == MacSettingsCategories.createWorkspace {
+            onCreateWorkspace()
+            return
+        }
         if let c = groups.flatMap(\.items).first(where: { $0.id == id }), c.action {
             onAction(id)
             return
@@ -189,6 +234,7 @@ public final class MacSettingsState {
 
     /// Opens a result: its category, scrolled to its card or row, lit for a moment.
     public func open(_ result: SettingsSearchResult) {
+        ask.clear()
         select(result.entry.section)
         scrollTarget = result.entry.anchor
         scrollSerial += 1
@@ -202,13 +248,14 @@ public final class MacSettingsState {
 
     /// Return in the search field: the active result (the first, unless the arrows moved it).
     public func openActive() {
+        if let a = askIndex, activeResult >= a { askFoliAI(); return }
         let r = results
         guard !r.isEmpty else { return }
         open(r[min(activeResult, r.count - 1)])
     }
 
     public func moveActive(_ by: Int) {
-        let n = results.count
+        let n = results.count + (askIndex == nil ? 0 : 1)
         guard n > 0 else { return }
         activeResult = min(n - 1, max(0, activeResult + by))
     }
@@ -371,19 +418,25 @@ struct MacSettingsSidebar: View {
     }
 
     /// The results as a filtered tree: each category with matches (its own row lit when its name matched), the
-    /// matching cards and settings indented under it.
+    /// matching cards and settings indented under it. With Foli AI on, its answer above them (its sentence, then the
+    /// settings it picked) and Ask Foli AI after them (alone when nothing matched, so Return asks).
     @ViewBuilder private var results: some View {
         let found = state.results
-        if found.isEmpty {
-            VStack(alignment: .leading, spacing: MacLook.Space.xs) {
-                Text("No Results").font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label)
-                Text("Nothing in Settings matches “\(state.query.trimmingCharacters(in: .whitespaces))”. Try another word, like “dark mode” or “shortcut”.")
-                    .font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        let askAt = state.askIndex
+        let typed = state.query.trimmingCharacters(in: .whitespaces)
+        if state.ask.shows(state.query) { answer }
+        if found.isEmpty && askAt == nil {
+            if !state.ask.shows(state.query) {
+                VStack(alignment: .leading, spacing: MacLook.Space.xs) {
+                    Text("No Results").font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label)
+                    Text("Nothing in Settings matches “\(typed)”. Try another word, like “dark mode” or “shortcut”.")
+                        .font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 8)
+                .padding(.top, MacLook.Space.s)
+                .accessibilityElement(children: .combine)
             }
-            .padding(.horizontal, 8)
-            .padding(.top, MacLook.Space.s)
-            .accessibilityElement(children: .combine)
         } else {
             let active = found.indices.contains(state.activeResult) ? found[state.activeResult].id : nil
             ForEach(Self.tree(found, categories: state.categories), id: \.category.id) { node in
@@ -403,7 +456,43 @@ struct MacSettingsSidebar: View {
                     .foleviTooltip("\(r.entry.label), in \(r.category)")
                 }
             }
+            if let askAt {
+                Button { state.askFoliAI() } label: {
+                    SidebarRow("Ask Foli AI", selected: state.activeResult == askAt, icon: { AiMarkGlyph(size: 15) })
+                }
+                .buttonStyle(.plain) // (hover: SidebarRow draws its own)
+                .foleviTooltip("Ask Foli AI “\(typed)”")
+                .accessibilityIdentifier("settings.search.ask")
+            }
         }
+    }
+
+    /// Foli AI's answer: its mark and sentence (or what went wrong, muted), then the settings it picked.
+    @ViewBuilder private var answer: some View {
+        let ask = state.ask
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                AiMarkGlyph(size: 13).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
+                Text(ask.error ?? ask.line)
+                    .font(MacLook.Text.small)
+                    .foregroundStyle(ask.error == nil && !ask.busy ? MacLook.Colors.label : MacLook.Colors.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Foli AI: \(ask.error ?? ask.line)")
+            ForEach(state.askPicks) { r in
+                Button { state.open(r) } label: {
+                    SidebarRow(r.entry.label, symbol: state.categories.first { $0.id == r.entry.section }?.symbol)
+                }
+                .buttonStyle(.plain) // (hover: SidebarRow draws its own)
+                .foleviTooltip("\(r.entry.label), in \(r.category)")
+            }
+        }
+        .padding(.bottom, MacLook.Space.s)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("settings.search.answer")
     }
 
     struct Node {
@@ -413,7 +502,11 @@ struct MacSettingsSidebar: View {
     }
 
     static func tree(_ results: [SettingsSearchResult], categories: [MacSettingsCategory]) -> [Node] {
-        categories.compactMap { c in
+        // (In the results' order, so the row Return opens is the first drawn.)
+        var order: [String] = []
+        for r in results where !order.contains(r.entry.section) { order.append(r.entry.section) }
+        return order.compactMap { id in
+            guard let c = categories.first(where: { $0.id == id }) else { return nil }
             let mine = results.filter { $0.entry.section == c.id }
             guard !mine.isEmpty else { return nil }
             return Node(category: c, own: mine.first { $0.entry.anchor == nil }, children: mine.filter { $0.entry.anchor != nil })
@@ -571,7 +664,9 @@ public struct MacSettingsNativePane: View {
             .onChange(of: MacSettingsCategories.groups(model), initial: true) { _, groups in
                 if state.groups != groups { state.groups = groups }
                 state.local = model.isLocal
+                connect()
             }
+            .onChange(of: model.aiOn) { connect() }
             .onAppear { scroll(proxy) }
             .onChange(of: state.scrollSerial) { scroll(proxy) }
         }
@@ -586,6 +681,17 @@ public struct MacSettingsNativePane: View {
     }
 
     static let top = "settings.top"
+
+    /// Ask Foli AI and Create a workspace go through this window's engine.
+    private func connect() {
+        state.aiOn = model.aiOn
+        let frame = model.frame
+        state.onAsk = { [weak frame] q, options in
+            guard let frame else { throw CancellationError() }
+            return try await frame.client.command(.aiSettingsSearch(query: q, options: options))
+        }
+        state.onCreateWorkspace = { [weak frame] in if let frame { FrameDialogs.newWorkspace(frame) } }
+    }
 
     /// Goes to the found card or row: now, and again as the section's data arrives and lays the page out.
     private func scroll(_ proxy: ScrollViewProxy) {

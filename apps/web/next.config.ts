@@ -195,12 +195,21 @@ async function headers() {
     { source: "/:file(icon.svg|apple-icon.png)", headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }] },
     // Downloads (rewrites() below). A file whose name carries its version never changes; the appcast and the
     // stable Folevi.dmg change with every release, so they're checked each time. Later entries win.
-    { source: "/download/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=300" }] },
+    // Vercel's CDN never stores a download (CDN-Cache-Control: no-store; browsers still cache per Cache-Control):
+    // it cached one range request's 206 (100 bytes) for a versioned AppImage and served it to every later
+    // download, the Linux updater's too (2026-11-28). R2 serves each request.
+    {
+      source: "/download/:path*",
+      headers: [
+        { key: "Cache-Control", value: "public, max-age=300" },
+        { key: "CDN-Cache-Control", value: "no-store" },
+      ],
+    },
     {
       source: "/download/mac/:file(Folevi-\\d[^/]*\\.(?:zip|dmg)|[^/]+\\.delta)",
       headers: [
         { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-        { key: "CDN-Cache-Control", value: "public, max-age=31536000, immutable" },
+        { key: "CDN-Cache-Control", value: "no-store" },
       ],
     },
     {

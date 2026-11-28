@@ -23,6 +23,8 @@ final class FakeHost: MenuBarNoteHost {
     var focused = 0
 
     func load(path: String) { loaded.append(path) }
+    var empty = false
+    func noteIsEmpty() async -> Bool { empty }
     func destinations() async throws -> [NoteSpace] { spaces }
     func insertImage(_ data: Data, mime: String, name: String) async throws { images.append((data, mime, name)) }
     func focusNote() { focused += 1 }
@@ -117,13 +119,19 @@ struct NoteTests {
         #expect(model.noteID == "01A")
     }
 
-    @Test func sendToFoleviOpensItAndStartsANewOne() {
+    @Test func sendToFoleviOpensItAndStartsANewOne() async {
         let (model, host, _) = makeNote()
         model.perform(.sendToFolevi)
         #expect(host.opened.isEmpty, "nothing to send before a note is made")
         model.pathChanged("/float/01A?panel=1")
+        host.empty = true
+        model.toast = nil
         model.perform(.sendToFolevi)
-        #expect(host.opened == ["/d/01A"])
+        await until("told") { model.toast == "Write something first." }
+        #expect(host.opened.isEmpty, "an empty note isn't sent")
+        host.empty = false
+        model.perform(.sendToFolevi)
+        await until("sent") { host.opened == ["/d/01A"] }
         #expect(model.noteID == nil)
         #expect(host.loaded.last == "/float/new?panel=1&space=personal")
     }

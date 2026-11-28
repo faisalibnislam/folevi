@@ -90,10 +90,13 @@ public final class MenuBarNoteModel {
 
     /// Send to Folevi (⌘↩): the note opens in Folevi's main window, and the panel starts a new empty note.
     func sendToFolevi() {
-        guard let id = noteID else { return showToast("Write something first.") }
-        host?.flush()
-        newNote()
-        host?.openInFolevi(path: "/d/\(id)")
+        guard let id = noteID, let host else { return showToast("Write something first.") }
+        Task { [weak self] in
+            guard await !host.noteIsEmpty() else { self?.showToast("Write something first."); return }
+            host.flush()
+            self?.newNote()
+            host.openInFolevi(path: "/d/\(id)")
+        }
     }
 
     /// The note in Folevi's main window.

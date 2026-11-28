@@ -72,6 +72,8 @@ public protocol MenuBarNoteHost: AnyObject {
     var currentPath: String? { get }
     /// The spaces of the place and their folders, from the note's page.
     func destinations() async throws -> [NoteSpace]
+    /// Whether the note shown has nothing in it yet (no title, text or picture).
+    func noteIsEmpty() async -> Bool
     /// Puts an image into the note at the caret (uploaded with it, as a paste would).
     func insertImage(_ data: Data, mime: String, name: String) async throws
     /// Gives the note the keyboard.

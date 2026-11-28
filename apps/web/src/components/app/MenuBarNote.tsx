@@ -1,45 +1,33 @@
 "use client";
 // The Mac's menu bar note (lib/desktop/menuBarNote.ts), the page's side: the float page without its bar in the
 // panel the menu bar icon and ⌥Space open.
-// - MenuBarComposer: the empty page (`/float/new?panel=1&space=&folder=`), drawn as a new note is (paper, "Untitled",
-//   "Start writing"). The first keystroke in the title, Return, or a click on the text makes a real note in Drafts, or
-//   the folder picked (the same way the web's New note does: the engine, so offline, end-to-end encrypted spaces and
-//   an "On this Mac" or iCloud library work as everywhere), then shows it in the editor with the caret where it was.
+// - MenuBarComposer (`/float/new?panel=1&space=&folder=`): makes a new note in Drafts, or the folder picked, the way
+//   the web's New note does, and shows it. A note the panel made and left empty is taken away when it moves on.
 // - useMenuBarCommands: what the Mac app asks of the panel's page: the spaces and folders new notes can go to, and a
-//   screenshot to put into the note (as a paste: the editor uploads it with the note).
-import { useEffect, useRef, useState } from "react";
+//   screenshot to put into the note (as a paste: the editor uploads it with the note), whether the note is empty, and
+//   moving the page (New, a destination picked).
+import { useEffect, useRef } from "react";
 import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, ulid } from "@folevi/editor-schema";
 import { useConvex } from "convex/react";
+import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { desktop } from "@/lib/desktop";
 import { composerTarget, noteSpaces, pasteImage, scopeOfSpace } from "@/lib/desktop/menuBarNote";
-import { sheetProps } from "@/lib/cover";
-
-// The editor's code, fetched while the empty page waits, so the note opens at once on the first keystroke.
-const preloadEditor = () => import("@/components/doc/DocumentView");
 
 export function MenuBarComposer() {
   const { engine, workspaces } = useAppState();
   const { search, navigate } = useAppRouter();
-  const [text, setText] = useState("");
   const made = useRef(false);
-  const field = useRef<HTMLTextAreaElement>(null);
   const { space, folderId } = composerTarget(search);
   const workspace = space === "personal" ? null : workspaces.find((w) => w.id === space);
   const where = space === "personal" ? "Personal" : (workspace?.name ?? "this workspace");
   const canEdit = space === "personal" || workspace?.canEdit !== false;
-  const style = DEFAULT_DOCUMENT_STYLE;
-  const sheet = sheetProps(style, DEFAULT_COVER);
 
+  // A new note at once, as the web's New note makes it (the engine: offline, end-to-end encrypted spaces and an "On
+  // this Mac" or iCloud library work as everywhere), shown in the editor with its title focused. Nothing stands in
+  // for it, so nothing moves when typing starts. One left empty is taken away when the panel moves on (below).
   useEffect(() => {
-    void preloadEditor();
-    field.current?.focus();
-  }, []);
-
-  /** Makes the note (once) and shows it in the editor: its title from what was typed, the caret in the title, or
-   *  in the text when the body was chosen. */
-  const make = (title: string, into: "typed" | "body") => {
     if (made.current || !engine || !canEdit) return;
     made.current = true;
     const id = ulid();
@@ -48,64 +36,53 @@ export function MenuBarComposer() {
       parentDocumentId: null,
       folderId,
       kind: "document",
-      title: title.replace(/\s+/g, " ").slice(0, 500),
+      title: "",
       icon: null,
       style: DEFAULT_DOCUMENT_STYLE,
       cover: DEFAULT_COVER,
       templateId: null,
       scope: scopeOfSpace(space),
     });
-    navigate(`/float/${encodeURIComponent(id)}?panel=1&new=${into}`, { replace: true });
-  };
+    navigate(`/float/${encodeURIComponent(id)}?panel=1&new=1`, { replace: true });
+  }, [engine, canEdit, folderId, space, navigate]);
 
-  // The same page, paper, title and first line as a new note (DocumentView's #doc-scroll, fb-page, fb-sheet and
-  // DocumentHeader), so the float page's rules (globals.css) lay it out exactly as the note that replaces it: the
-  // empty page is a new note in every way but one, it isn't made until something is written.
-  return (
-    <div id="doc-scroll" className="fb-page relative h-full overflow-y-auto" data-font={style.font} data-width={style.width} style={{ background: "var(--color-surface-sunken)" }}>
-      <article className="fb-sheet ui-sheet relative mx-auto" data-background={style.background} {...sheet} data-separator={style.separator} style={{ ...sheet.style, maxWidth: "calc(var(--editor-width) + 8rem)" }}>
-        <div className="h-10" aria-hidden />
-        <div className="px-5 sm:px-16">
-          <textarea
-            ref={field}
-            value={text}
-            rows={1}
-            placeholder="Untitled"
-            aria-label={`Title of a new note in ${where}`}
-            title={canEdit ? `New notes go to ${folderId ? "the folder chosen above" : `${where}’s Drafts`}` : `You can't add notes in ${where}`}
-            disabled={!canEdit || !engine}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\s*\n\s*/g, " ");
-              setText(value);
-              if (value.trim()) make(value, "typed");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                make(text, "body");
-              }
-            }}
-            className="mt-4 block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] tracking-[-0.012em] text-heading outline-none [font-family:var(--note-serif,var(--font-serif))] [font-size-adjust:ex-height_0.45] placeholder:text-[color-mix(in_oklab,var(--color-ink-faint)_70%,transparent)]"
-          />
-        </div>
-        <div className="px-5 sm:px-16">
-          {/* The empty note's first line, as the editor shows it; a click starts the note there. */}
-          <div className="fb-editor" onClick={() => make(text, "body")}>
-            <p className="is-empty cursor-text" data-placeholder="Start writing, or type / for blocks" />
-          </div>
-        </div>
-      </article>
-    </div>
-  );
+  if (canEdit) return null;
+  return <p className="px-10 pt-20 text-subheadline text-muted">You can’t add notes in {where}. Choose another place above.</p>;
+}
+
+/** Whether the note on this page has nothing in it: no title, no text, no picture or file. */
+export function noteLooksEmpty(doc: Document, id: string): boolean {
+  const title = doc.getElementById(`title-${id}`) as HTMLTextAreaElement | null;
+  if (title?.value.trim()) return false;
+  const body = doc.querySelector(".fb-editor");
+  if (!body) return !title;
+  return !body.textContent?.trim() && !body.querySelector("img, video, iframe, [data-file], .fb-file, .fb-embed");
+}
+
+/** Takes away a note the panel made and left empty (to the Trash, then for good), retried while it reaches the server. */
+async function discardEmpty(client: ReturnType<typeof useConvex>, id: string) {
+  for (let i = 0; i < 4; i++) {
+    try {
+      const r = (await client.mutation(api.documents.bulkUpdate, { documentIds: [id], action: { kind: "trash" } })) as { done: string[] };
+      if (r.done.includes(id)) {
+        await client.mutation(api.documents.bulkUpdate, { documentIds: [id], action: { kind: "delete" } });
+        return;
+      }
+    } catch {
+      /* offline or not there yet: tried again */
+    }
+    await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+  }
 }
 
 /** The Mac app's commands to the panel's page, answered with commandDone. */
 export function useMenuBarCommands(enabled: boolean) {
   const client = useConvex();
   const { workspaces } = useAppState();
-  const { navigate } = useAppRouter();
-  const latest = useRef({ client, workspaces, navigate });
-  latest.current = { client, workspaces, navigate };
+  const { navigate, route } = useAppRouter();
+  const current = route.name === "float" && route.id !== "new" ? route.id : null;
+  const latest = useRef({ client, workspaces, navigate, current });
+  latest.current = { client, workspaces, navigate, current };
   useEffect(() => {
     const bridge = desktop() as (ReturnType<typeof desktop> & { commandDone?: (id: string, value: Record<string, unknown>) => void }) | null;
     if (!enabled || !bridge?.onCommand || !bridge.commandDone) return;
@@ -114,6 +91,9 @@ export function useMenuBarCommands(enabled: boolean) {
       // New, a destination picked, another note: the panel moves its page (the main window's DesktopBridge, which
       // does this there, isn't on this page). Only to the panel's own pages.
       if (c.type === "navigate" && typeof c.path === "string" && /^\/float\/[^/?#]+\?panel=1/.test(c.path)) {
+        // Moving on from a note left empty: it goes, so no empty "Untitled" stays in Drafts.
+        const leaving = latest.current.current;
+        if (leaving && !c.path.startsWith(`/float/${leaving}?`) && noteLooksEmpty(document, leaving)) void discardEmpty(latest.current.client, leaving);
         latest.current.navigate(c.path, { replace: true });
         return;
       }
@@ -124,6 +104,9 @@ export function useMenuBarCommands(enabled: boolean) {
           (spaces) => bridge.commandDone!(id, { ok: true, spaces }),
           (e) => bridge.commandDone!(id, { ok: false, message: e instanceof Error ? e.message : String(e) }),
         );
+      } else if (c.type === "menu-note-state") {
+        const shown = latest.current.current;
+        bridge.commandDone!(id, { ok: true, empty: !shown || noteLooksEmpty(document, shown) });
       } else if (c.type === "menu-note-image") {
         if (typeof c.data !== "string" || typeof c.mime !== "string" || !/^image\//.test(c.mime)) return bridge.commandDone!(id, { ok: false, message: "That isn't an image." });
         const ok = pasteImage(document, c.data, c.mime, typeof c.name === "string" && c.name ? c.name : "Screenshot.png");

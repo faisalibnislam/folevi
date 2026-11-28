@@ -115,6 +115,11 @@ final class MacMenuBarNote: MenuBarNoteHost {
         return try JSONDecoder().decode([NoteSpace].self, from: data)
     }
 
+    func noteIsEmpty() async -> Bool {
+        guard let v = view, v.loaded, let answer = await Capabilities.ask(["type": "menu-note-state"], to: v, timeout: 5) else { return false }
+        return answer["empty"] as? Bool ?? false
+    }
+
     func insertImage(_ data: Data, mime: String, name: String) async throws {
         let v = ensureView()
         let answer = await Capabilities.ask(["type": "menu-note-image", "data": data.base64EncodedString(), "mime": mime, "name": name], to: v, timeout: 60)

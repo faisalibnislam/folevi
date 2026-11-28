@@ -1,6 +1,5 @@
-// The panel's keyboard shortcuts. Folevi's main menu has its own ⌘N and the rest, so the panel answers these first
-// (MenuBarNotePanel and MenuBarNoteWindow call `handleKey` before anything else); the note's own keys (⌘B, ⌘K,
-// Markdown as you type) are the editor's, in the page.
+// The panel's keyboard shortcuts. Folevi's main menu has its own keys, so the panel answers these first
+// (MenuBarNotePanel and MenuBarNoteWindow call `handleKey` before anything else); editing keys go to the text box.
 import AppKit
 
 extension MenuBarNoteModel {
@@ -22,19 +21,18 @@ extension MenuBarNoteModel {
     }
 
     enum Action: Equatable {
-        case newNote, sendToFolevi, screenshot, pin, window, openInFolevi
+        case save, addTask, screenshot, pin, window
     }
 
     /// The action a key press runs, or nil (pure: tests).
     nonisolated static func action(for s: Shortcut) -> Action? {
         guard s.command, !s.control else { return nil }
         switch (s.key, s.shift, s.option) {
-        case ("n", false, false): return .newNote
-        case ("\r", false, false), ("return", false, false): return .sendToFolevi
+        case ("return", false, false), ("s", false, false): return .save
+        case ("return", true, false): return .addTask
         case ("5", true, false): return .screenshot
         case ("p", true, false): return .pin
         case ("d", false, true): return .window
-        case ("o", true, false): return .openInFolevi
         default: return nil
         }
     }
@@ -47,12 +45,11 @@ extension MenuBarNoteModel {
 
     func perform(_ action: Action) {
         switch action {
-        case .newNote: newNote()
-        case .sendToFolevi: sendToFolevi()
+        case .save: save()
+        case .addTask: addTask()
         case .screenshot: capture(.region)
         case .pin: panel?.togglePin()
         case .window: panel?.toggleDetach()
-        case .openInFolevi: openInFolevi()
         }
     }
 }

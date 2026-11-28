@@ -1,6 +1,6 @@
 // The menu bar note's panel drawn offscreen (a borderless window far off the screen, never key, never in front of the
-// owner's work), light and dark, with a destination picked: the bar (where new notes go, New, Screenshot, Pin, Window,
-// "…") over the note. The note is Folevi's web editor in the app; here a stand-in view takes its place. Compared to 1x references in __Snapshots__ (written when missing or with
+// owner's work), light and dark: Home's quick note with words in the box and a folder picked, "Saves to", Add as a
+// task, Screenshot and Save, and Pin, Window and "…" at the top. Compared to 1x references in __Snapshots__ (written when missing or with
 // FOLEVI_RECORD_SNAPSHOTS=1), written at 2x to FOLEVI_SCREENS_OUT when set. Liquid Glass is drawn by the window
 // server, so the pictures use Reduce Transparency's solid look (the panel's own fallback), not the glass itself.
 import AppKit
@@ -20,13 +20,9 @@ struct PanelSnapshotTests {
         UserDefaults.standard.set(true, forKey: "FoleviMenuBarNoteForceReduceTransparency")
         defer { UserDefaults.standard.removeObject(forKey: "FoleviMenuBarNoteForceReduceTransparency") }
         for scheme in [ColorScheme.light, .dark] {
-            let host = FakeHost()
-            let page = NSTextField(wrappingLabelWithString: "Trip ideas\n\nLisbon in May. Book the train.")
-            page.font = FoleviFonts.nsFont(.ui, size: 16)
-            page.frame = CGRect(x: 18, y: 0, width: 340, height: 380)
-            host.noteView.addSubview(page)
-            let (model, _, _) = makeNote(host: host)
+            let (model, _, _) = makeNote()
             model.settings.panelSize = MenuBarNoteSettings.PanelSize.medium.size
+            model.text = "Trip ideas\nLisbon in May. Book the train."
             model.choose(NoteDestination(space: "ws_1", spaceName: "Studio", folderId: "fld_s", folderName: "Projects"))
             let size = MenuBarNoteSettings.PanelSize.medium.size
             let root = PanelRootView().environment(model).environment(\.colorScheme, scheme).frame(width: size.width, height: size.height)

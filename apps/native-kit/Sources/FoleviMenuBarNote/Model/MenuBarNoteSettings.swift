@@ -1,5 +1,5 @@
-// The menu bar note panel's own settings (from Notlet's AppSettings): its size, pin, window mode, the note it shows
-// and where new notes go, per place. Kept in the defaults the Mac app hands in (Folevi Dev has its own).
+// The menu bar note panel's own settings (from Notlet's AppSettings): its size, pin, window mode, and per place what's
+// written and not saved yet and where notes go. Kept in the defaults the Mac app hands in (Folevi Dev has its own).
 import AppKit
 import Observation
 
@@ -11,10 +11,10 @@ public final class MenuBarNoteSettings {
         public var id: String { rawValue }
         public var size: CGSize {
             switch self {
-            case .small: CGSize(width: 340, height: 380)
-            case .medium: CGSize(width: 400, height: 500)
-            case .large: CGSize(width: 500, height: 640)
-            case .gigantic: CGSize(width: 660, height: 840)
+            case .small: CGSize(width: 360, height: 260)
+            case .medium: CGSize(width: 440, height: 320)
+            case .large: CGSize(width: 540, height: 440)
+            case .gigantic: CGSize(width: 680, height: 600)
             }
         }
         var title: String {
@@ -29,7 +29,7 @@ public final class MenuBarNoteSettings {
 
     enum ScreenshotFormat: String, CaseIterable, Identifiable { case automatic, png, jpeg; var id: String { rawValue } }
 
-    static let minimumPanelSize = CGSize(width: 320, height: 260)
+    static let minimumPanelSize = CGSize(width: 320, height: 200)
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var isLoading = true
@@ -38,7 +38,7 @@ public final class MenuBarNoteSettings {
         static let prefix = "folevi.menubarnote."
         static let panelWidth = prefix + "panelWidth", panelHeight = prefix + "panelHeight"
         static let panelPinned = prefix + "pinned", panelDetached = prefix + "detached", pinnedOrigin = prefix + "pinnedOrigin"
-        static let notes = prefix + "notes", destination = prefix + "destination"
+        static let drafts = prefix + "drafts", destination = prefix + "destination"
         static let screenshotSound = prefix + "screenshotSound"
     }
 
@@ -55,8 +55,8 @@ public final class MenuBarNoteSettings {
     }
     public var isPinned = false { didSet { save(isPinned, Key.panelPinned) } }
     public var isDetached = false { didSet { save(isDetached, Key.panelDetached) } }
-    /// The note the panel shows, per place (nil: the empty page that starts a new one).
-    var notes: [String: String] = [:] { didSet { guard !isLoading else { return }; defaults.set(notes, forKey: Key.notes) } }
+    /// What's written in the box and not saved yet, per place: kept when the panel closes or Folevi quits.
+    var drafts: [String: String] = [:] { didSet { guard !isLoading else { return }; defaults.set(drafts, forKey: Key.drafts) } }
     var pinnedOrigin: CGPoint? {
         didSet {
             guard !isLoading else { return }
@@ -79,7 +79,7 @@ public final class MenuBarNoteSettings {
         if w > 0, h > 0 { panelSize = CGSize(width: max(Self.minimumPanelSize.width, w), height: max(Self.minimumPanelSize.height, h)) }
         isPinned = d.bool(forKey: Key.panelPinned)
         isDetached = d.bool(forKey: Key.panelDetached)
-        notes = (d.dictionary(forKey: Key.notes) as? [String: String]) ?? [:]
+        drafts = (d.dictionary(forKey: Key.drafts) as? [String: String]) ?? [:]
         if let p = d.array(forKey: Key.pinnedOrigin) as? [Double], p.count == 2 { pinnedOrigin = CGPoint(x: p[0], y: p[1]) }
         if let data = d.data(forKey: Key.destination), let saved = try? JSONDecoder().decode([String: NoteDestination].self, from: data) { destinations = saved }
         isLoading = false

@@ -1,7 +1,7 @@
-// The Mac's menu bar note (apps/native-kit FoleviMenuBarNote, owner decisions 2026-11-28): one real note in the float
-// page without its bar (`/float/<id>?panel=1`). Its empty page (`/float/new?panel=1&space=&folder=`) makes the note
-// in Drafts, or the folder picked, on the first keystroke; where new notes can go (Personal or a team workspace, and
-// its folders) is listed for the panel's picker; screenshots go in as a paste would.
+// The Mac's menu bar note (apps/native-kit FoleviMenuBarNote, owner decisions 2026-11-28): Home's quick note under
+// the menu bar. One plain text box; Save makes a note of it (its first line the title, as Home's CaptureField does)
+// in Drafts or the folder picked, with the screenshots taken into it; Add as a task adds it to Tasks. The panel asks
+// a quiet page of the place (`/float/menu?panel=1`) for these and for where a note can go.
 import type { WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 
@@ -51,40 +51,9 @@ export function folderTree(folders: readonly SidebarFolder[]): NoteFolder[] {
   return out;
 }
 
-/** Where the empty page makes its note: `?space=personal|<workspace id>&folder=<id>` (Drafts without a folder). */
-export function composerTarget(search: URLSearchParams): { space: string; folderId: string | null } {
-  const space = search.get("space") || "personal";
-  const folder = search.get("folder");
-  return { space, folderId: folder ? folder : null };
-}
-
-/** The menu bar's empty page, in the panel: true for `/float/...?panel=1`. */
+/** The menu bar's panel page: true for `/float/...?panel=1`. */
 export function inMenuBarPanel(search: URLSearchParams): boolean {
   return search.get("panel") === "1";
-}
-
-function base64Blob(b64: string, mime: string): Blob {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(new ArrayBuffer(bin.length));
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
-}
-
-/**
- * Puts an image (a screenshot from the panel) into the note as a paste would: the editor's own paste takes the file,
- * uploads it with the note and places it at the caret (or the note's end when it has never had one). False when the
- * page has no note editor.
- */
-export function pasteImage(doc: Document, data: string, mime: string, name: string): boolean {
-  const editors = [...doc.querySelectorAll<HTMLElement>(".ProseMirror[contenteditable='true']")];
-  const editor = editors.find((e) => e.contains(doc.activeElement)) ?? editors[0];
-  if (!editor) return false;
-  const file = new File([base64Blob(data, mime)], name, { type: mime });
-  const transfer = new DataTransfer();
-  transfer.items.add(file);
-  editor.focus();
-  editor.dispatchEvent(new ClipboardEvent("paste", { clipboardData: transfer, bubbles: true, cancelable: true }));
-  return true;
 }
 
 /** The spaces of this place a new note can go to, each with its mark and folders. */
@@ -107,4 +76,50 @@ export async function noteSpaces(
       }
     }),
   );
+}
+
+/** A screenshot the panel took, sent with the note. */
+export interface MenuNoteImage {
+  mime: string;
+  name: string;
+  /** The bytes, base64. */
+  data: string;
+}
+
+export interface MenuNoteSave {
+  space: string;
+  folderId: string | null;
+  text: string;
+  images: MenuNoteImage[];
+}
+
+/** What the Mac sends for a save, checked (null when it isn't one). */
+export function validateMenuNote(raw: unknown): MenuNoteSave | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.space !== "string" || !o.space || typeof o.text !== "string") return null;
+  if (o.folderId !== null && o.folderId !== undefined && typeof o.folderId !== "string") return null;
+  const images: MenuNoteImage[] = [];
+  for (const raw of (Array.isArray(o.images) ? o.images : []).slice(0, 20)) {
+    const i = raw as Record<string, unknown>;
+    if (typeof i.data !== "string" || typeof i.mime !== "string" || !/^image\/(png|jpeg|gif|webp)$/.test(i.mime)) return null;
+    images.push({ mime: i.mime, name: typeof i.name === "string" && i.name ? i.name : "Screenshot", data: i.data });
+  }
+  if (!o.text.trim() && !images.length) return null;
+  return { space: o.space, folderId: (o.folderId as string | null | undefined) ?? null, text: o.text, images };
+}
+
+/**
+ * The note's title and content, as Home makes them (noteFromText: the first line the title, each other line a
+ * paragraph). With screenshots it's Markdown: the lines as paragraphs, then each picture (`menu-note-image-N`, which
+ * `imageMap` turns into the uploaded file).
+ */
+export function menuNoteContent(text: string, images: number, fromText: (t: string) => { title: string; body: string }): { title: string; content: string; format: "text" | "markdown" } {
+  const { title, body } = text.trim() ? fromText(text) : { title: "Screenshot", body: "" };
+  const paragraphs = body.split(/\n+/).filter((l) => l.trim());
+  if (!images) return { title, content: paragraphs.join("\n\n"), format: "text" };
+  // Plain lines in Markdown: characters Markdown would read as formatting are kept as typed.
+  const escaped = paragraphs.map((l) => l.replace(/([\\`*_[\]#<>!|])/g, "\\$1").replace(/^(\s*)([-+]|\d+[.)])(\s)/, "$1\\$2$3"));
+  const pictures = Array.from({ length: images }, (_, i) => `![](menu-note-image-${i + 1})`);
+  return { title, content: [...escaped, ...pictures].join("\n\n"), format: "markdown" };
 }

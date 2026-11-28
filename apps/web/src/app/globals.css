@@ -1839,13 +1839,3 @@
 :root[data-float][data-desktop] [data-float-bar] {
   padding-left: 12px;
 }
-/* The Mac's menu bar note (components/app/MenuBarNote.tsx): the panel's glass bar floats over the note's top, and the
-   block handle needs room inside the panel's rounded edge, so the text sits a little further in than a floating
-   window's. */
-:root[data-float="menu-bar"] .fb-sheet .sm\:px-16 {
-  padding-left: 40px;
-  padding-right: 24px;
-}
-:root[data-float="menu-bar"] .fb-sheet {
-  padding-top: 12px;
-}

@@ -1,6 +1,5 @@
 // What the Mac app holds: the menu bar note (owner decisions, 2026-11-28). The menu bar icon and the global shortcut
-// open a panel with one real Folevi note in Folevi's own editor; typing on its empty page makes a note in Drafts, or
-// the folder picked, and it syncs like any other note.
+// open Home's quick note in a panel: write, Save, and it's a note in Drafts or the folder picked.
 import AppKit
 
 @MainActor
@@ -40,9 +39,6 @@ public final class MenuBarNote {
         if !controller.isVisible { model.refreshDestinations() }
         controller.toggle()
     }
-
-    /// The note's page moved (a note was made by typing, or New).
-    public func pathChanged(_ path: String) { model.pathChanged(path) }
 
     /// Another place opened: its own note and destination.
     public func placeChanged() { model.placeChanged() }

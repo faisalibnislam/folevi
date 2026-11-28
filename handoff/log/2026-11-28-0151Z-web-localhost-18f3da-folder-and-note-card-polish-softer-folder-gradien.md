@@ -110,3 +110,13 @@ Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `We
 - A folder page with folders and notes names both sections: "Folders" then "Notes". The folder row sits 16px closer to its heading (the cards keep room at the top for peeking notes).
 - Undone at the owner's word: the folder row keeps its original gap under "Folders" (room for peeking notes).
 - Settings: "You" is split into Account (Account, Plan & billing, Devices; Library in local mode), Security (Security, Privacy), App (Foli AI, Appearance, Writing, Notifications) and Data (Connected apps, Offline & sync, Import & export, Desktop app, This device). Create a workspace is a plain row under a Workspace heading instead of a boxed card.
+
+## Native snapshots re-recorded for PR 190's card and icon changes
+
+PR 190 changes shared native drawing (WebNoteCard type sizes and the time without "Edited", lighter opaque folder
+cards, one icon stroke width), so these references were re-recorded after checking each `.failed.png` against its
+reference; every difference was one of those intended changes, nothing else moved:
+- FoleviDesignTests: folder-cards and phone-folder-cards (light, dark): folder colours and the opaque front.
+- FoleviMacTests: list-header (all-notes, folder, folder-nested, folders; Mac and iPad; light and dark) and
+  home-picture (light, dark): card time and sizes, folder cards; dna-note-iphone-dark: icon stroke.
+Both suites pass on the merged tree (266 Mac, 36 design).

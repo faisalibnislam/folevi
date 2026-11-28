@@ -73,3 +73,4 @@ Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `We
   event rows and Up next tag weren't seen with real events.
 - Home is at most 1,320px wide (was 1,100).
 - Recent notes, Bookmarks and Recent folders: six cards a row on a full-width Home (2, 3, 5, then 6 as it widens), 24px gaps.
+- Home: the Foli AI summary waits for a "Catch me up" button (with "A quick AI brief of this week's notes and what's due.") instead of running on its own; once written it shows in a card, "Your week, from Foli AI", with refresh and Ask a follow-up.

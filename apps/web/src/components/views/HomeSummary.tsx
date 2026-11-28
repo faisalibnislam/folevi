@@ -5,7 +5,7 @@
 // the notes edited since Monday (convex/ai.ts homeSummary). Home shows it only while Foli AI is on. It is written once a day per place and
 // kept for this tab's visit under the Catch me up brief's prefix (lib/ai/catchUpStore.ts), so it goes when the
 // account signs out; Refresh writes it again.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -78,33 +78,48 @@ export function HomeSummary() {
     }
   }, [key, scope, today, summarize]);
 
-  // Written once a day per place, the first time Home is opened with Foli AI on.
-  useEffect(() => {
-    if (!data && asked.current !== key) void run();
-  }, [data, key, run]);
+  // Written when asked ("Catch me up"), then kept for the day in this place; nothing runs on its own.
+  if (!data && !busy) {
+    return (
+      <section aria-labelledby="home-summary-title" className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <button
+          type="button"
+          onClick={() => void run()}
+          className="inline-flex h-control items-center gap-2 rounded-control border border-[var(--color-line)] bg-surface px-3.5 text-callout font-semibold text-heading shadow-[0_1px_2px_rgb(0_0_0/0.05)] transition-[box-shadow,background-color] hover:bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_2.5%)] hover:shadow-[0_2px_6px_-2px_rgb(0_0_0/0.12)]"
+        >
+          <AiIcon size={15} aria-hidden />
+          <span id="home-summary-title">Catch me up</span>
+        </button>
+        <span className="text-subheadline text-muted">A quick AI brief of this week’s notes and what’s due.</span>
+        {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "basis-full text-footnote text-muted" : "basis-full"} /> : null}
+      </section>
+    );
+  }
 
   return (
-    <section aria-labelledby="home-summary-title">
+    <section aria-labelledby="home-summary-title" className="rounded-container border border-[var(--color-line)] bg-surface px-5 py-4 shadow-[0_1px_2px_rgb(0_0_0/0.03),0_10px_28px_-20px_rgb(20_20_40/0.3)]">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-footnote text-muted">
         <AiIcon size={14} aria-hidden />
         <h2 id="home-summary-title" className="text-footnote font-semibold text-ink">
-          Foli AI summary
+          Your week, from Foli AI
         </h2>
         {data && !busy ? (
           <>
             <span>
-              · {data.edited ? `from ${data.edited === 1 ? "1 note" : `${data.edited} notes`} edited since Monday · ` : ""}updated {clock(data.at)}
+              · {data.edited ? `${data.edited === 1 ? "1 note" : `${data.edited} notes`} edited since Monday · ` : ""}updated {clock(data.at)}
             </span>
-            <button type="button" onClick={() => void run()} aria-label="Refresh the summary" title="Refresh" className="ui-btn ui-btn-quiet size-control-sm p-0">
+            <button type="button" onClick={() => void run()} aria-label="Refresh the summary" title="Refresh" className="ui-btn ui-btn-quiet ml-auto size-control-sm p-0">
               <RotateCcw size={12} aria-hidden />
             </button>
           </>
         ) : null}
       </div>
       <SummaryBody data={data} busy={busy} error={error} />
-      <AppLink href="/ai" className="mt-3 inline-block text-subheadline font-medium text-muted hover:text-heading">
-        Ask a follow-up →
-      </AppLink>
+      {data && !busy ? (
+        <AppLink href="/ai" className="mt-3 inline-block text-subheadline font-medium text-muted hover:text-heading">
+          Ask a follow-up →
+        </AppLink>
+      ) : null}
     </section>
   );
 }

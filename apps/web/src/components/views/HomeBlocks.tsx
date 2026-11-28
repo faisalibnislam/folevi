@@ -14,7 +14,6 @@ import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useFolderTree } from "@/lib/app/folders";
 import { useCachedQuery, useOfflineQuery } from "@/lib/sync/queryCache";
 import { useQuery } from "@/lib/convex/queries";
-import { dueLabel } from "@/lib/format";
 import { folderHex } from "@/lib/folderColors";
 import { noteFromText } from "@/lib/desktop/capabilities";
 import { useToast, errorMessage } from "@/components/ui/Toast";

@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 35;
+export const CONTRACT_REVISION = 36;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2376,6 +2376,31 @@ export interface ChatMemoryArgs {
   save: boolean;
 }
 
+/** One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 36). */
+export interface SettingsAskOption {
+  /** The setting's key, as the app knows it ("appearance/Theme"); only keys from the list come back. */
+  key: string;
+  title: string;
+  /** Its section's name as the list shows it ("Appearance"). */
+  section: string;
+}
+
+/**
+ * `ai.settingsSearch` (revision 36): Settings' Ask Foli AI. The person's words and the settings this person has;
+ * Foli AI picks up to three that do what they asked (convex/ai.ts settingsSearch). An account's only.
+ */
+export interface SettingsAskArgs {
+  space?: SpaceRef;
+  query: string;
+  options: SettingsAskOption[];
+}
+
+/** Foli AI's picks (keys from the options, best first) and one sentence on what to change. */
+export interface SettingsAskResult {
+  keys: string[];
+  answer: string;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Revision 8: the Mac frame's R8.5 to R8.9, research, the agent's changes, the profile picture
 // ---------------------------------------------------------------------------------------------------------------
@@ -4265,6 +4290,7 @@ export interface CommandMap {
   "text.layout": { args: TextLayoutArgs; result: TextLayoutResult };
   "workspace.create": { args: WorkspaceCreateArgs; result: WorkspaceCreateResult };
   "inbox.open": { args: InboxOpenArgs; result: InboxOpenResult };
+  "ai.settingsSearch": { args: SettingsAskArgs; result: SettingsAskResult };
 }
 
 export interface EditorCommandMap {
@@ -4492,6 +4518,7 @@ const commandNames = [
   "workspace.create",
   "folder.setSidebarOrder",
   "inbox.open",
+  "ai.settingsSearch",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

@@ -110,4 +110,14 @@ describe("Foli AI chat", () => {
     await command("ai.edit", { conversationId: "c1", messageId: "m1", text: "Again?" });
     expect(r.client.actions.map((a) => a.name)).toEqual(["aiChat:regenerate", "aiChat:edit"]);
   });
+
+  it("Settings' Ask Foli AI: the words and the offered settings go to ai.settingsSearch; its picks come back", async () => {
+    r.client.act = (name) => (name === "ai:settingsSearch" ? { keys: ["appearance/Theme"], answer: "Pick Dark under Theme." } : null);
+    const options = [{ key: "appearance/Theme", title: "Theme", section: "Appearance" }];
+    const v = await command("ai.settingsSearch", { query: " dark mode please ", options });
+    expect(v).toEqual({ keys: ["appearance/Theme"], answer: "Pick Dark under Theme." });
+    expect(r.client.actions.at(-1)).toMatchObject({ name: "ai:settingsSearch", args: { query: "dark mode please", options } });
+    const bad = await send({ kind: "command", place: PLACE, name: "ai.settingsSearch", args: { query: "x", options: [{ key: 1 }] } });
+    expect(bad.ok).toBe(false);
+  });
 });

@@ -20,9 +20,9 @@ object EngineContract {
     /** The envelope's major version (`v` on every message to the engine). */
     const val PROTOCOL_VERSION = 1
     /** Bumps with every added view, command, editor command, event or field. */
-    const val REVISION = 35
+    const val REVISION = 36
     /** FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current. */
-    const val SCHEMA_HASH = "2ee47af3"
+    const val SCHEMA_HASH = "0f42d5e5"
     /** The handler name the engine posts batches to (`window.foleviEngineHost` on Android). */
     const val MESSAGE_HANDLER = "foleviEngine"
     /** The global the host calls (`__foleviEngine.handle(json)`). */
@@ -278,6 +278,7 @@ enum class CommandName(val value: String) {
     @SerialName("workspace.create") WORKSPACE_CREATE("workspace.create"),
     @SerialName("folder.setSidebarOrder") FOLDER_SET_SIDEBAR_ORDER("folder.setSidebarOrder"),
     @SerialName("inbox.open") INBOX_OPEN("inbox.open"),
+    @SerialName("ai.settingsSearch") AI_SETTINGS_SEARCH("ai.settingsSearch"),
     ;
 
     companion object {
@@ -594,6 +595,7 @@ object Commands {
     fun textLayout(texts: List<String>, family: TextLayoutArgs.Family, pxSize: Double, pxLineHeight: Double, weight: Long? = null, pxLetterSpacing: Double? = null, pxWidth: Double, wrap: TextLayoutArgs.Wrap, pre: Boolean? = null, clamp: Long? = null): CommandSpec<TextLayoutArgs, TextLayoutResult> = CommandSpec("text.layout", TextLayoutArgs(texts = texts, family = family, pxSize = pxSize, pxLineHeight = pxLineHeight, weight = weight, pxLetterSpacing = pxLetterSpacing, pxWidth = pxWidth, wrap = wrap, pre = pre, clamp = clamp), TextLayoutArgs.serializer(), TextLayoutResult.serializer())
     fun workspaceCreate(name: String): CommandSpec<WorkspaceCreateArgs, WorkspaceCreateResult> = CommandSpec("workspace.create", WorkspaceCreateArgs(name = name), WorkspaceCreateArgs.serializer(), WorkspaceCreateResult.serializer())
     fun inboxOpen(space: SpaceRef? = null): CommandSpec<InboxOpenArgs, InboxOpenResult> = CommandSpec("inbox.open", InboxOpenArgs(space = space), InboxOpenArgs.serializer(), InboxOpenResult.serializer())
+    fun aiSettingsSearch(space: SpaceRef? = null, query: String, options: List<SettingsAskOption>): CommandSpec<SettingsAskArgs, SettingsAskResult> = CommandSpec("ai.settingsSearch", SettingsAskArgs(space = space, query = query, options = options), SettingsAskArgs.serializer(), SettingsAskResult.serializer())
 }
 
 /** Editor commands. */
@@ -920,6 +922,7 @@ object EngineCatalog {
         "text.layout" to TextLayoutArgs.serializer(),
         "workspace.create" to WorkspaceCreateArgs.serializer(),
         "inbox.open" to InboxOpenArgs.serializer(),
+        "ai.settingsSearch" to SettingsAskArgs.serializer(),
     )
     val commandResults: Map<String, KSerializer<*>> = mapOf(
         "space.switch" to SpaceSwitchResult.serializer(),
@@ -1075,6 +1078,7 @@ object EngineCatalog {
         "text.layout" to TextLayoutResult.serializer(),
         "workspace.create" to WorkspaceCreateResult.serializer(),
         "inbox.open" to InboxOpenResult.serializer(),
+        "ai.settingsSearch" to SettingsAskResult.serializer(),
     )
     val editorArgs: Map<String, KSerializer<*>> = mapOf(
         "note.prepare" to NotePrepareArgs.serializer(),

@@ -2964,6 +2964,34 @@ data class ChatMemoryArgs(
     val save: Boolean,
 )
 
+/** One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 36). */
+@Serializable
+data class SettingsAskOption(
+    /** The setting's key, as the app knows it ("appearance/Theme"); only keys from the list come back. */
+    val key: String,
+    val title: String,
+    /** Its section's name as the list shows it ("Appearance"). */
+    val section: String,
+)
+
+/**
+ * `ai.settingsSearch` (revision 36): Settings' Ask Foli AI. The person's words and the settings this person has;
+ * Foli AI picks up to three that do what they asked (convex/ai.ts settingsSearch). An account's only.
+ */
+@Serializable
+data class SettingsAskArgs(
+    val space: SpaceRef? = null,
+    val query: String,
+    val options: List<SettingsAskOption>,
+)
+
+/** Foli AI's picks (keys from the options, best first) and one sentence on what to change. */
+@Serializable
+data class SettingsAskResult(
+    val keys: List<String>,
+    val answer: String,
+)
+
 /** R8.6: a macOS banner's action. */
 @Serializable
 data class NotificationActArgs(

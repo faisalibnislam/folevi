@@ -4949,6 +4949,46 @@ public struct ChatMemoryArgs: Codable, Hashable, Sendable {
     }
 }
 
+/// One setting Settings offers Foli AI to pick from (`ai.settingsSearch`, revision 36).
+public struct SettingsAskOption: Codable, Hashable, Sendable {
+    /// The setting's key, as the app knows it ("appearance/Theme"); only keys from the list come back.
+    public var key: String
+    public var title: String
+    /// Its section's name as the list shows it ("Appearance").
+    public var section: String
+
+    public init(key: String, title: String, section: String) {
+        self.key = key
+        self.title = title
+        self.section = section
+    }
+}
+
+/// `ai.settingsSearch` (revision 36): Settings' Ask Foli AI. The person's words and the settings this person has;
+/// Foli AI picks up to three that do what they asked (convex/ai.ts settingsSearch). An account's only.
+public struct SettingsAskArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    public var query: String
+    public var options: [SettingsAskOption]
+
+    public init(space: SpaceRef? = nil, query: String, options: [SettingsAskOption]) {
+        self.space = space
+        self.query = query
+        self.options = options
+    }
+}
+
+/// Foli AI's picks (keys from the options, best first) and one sentence on what to change.
+public struct SettingsAskResult: Codable, Hashable, Sendable {
+    public var keys: [String]
+    public var answer: String
+
+    public init(keys: [String], answer: String) {
+        self.keys = keys
+        self.answer = answer
+    }
+}
+
 /// R8.6: a macOS banner's action.
 public struct NotificationActArgs: Codable, Hashable, Sendable {
     /// The notification's id.

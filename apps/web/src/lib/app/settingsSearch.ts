@@ -1,6 +1,6 @@
 /**
  * Settings search: every setting by its card title, with the everyday words people type for it ("dark mode",
- * "change my email", "cancel subscription"). Matching is local and instant: each word of the query must start a
+ * "change my email", "cancel subscription"). Matching is local and instant: most words of the query must start a
  * word of the title, its section or its keywords, with filler words ("how", "do", "i", "my") ignored, so a
  * question finds the same thing as a keyword.
  */
@@ -38,8 +38,8 @@ export const SETTINGS_INDEX: SettingsHit[] = [
   { section: "writing", title: "Spelling and prediction", words: "spell check autocorrect suggestions typing" },
   { section: "writing", title: "Your dictionary", words: "words spelling add word" },
   { section: "writing", title: "Ignored words", words: "spelling ignore" },
-  { section: "notifications", title: "Notifications", words: "alerts reminders mentions push" },
-  { section: "notifications", title: "Email delivery", words: "emails unsubscribe" },
+  { section: "notifications", title: "Notifications", words: "alerts reminders mentions comments replies push" },
+  { section: "notifications", title: "Email delivery", words: "emails unsubscribe comments replies digest" },
   { section: "notifications", title: "Muted notes", words: "mute silence unmute" },
   { section: "sync", title: "This device", words: "offline sync download cache clear local data" },
   { section: "library", title: "Where your library is", words: "location folder move local" },
@@ -56,7 +56,7 @@ export const SETTINGS_INDEX: SettingsHit[] = [
   { section: "workspace-billing", title: "Workspace plan", words: "team subscription seats billing" },
 ];
 
-const FILLER = new Set(["a", "an", "the", "how", "do", "i", "can", "to", "my", "me", "where", "is", "of", "in", "on", "for", "what", "turn", "set", "change", "find", "make", "want"]);
+const FILLER = new Set(["a", "an", "the", "how", "do", "i", "can", "to", "my", "me", "where", "is", "of", "in", "on", "for", "what", "turn", "set", "change", "find", "make", "want", "about", "stop", "get", "getting", "please", "too", "much", "any", "all", "some", "there", "way"]);
 
 /** The query's words, lower-case, without filler (kept when the query is nothing but filler). */
 function terms(q: string): string[] {
@@ -75,9 +75,11 @@ export function searchSettings(query: string, sectionLabel: (id: string) => stri
     if (label === undefined) continue; // a section this person doesn't have
     const title = hit.title.toLowerCase().split(/[^a-z0-9&-]+/);
     const all = [...title, ...label.toLowerCase().split(/[^a-z0-9&-]+/), ...hit.words.split(" ")];
-    if (!t.every((w) => all.some((x) => x.startsWith(w)))) continue;
+    // Most of the words must match (a question has words no setting uses: "stop emails about comments").
+    const matched = t.filter((w) => all.some((x) => x.startsWith(w) || (w.length > 3 && w.endsWith("s") && x.startsWith(w.slice(0, -1))))).length;
+    if (matched < Math.max(1, Math.ceil(t.length / 2))) continue;
     const inTitle = t.filter((w) => title.some((x) => x.startsWith(w))).length;
-    scored.push({ hit, score: inTitle });
+    scored.push({ hit, score: matched * 10 + inTitle });
   }
   return scored.sort((a, b) => b.score - a.score).map((s) => s.hit);
 }

@@ -81,3 +81,17 @@ Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `We
   its kind (question indigo, action amber, related teal, duplicate clay), the line or note, and what it is
   underneath. "Task" / "Link" and dismiss show on hover (always on touch). Same accessible names as before, so the
   existing tests hold. The iPhone's paper mode uses the same rows.
+
+## Settings: AI contextual search, a Settings title, no section titles; sort hidden on empty lists
+
+- Settings search asks Foli AI when the words don't find it: "Ask Foli AI" under the matches (first, so Return asks,
+  when nothing matches). `ai.settingsSearch` (convex/ai.ts) sends the words and the settings this person has (id,
+  title, section) to the fast model; `packages/ai-prompts/src/settingsSearch.ts` builds the request and keeps only
+  ids from the list (at most 3) plus one sentence. The answer shows above the matches with the picked settings as
+  rows. Only while Foli AI is on. Not seen with a real answer: the dev server has no AI key (it shows "Foli AI isn't
+  set up on this server yet.").
+- Keyword matching is more forgiving: most words must match, plurals and more filler words ("stop", "about").
+- Settings has a "Settings" title above the search; the big section titles ("Account") are gone (kept for screen
+  readers).
+- A note list's Sort button is hidden while the list is empty (Archive, an empty folder).
+- Functions pushed to the dev deployment with `npx convex dev --once`.

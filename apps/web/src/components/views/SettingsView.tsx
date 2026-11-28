@@ -2,7 +2,11 @@
 
 import { isServerEdition } from "@/lib/edition";
 import { useEffect, useRef, useState, type ComponentType } from "react";
-import { searchSettings } from "@/lib/app/settingsSearch";
+import { SETTINGS_INDEX, searchSettings } from "@/lib/app/settingsSearch";
+import { useAiEnabled } from "@/components/ai/useAi";
+import { useAiAction } from "@/components/ai/useAiAction";
+import { AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
+import { api } from "@/lib/convex/api";
 import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, Search, X, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, SpellCheck2, UserRound, UserRoundPlus, Users } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -266,6 +270,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
       <div className="@container">
       <div data-mac-settings-window={settingsWindow ? "" : undefined} className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8 @3xl:grid-cols-[216px_minmax(0,1fr)] @3xl:gap-10">
         <nav aria-label="Settings sections" hidden={settingsWindow} className="@3xl:sticky @3xl:top-6 @3xl:self-start">
+          <p aria-hidden className="ui-display mb-4 px-1 text-title-1 leading-tight">Settings</p>
           <SettingsSearch items={[...groups.flatMap((g) => g.items), ABOUT]} query={query} setQuery={setQuery} />
           <div hidden={query.trim() !== ""} className="flex gap-6 overflow-x-auto pb-1 @3xl:flex-col @3xl:gap-5 @3xl:overflow-visible @3xl:pb-0">
             {groups.map((g) => (
@@ -298,7 +303,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           </div>
         </nav>
         <div className="min-w-0 space-y-5">
-          <h2 className={settingsWindow ? "sr-only" : "ui-display text-large-title leading-tight"}>{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
+          <h2 className="sr-only">{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
           {section === "account" ? <AccountSection /> : null}
           {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
           {section === "billing" ? <BillingSection /> : null}
@@ -520,19 +525,65 @@ function NoWorkspaceCard() {
 /**
  * Settings search: one field above the sections. Typing swaps the section list for the matching settings
  * (lib/app/settingsSearch.ts); a result opens its section at that setting. Arrow keys move, Return opens,
- * Escape clears.
+ * Escape clears. While Foli AI is on, "Ask Foli AI" under the matches sends the words and the settings this person
+ * has to Foli AI (ai.settingsSearch), which picks the ones that do it and says what to change; it's the first row
+ * when nothing matches, so Return asks.
  */
 function SettingsSearch({ items, query, setQuery }: { items: Item[]; query: string; setQuery: (q: string) => void }) {
   const { navigate } = useAppRouter();
+  const { scope } = useAppState();
+  const aiOn = useAiEnabled();
+  const askAi = useAiAction(api.ai.settingsSearch);
   const [at, setAt] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const byId = new Map(items.map((i) => [i.id as string, i]));
   const hits = searchSettings(query, (id) => byId.get(id as Section)?.label).slice(0, 12);
-  const open = (h: (typeof hits)[number]) => {
+  const typing = query.trim() !== "";
+  type Hit = (typeof hits)[number];
+  const [ai, setAi] = useState<{ query: string; busy: boolean; answer: string; picks: Hit[]; error: AiProblem | null } | null>(null);
+  const aiFor = ai && ai.query === query.trim() ? ai : null;
+  const canAsk = aiOn && query.trim().length >= 2;
+  // The rows Return and the arrows move through: Ask Foli AI first when nothing matches, else last.
+  const askAt = canAsk && !aiFor ? (hits.length ? hits.length : 0) : -1;
+  const count = hits.length + (askAt >= 0 ? 1 : 0);
+  const open = (h: Hit) => {
     setQuery("");
+    setAi(null);
     navigate(`/settings/${h.section}?find=${encodeURIComponent(h.title)}`);
   };
-  const typing = query.trim() !== "";
+  const ask = async () => {
+    const q = query.trim();
+    if (!q || aiFor?.busy) return;
+    setAi({ query: q, busy: true, answer: "", picks: [], error: null });
+    const offered = SETTINGS_INDEX.filter((h) => byId.has(h.section));
+    try {
+      const r = await askAi({ scope, query: q, options: offered.map((h) => ({ key: `${h.section}/${h.title}`, title: h.title, section: byId.get(h.section as Section)!.label })) });
+      const picks = r.keys.map((k) => offered.find((h) => `${h.section}/${h.title}` === k)).filter((h): h is Hit => !!h);
+      setAi({ query: q, busy: false, answer: r.answer, picks, error: null });
+    } catch (e) {
+      setAi({ query: q, busy: false, answer: "", picks: [], error: aiProblem(e) });
+    }
+  };
+  const row = (h: Hit, i: number, active: boolean) => {
+    const it = byId.get(h.section);
+    const Icon = it?.icon ?? Search;
+    return (
+      <li key={h.section + h.title}>
+        <button
+          type="button"
+          onClick={() => open(h)}
+          onMouseEnter={() => i >= 0 && setAt(i)}
+          className={`flex w-full items-center gap-2.5 rounded-chip px-2.5 py-1.5 text-left outline-none pointer-coarse:py-2.5 hover:bg-[var(--glass-hover)] ${active ? "bg-[var(--glass-hover)] text-heading" : "text-ink/90"}`}
+        >
+          <Icon size={16} aria-hidden className="flex-none text-muted" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-body">{h.title}</span>
+            <span className="block truncate text-footnote text-muted">{it?.label}</span>
+          </span>
+        </button>
+      </li>
+    );
+  };
   return (
     <div className="mb-5 @3xl:mb-4">
       <label className="flex h-8 items-center gap-2 rounded-chip bg-[var(--glass-hover)] px-2.5 text-callout text-muted focus-within:ring-2 focus-within:ring-focus pointer-coarse:h-11">
@@ -546,49 +597,71 @@ function SettingsSearch({ items, query, setQuery }: { items: Item[]; query: stri
             setAt(0);
           }}
           onKeyDown={(e) => {
-            if (e.key === "ArrowDown") setAt((a) => Math.min(a + 1, hits.length - 1));
+            if (e.key === "ArrowDown") setAt((a) => Math.min(a + 1, count - 1));
             else if (e.key === "ArrowUp") setAt((a) => Math.max(a - 1, 0));
+            else if (e.key === "Enter" && at === askAt) void ask();
             else if (e.key === "Enter" && hits[at]) open(hits[at]);
             else if (e.key === "Escape") setQuery("");
             else return;
             e.preventDefault();
           }}
-          placeholder="Search settings"
+          placeholder={aiOn ? "Search or describe a setting" : "Search settings"}
           aria-label="Search settings"
           aria-controls="settings-search-results"
           className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
         />
         {typing ? (
-          <button type="button" aria-label="Clear search" onClick={() => { setQuery(""); input.current?.focus(); }} className="flex-none text-muted hover:text-heading">
+          <button type="button" aria-label="Clear search" title="Clear search" onClick={() => { setQuery(""); input.current?.focus(); }} className="flex-none text-muted hover:text-heading">
             <X size={14} aria-hidden />
           </button>
         ) : null}
       </label>
       {typing ? (
-        <ul id="settings-search-results" className="mt-2 flex flex-col gap-0.5" aria-label="Matching settings">
-          {hits.map((h, i) => {
-            const it = byId.get(h.section);
-            const Icon = it?.icon ?? Search;
-            return (
-              <li key={h.section + h.title}>
-                <button
-                  type="button"
-                  onClick={() => open(h)}
-                  onMouseEnter={() => setAt(i)}
-                  className={`flex w-full items-center gap-2.5 rounded-chip px-2.5 py-1.5 text-left outline-none pointer-coarse:py-2.5 ${i === at ? "bg-[var(--glass-hover)] text-heading" : "text-ink/90"}`}
-                >
-                  <Icon size={16} aria-hidden className="flex-none text-muted" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-body">{h.title}</span>
-                    <span className="block truncate text-footnote text-muted">{it?.label}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-          {hits.length === 0 ? <li className="px-2.5 py-1.5 text-footnote text-muted">No settings match. Try another word.</li> : null}
-        </ul>
+        <div id="settings-search-results" className="mt-2 flex flex-col gap-2">
+          {aiFor ? (
+            <section aria-label="Foli AI’s answer" aria-live="polite" className="rounded-control border border-[var(--color-line)] bg-surface p-2">
+              <div className="flex items-start gap-2 px-1 pb-1 text-footnote text-ink">
+                <AiIcon size={14} aria-hidden className="mt-0.5 flex-none" />
+                {aiFor.error ? (
+                  <AiProblemNotice problem={aiFor.error} className="text-footnote text-muted" />
+                ) : (
+                  <span>{aiFor.busy ? "Looking through your settings…" : aiFor.answer || "Foli AI couldn’t find a setting for that."}</span>
+                )}
+              </div>
+              {aiFor.picks.length ? <ul className="flex flex-col gap-0.5">{aiFor.picks.map((h) => row(h, -1, false))}</ul> : null}
+            </section>
+          ) : null}
+          {hits.length || askAt >= 0 ? (
+            <ul className="flex flex-col gap-0.5" aria-label="Matching settings">
+              {askAt === 0 ? <AskRow query={query.trim()} active={at === 0} onAsk={() => void ask()} onHover={() => setAt(0)} /> : null}
+              {hits.map((h, i) => row(h, askAt === 0 ? i + 1 : i, (askAt === 0 ? i + 1 : i) === at))}
+              {askAt > 0 ? <AskRow query={query.trim()} active={at === askAt} onAsk={() => void ask()} onHover={() => setAt(askAt)} /> : null}
+            </ul>
+          ) : !aiFor ? (
+            <p className="px-2.5 py-1.5 text-footnote text-muted">No settings match. Try another word.</p>
+          ) : null}
+        </div>
       ) : null}
     </div>
+  );
+}
+
+/** "Ask Foli AI" in the search results: sends what was typed to Foli AI. */
+function AskRow({ query, active, onAsk, onHover }: { query: string; active: boolean; onAsk: () => void; onHover: () => void }) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onAsk}
+        onMouseEnter={onHover}
+        className={`flex w-full items-center gap-2.5 rounded-chip px-2.5 py-1.5 text-left outline-none pointer-coarse:py-2.5 hover:bg-[var(--glass-hover)] ${active ? "bg-[var(--glass-hover)] text-heading" : "text-ink/90"}`}
+      >
+        <AiIcon size={16} aria-hidden className="flex-none" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-body">Ask Foli AI</span>
+          <span className="block truncate text-footnote text-muted">“{query}”</span>
+        </span>
+      </button>
+    </li>
   );
 }

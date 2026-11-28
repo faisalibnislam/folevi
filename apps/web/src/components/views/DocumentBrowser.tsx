@@ -599,7 +599,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
         filter={filterField(false)}
         controls={
           <>
-            <ColumnSort value={sort} onChange={setSort} />
+            {/* Nothing to sort in an empty list (the owner: not on an empty Archive or folder). */}
+            {listEmpty ? null : <ColumnSort value={sort} onChange={setSort} />}
             {/* (A folder's options, Share among them, are its right-click menu in the sidebar: the column's head keeps to
                 Sort.) */}
             {view === "trash" && results.length ? (

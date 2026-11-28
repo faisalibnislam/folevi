@@ -28,6 +28,7 @@ import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blocksToMarkdown } from "@folevi/editor-schema";
+import { SETTINGS_SEARCH_MAX_OPTIONS, SETTINGS_SEARCH_MAX_QUERY, parseSettingsSearch, settingsSearchRequest } from "@folevi/ai-prompts/settingsSearch";
 import { accessAtLeast, documentAccess, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
@@ -986,6 +987,34 @@ export const brief = action({
       const cited = citedIndexes(answer);
       return { answer, sources: notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => cited.has(n.i)).map(({ id, title }) => ({ id, title })) };
     }, undefined, provided);
+  },
+});
+
+/**
+ * Settings search with Foli AI: the person's words and the settings the app offers them (id, title, section); the
+ * fast model picks up to three that do what they asked and says in one sentence what to change. Only ids from the
+ * list come back (packages/ai-prompts/src/settingsSearch.ts). Settings asks only when the person chooses "Ask Foli AI".
+ */
+export const settingsSearch = action({
+  args: {
+    ownKey: v.optional(vOwnKey),
+    scope: vScopeArg,
+    query: v.string(),
+    options: v.array(v.object({ key: v.string(), title: v.string(), section: v.string() })),
+  },
+  handler: async (ctx, args): Promise<{ keys: string[]; answer: string }> => {
+    await requireIdentity(ctx);
+    const query = args.query.trim().slice(0, SETTINGS_SEARCH_MAX_QUERY);
+    if (!query) return { keys: [], answer: "" };
+    if (args.options.length > SETTINGS_SEARCH_MAX_OPTIONS) fail("invalid_argument", "Too many settings.");
+    const options = args.options.map((o) => ({ key: o.key.slice(0, 80), title: o.title.slice(0, 80), section: o.section.slice(0, 40) }));
+    const inputChars = PERSONA.length + 700 + query.length + options.reduce((n, o) => n + o.key.length + o.title.length + o.section.length + 8, 0);
+    const plan: PlannedCall[] = [{ fast: true, inputChars, maxOutputTokens: 200 }];
+    const { holdId } = await beginRequest(ctx, { scope: args.scope, plan, feature: "chat" }, args.ownKey);
+    return await metered(ctx, holdId, async (meter) => {
+      const answer = await gemini(settingsSearchRequest({ query, options }), meter);
+      return parseSettingsSearch(answer, new Set(options.map((o) => o.key)));
+    });
   },
 });
 

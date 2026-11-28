@@ -20,3 +20,9 @@ describe("settings search", () => {
     expect(searchSettings("  ", label)).toEqual([]);
   });
 });
+
+describe("settings search, forgiving", () => {
+  it("finds a setting when most of the words match", () => {
+    expect(searchSettings("stop emails about comments", (id) => ({ notifications: "Notifications" })[id])[0]?.title).toBe("Email delivery");
+  });
+});

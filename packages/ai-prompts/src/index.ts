@@ -23,3 +23,4 @@ export * as untrustedText from "./untrusted";
 export * as aiActions from "./actions";
 export * as ask from "./ask";
 export * as safety from "./safety";
+export * as settingsSearch from "./settingsSearch";

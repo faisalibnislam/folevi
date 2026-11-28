@@ -30,7 +30,7 @@ export type FolderPreview = { cover: DocumentCover; title?: string; excerpt?: st
 export const FOLDER_CARD_BOX = "group relative aspect-square select-none [container-type:inline-size]";
 /** What lifts on hover: the whole drawing. */
 export const FOLDER_CARD_FRAME =
-  "absolute inset-0 block rounded-folder outline-none transition-transform duration-200 ease-[var(--ease-folio)] hover:-translate-y-1";
+  "absolute inset-0 block rounded-folder outline-none transition-transform duration-200 ease-[var(--ease-folio)] hover:-translate-y-1 group-hover:-translate-y-1";
 
 /** Where the back starts, as a share of the card's height: the notes stand in the space above it. */
 const BACK_TOP = 17;
@@ -53,11 +53,12 @@ const BACK_MASK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='htt
 const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(#n)'/></svg>`)}")`;
 
 /**
- * Where the folder's "…" menu appears on hover: the frosted front's top-right corner, 8 px in, the same raised
- * chip as a note card's "…" (shown on hover or focus, always on touch).
+ * Where the folder's "…" menu appears on hover: the front's top-right corner, 3 px in from the top and the side, the
+ * same raised chip as a note card's "…" (shown on hover or focus, always on touch). It lifts with the card (the
+ * card lifts while the pointer is anywhere on it, the "…" too), so the two gaps stay equal (the owner, 28 November 2026).
  */
 export const FOLDER_CARD_MENU =
-  "ui-raised absolute top-[calc(45%+3px)] right-[3px] z-10 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
+  "ui-raised absolute top-[calc(45%+3px)] right-[3px] z-10 rounded-chip opacity-0 transition-[opacity,translate] duration-200 ease-[var(--ease-folio)] group-hover:-translate-y-1 group-hover:opacity-100 pointer-coarse:opacity-100";
 
 /** The "…" button's look inside FOLDER_CARD_MENU, for pictures of the card (the app uses its MenuButton). */
 export function FolderCardMenuLook() {
@@ -193,8 +194,11 @@ export function FolderCardArt({
         <FolderNote key={i} note={p} depth={shown.length - 1 - i} top={noteTop} />
       ))}
       {/* the front, with the name, the counts and the last change */}
-      <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-folder px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
-        <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.1] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
+      {/* No overflow clip on the front: at some fractional pixel positions Chrome's clip cut about a pixel off a card's
+          right edge, its light edge and round corners with it (the owner, 28 November 2026). The grain is rounded on its
+          own instead, and the words keep to their lines (line clamp and truncate). */}
+      <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col rounded-folder px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
+        <span aria-hidden className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-[0.1] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
         <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} ${nameLines === 1 ? "block truncate" : nameLines === 2 ? "line-clamp-2" : "line-clamp-2 @max-[150px]:block @max-[150px]:truncate"} text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)*var(--fc-name,1)),30px)] font-semibold leading-[1.25]`}>
           {name}
         </span>

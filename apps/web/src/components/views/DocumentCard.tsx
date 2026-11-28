@@ -88,7 +88,7 @@ function useFitLines(title: string) {
  * pale gap.
  */
 export const NOTE_CARD_LINK =
-  "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-small shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.08),-4px_18px_30px_-18px_rgb(20_20_30/0.07),0_2px_5px_rgb(20_20_30/0.015)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.09),-5px_24px_36px_-18px_rgb(20_20_30/0.09),0_3px_8px_rgb(20_20_30/0.02)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+  "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-small shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.08),-4px_18px_30px_-18px_rgb(20_20_30/0.07),0_2px_5px_rgb(20_20_30/0.015)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.09),-5px_24px_36px_-18px_rgb(20_20_30/0.09),0_3px_8px_rgb(20_20_30/0.02)] group-hover:-translate-y-0.5 group-hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.09),-5px_24px_36px_-18px_rgb(20_20_30/0.09),0_3px_8px_rgb(20_20_30/0.02)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 export { noteLook, type CardLook } from "@/lib/cardLook";
 import { noteLook } from "@/lib/cardLook";

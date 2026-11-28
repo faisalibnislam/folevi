@@ -28,6 +28,7 @@ Owner feedback on 28 November 2026, made on the web and in the shared native car
 - Tasks page (web TaskItem, TasksView): no card round the list; rows between hairlines that start at the text; a round 20 px check (rounded-control) with a check on hover, moss when done; one quiet line with the due date (red when late), repeat and the note; priority as a small flag after the title; small caps group headings with counts (Overdue, Today, Upcoming, No date; Upcoming keeps its dates, Completed has none) instead of "Overdue ·" on every row; a quieter footer.
 - Column mode: the area behind the note list and round the open note ([data-note-columns]) is --glass-canvas moved 35% toward --color-surface, light and dark.
 - Generated icons refreshed (Icons.swift, WebIcons.kt) for the icons added today; CI's generated-files check was failing on them.
+- Settings > Account no longer shows the Foli AI on/off card (desktop and iPhone); it stays in Settings > Foli AI.
 - /dev/folder-states shows the subfolder row as a folder page draws it (143 px, labels scaled, one-line name).
 
 Not changed: the owner saw New folder in a folder close without making the folder (screen recording, right after signing in again). It did not reproduce from a fresh load on the dev deployment: short names and the parent's own name both made the folder at once, and nothing from the recorded attempts reached the server. Worth watching for after a session-ended sign-in.

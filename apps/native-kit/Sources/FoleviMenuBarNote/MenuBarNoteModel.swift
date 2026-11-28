@@ -1,7 +1,7 @@
-// The menu bar note's state (owner decisions, 2026-11-28): one real Folevi note at a time, in Folevi's own editor (the
-// float page without its bar). Typing on the empty page makes a new note in the destination, Drafts by default; it
-// syncs like any other note (the account, or an iCloud library). New starts another. The note shown and where new
-// notes go are remembered per place. Folevi itself is reached only through `host`.
+// The menu bar note's state (owner decisions, 2026-11-28): Home's quick note under the menu bar. One plain text box;
+// Save (⌘Return) makes a note of it in Drafts, or the folder picked (its first line the title, as on Home), with the
+// screenshots taken, and the box empties, with Open and Undo. Add as a task makes the first line a task. What's
+// written and not saved yet is kept per place; so is where notes go. Folevi itself is reached only through `host`.
 import AppKit
 import Observation
 import SwiftUI
@@ -15,18 +15,36 @@ public final class MenuBarNoteModel {
     @ObservationIgnored let screenshots = ScreenshotService()
     @ObservationIgnored weak var panel: PanelController?
 
+    /// What's in the box (kept per place in `settings.drafts`).
+    var text: String = "" {
+        didSet { if text != oldValue { settings.drafts[place] = text.isEmpty ? nil : text } }
+    }
+    /// The screenshots that go with the note.
+    var images: [MenuNoteImage] = []
+    /// A save or a task on its way (the buttons wait).
+    var busy = false
+    /// Bumped to give the box the keyboard (the panel opening, after a save).
+    var focusRequest = 0
+
     /// The spaces of the place and their folders, as the host last listed them (nil before the first answer).
     var spaces: [NoteSpace]?
     var spacesError: String?
-    var toast: String?
-    /// The toast's one button (Open Settings).
-    @ObservationIgnored var toastAction: ToastAction?
-    struct ToastAction {
-        let title: String
-        let run: () -> Void
-    }
+    var toast: Toast?
     public internal(set) var isPanelVisible = false
     @ObservationIgnored private var toastTask: Task<Void, Never>?
+    @ObservationIgnored private var loadedPlace: String?
+
+    struct Toast: Equatable {
+        struct Action: Equatable, Identifiable {
+            let id = UUID()
+            let title: String
+            static func == (a: Action, b: Action) -> Bool { a.id == b.id }
+        }
+        let id = UUID()
+        var message: String
+        var actions: [Action] = []
+    }
+    @ObservationIgnored private var toastHandlers: [UUID: () -> Void] = [:]
 
     public init(settings: MenuBarNoteSettings) {
         self.settings = settings
@@ -34,86 +52,98 @@ public final class MenuBarNoteModel {
 
     private var place: String { host?.placeID ?? "default" }
 
-    // MARK: Paths (pure: tests)
+    /// Something to save: words, or at least a screenshot.
+    var canSave: Bool { !busy && (!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty) }
+    var canAddTask: Bool { !busy && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
-    /// The page of a note in the panel: the float page without its bar.
-    nonisolated static func notePath(_ id: String) -> String {
-        "/float/\(id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/?#"))) ?? id)?panel=1"
-    }
-
-    /// The empty page that makes a note in `destination` once something is typed.
-    nonisolated static func composerPath(_ destination: NoteDestination) -> String {
-        var c = URLComponents()
-        c.path = "/float/new"
-        var items = [URLQueryItem(name: "panel", value: "1"), URLQueryItem(name: "space", value: destination.space)]
-        if let folder = destination.folderId { items.append(URLQueryItem(name: "folder", value: folder)) }
-        c.queryItems = items
-        return c.string ?? "/float/new?panel=1"
-    }
-
-    /// The note a panel path shows, nil for the empty page or anything else.
-    nonisolated static func noteID(inPath path: String) -> String? {
-        guard let c = URLComponents(string: path), c.path.hasPrefix("/float/") else { return nil }
-        let id = String(c.path.dropFirst("/float/".count))
-        guard !id.isEmpty, id != "new", !id.contains("/") else { return nil }
-        return id.removingPercentEncoding ?? id
-    }
-
-    // MARK: The note
-
-    /// The note this place's panel shows, if one was made.
-    var noteID: String? { settings.notes[place] }
-
-    /// Loads this place's note (or the empty page) into the view, unless it shows it already.
-    func prepareNote() {
-        guard let host else { return }
-        let want = noteID.map(Self.notePath) ?? Self.composerPath(destination)
-        if let current = host.currentPath {
-            if let id = noteID, Self.noteID(inPath: current) == id { return }
-            if noteID == nil, current.hasPrefix("/float/new") { return }
+    /// The panel is showing: this place's unsaved words in the box, which takes the keyboard.
+    func prepare() {
+        if loadedPlace != place {
+            loadedPlace = place
+            text = settings.drafts[place] ?? ""
+            images = []
         }
-        host.load(path: want)
+        focusRequest += 1
     }
 
-    /// The view moved to another page: a new note was made by typing (its id is remembered for this place).
-    public func pathChanged(_ path: String) {
-        guard let id = Self.noteID(inPath: path), settings.notes[place] != id else { return }
-        settings.notes[place] = id
-    }
-
-    /// New (⌘N): an empty page; typing on it makes a note in the destination.
-    func newNote() {
-        settings.notes[place] = nil
-        host?.load(path: Self.composerPath(destination))
-        host?.focusNote()
-    }
-
-    /// Send to Folevi (⌘↩): the note opens in Folevi's main window, and the panel starts a new empty note.
-    func sendToFolevi() {
-        guard let id = noteID, let host else { return showToast("Write something first.") }
-        Task { [weak self] in
-            guard await !host.noteIsEmpty() else { self?.showToast("Write something first."); return }
-            host.flush()
-            self?.newNote()
-            host.openInFolevi(path: "/d/\(id)")
-        }
-    }
-
-    /// The note in Folevi's main window.
-    func openInFolevi() {
-        guard let id = noteID else { return }
-        host?.openInFolevi(path: "/d/\(id)")
-    }
-
-    /// The place changed: its own note and destination.
+    /// Another place opened: its own words and destination.
     public func placeChanged() {
         spaces = nil
-        if isPanelVisible { prepareNote(); refreshDestinations() }
+        loadedPlace = nil
+        if isPanelVisible { prepare(); refreshDestinations() }
+    }
+
+    // MARK: Save
+
+    /// Save (⌘Return): a note of the box in the destination; the box empties, with Open and Undo.
+    func save() {
+        guard canSave, let host else { return }
+        let destination = destination
+        let payload = MenuNotePayload(destination: destination, text: text, images: images)
+        let keptText = text, keptImages = images
+        busy = true
+        Task { [weak self] in
+            do {
+                let id = try await host.save(payload)
+                guard let self else { return }
+                self.busy = false
+                self.text = ""
+                self.images = []
+                self.focusRequest += 1
+                self.showToast("Saved to \(destination.label)", actions: [
+                    ("Open", { [weak self] in self?.host?.openInFolevi(path: "/d/\(id)") }),
+                    ("Undo", { [weak self] in self?.undoSave(id, text: keptText, images: keptImages) }),
+                ], duration: 8)
+            } catch {
+                self?.busy = false
+                self?.showToast(error.localizedDescription, duration: 8)
+            }
+        }
+    }
+
+    private func undoSave(_ id: String, text: String, images: [MenuNoteImage]) {
+        self.text = text
+        self.images = images
+        focusRequest += 1
+        guard let host else { return }
+        Task { [weak self] in
+            do {
+                try await host.undoSave(noteID: id)
+                self?.showToast("The note went to the Trash. Your words are back.")
+            } catch {
+                self?.showToast("Your words are back. Folevi couldn't move the note to the Trash: \(error.localizedDescription)", duration: 8)
+            }
+        }
+    }
+
+    /// Add as a task: the first line as a task where the note would go (Home's button).
+    func addTask() {
+        guard canAddTask, let host else { return }
+        let destination = destination
+        let value = text
+        busy = true
+        Task { [weak self] in
+            do {
+                try await host.addTask(value, space: destination.space)
+                guard let self else { return }
+                self.busy = false
+                self.text = ""
+                self.focusRequest += 1
+                self.showToast("Task added", actions: [("Open Tasks", { [weak self] in self?.host?.openInFolevi(path: "/tasks") })], duration: 6)
+            } catch {
+                self?.busy = false
+                self?.showToast(error.localizedDescription, duration: 8)
+            }
+        }
+    }
+
+    func removeImage(_ id: UUID) {
+        images.removeAll { $0.id == id }
     }
 
     // MARK: Destination
 
-    /// Where new notes go: the one picked for this place (if it's still there), else Personal › Drafts.
+    /// Where notes go: the one picked for this place (if it's still there), else Personal › Drafts.
     var destination: NoteDestination {
         let saved = settings.destinations[place]
         if let spaces, let saved { return saved.resolved(in: spaces) ?? .personalDrafts }
@@ -122,9 +152,7 @@ public final class MenuBarNoteModel {
 
     func choose(_ destination: NoteDestination) {
         settings.destinations[place] = destination
-        // The empty page makes its note in the new place.
-        if noteID == nil { host?.load(path: Self.composerPath(destination)) }
-        host?.focusNote()
+        focusRequest += 1
     }
 
     func refreshDestinations() {
@@ -142,7 +170,7 @@ public final class MenuBarNoteModel {
 
     // MARK: Screenshots
 
-    /// A screenshot into the note at the caret, the way macOS's own work: Screen Recording asked for once (ScreenshotService).
+    /// A screenshot for the note, the way macOS's own work: Screen Recording asked for once (ScreenshotService).
     func capture(_ mode: ScreenshotService.Mode = .region) {
         Task { await performCapture(mode) }
     }
@@ -162,7 +190,7 @@ public final class MenuBarNoteModel {
             return
         case .needsPermission:
             panel.show()
-            return showToast("Allow Folevi under Screen Recording in System Settings, then take the screenshot again.", action: ("Open Settings", { ScreenshotService.openPrivacySettings() }), duration: 10)
+            return showToast("Allow Folevi under Screen Recording in System Settings, then take the screenshot again.", actions: [("Open Settings", { ScreenshotService.openPrivacySettings() })], duration: 10)
         }
         if settings.screenshotSound { ScreenshotService.playShutter() }
         var final = image
@@ -177,26 +205,36 @@ public final class MenuBarNoteModel {
             return showToast("Folevi couldn't keep that screenshot.")
         }
         let name = "Screenshot \(Date.now.formatted(date: .abbreviated, time: .shortened)).\(encoded.type.preferredFilenameExtension ?? "png")"
-        do {
-            try await host?.insertImage(encoded.data, mime: encoded.type.preferredMIMEType ?? "image/png", name: name)
-        } catch {
-            showToast(error.localizedDescription)
-        }
+        images.append(MenuNoteImage(mime: encoded.type.preferredMIMEType ?? "image/png", name: name, data: encoded.data))
+        focusRequest += 1
     }
 
     // MARK: Toast
 
-    func showToast(_ message: String, action: (String, () -> Void)? = nil, duration: TimeInterval = 5) {
-        toastAction = action.map { ToastAction(title: $0.0, run: $0.1) }
-        Motion.animate(Motion.spring) { toast = message }
+    func showToast(_ message: String, actions: [(String, () -> Void)] = [], duration: TimeInterval = 5) {
+        toastHandlers.removeAll()
+        var toast = Toast(message: message)
+        for (title, run) in actions {
+            let action = Toast.Action(title: title)
+            toast.actions.append(action)
+            toastHandlers[action.id] = run
+        }
+        Motion.animate(Motion.spring) { self.toast = toast }
         NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
                              userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
         toastTask?.cancel()
+        let id = toast.id
         toastTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(duration))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, self?.toast?.id == id else { return }
             Motion.animate(Motion.fade) { self?.toast = nil }
         }
+    }
+
+    func perform(_ action: Toast.Action) {
+        let run = toastHandlers[action.id]
+        Motion.animate(Motion.fade) { toast = nil }
+        run?()
     }
 
     func hidePanel() { panel?.hide() }

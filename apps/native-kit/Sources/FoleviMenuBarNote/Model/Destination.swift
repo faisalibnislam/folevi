@@ -45,9 +45,12 @@ public struct NoteSpace: Codable, Equatable, Sendable, Identifiable {
     public var name: String
     public var kind: String
     public var canEdit: Bool
+    /// Its mark: your picture for Personal, the workspace's logo (nil: the initial of `markName`).
+    public var imageUrl: String?
+    public var markName: String?
     public var folders: [NoteFolder]
-    public init(id: String, name: String, kind: String, canEdit: Bool, folders: [NoteFolder]) {
-        self.id = id; self.name = name; self.kind = kind; self.canEdit = canEdit; self.folders = folders
+    public init(id: String, name: String, kind: String, canEdit: Bool, imageUrl: String? = nil, markName: String? = nil, folders: [NoteFolder]) {
+        self.id = id; self.name = name; self.kind = kind; self.canEdit = canEdit; self.imageUrl = imageUrl; self.markName = markName; self.folders = folders
     }
 }
 
@@ -57,32 +60,39 @@ public struct MenuBarNoteError: Error, LocalizedError, Sendable {
     public var errorDescription: String? { message }
 }
 
-/// The Mac app's side: the note's page (a web view on Folevi's own editor), its place and its menus.
+/// A screenshot taken into the panel, sent with the note.
+public struct MenuNoteImage: Sendable, Equatable, Identifiable {
+    public let id = UUID()
+    public var mime: String
+    public var name: String
+    public var data: Data
+    public init(mime: String, name: String, data: Data) { self.mime = mime; self.name = name; self.data = data }
+}
+
+/// What Save hands the host: a new note of `text` (its first line the title, as Home's quick note) with the images.
+public struct MenuNotePayload: Sendable, Equatable {
+    public var destination: NoteDestination
+    public var text: String
+    public var images: [MenuNoteImage]
+}
+
+/// The Mac app's side: a quiet page of its place that saves, lists folders and adds tasks, and its menus.
 @MainActor
 public protocol MenuBarNoteHost: AnyObject {
-    /// The place the note belongs to (the one the main windows show).
+    /// The place notes go to (the one the main windows show).
     var placeID: String { get }
     /// The global shortcut as the panel shows it ("⌥Space"), nil when there's none.
     var shortcutLabel: String? { get }
-    /// The web view showing the note (made once, kept).
-    var noteView: NSView { get }
-    /// Sends the note's view to an app path (`MenuBarNoteModel.notePath`, `composerPath`).
-    func load(path: String)
-    /// The path the view shows now, nil before it loaded one.
-    var currentPath: String? { get }
-    /// The spaces of the place and their folders, from the note's page.
+    /// The spaces of the place and their folders.
     func destinations() async throws -> [NoteSpace]
-    /// Whether the note shown has nothing in it yet (no title, text or picture).
-    func noteIsEmpty() async -> Bool
-    /// Puts an image into the note at the caret (uploaded with it, as a paste would).
-    func insertImage(_ data: Data, mime: String, name: String) async throws
-    /// Gives the note the keyboard.
-    func focusNote()
-    /// Tells the page to save now (the panel hides, the app quits).
-    func flush()
-    /// Opens the note in Folevi's main window.
+    /// Makes the note; returns its id.
+    func save(_ payload: MenuNotePayload) async throws -> String
+    /// The text's first line as a task in `space` (Home's Add as a task).
+    func addTask(_ text: String, space: String) async throws
+    /// Undo of a save: the note to the Trash.
+    func undoSave(noteID: String) async throws
+    /// Opens a note, or Tasks, in Folevi's main window.
     func openInFolevi(path: String)
-    /// Today's menu bar items (Quick Add Task, New Note, Search, recent notes, places, Open Folevi, Settings,
-    /// Quit), added to the panel's menu.
+    /// Today's menu bar items, added to the panel's menu.
     func appMenuItems() -> [NSMenuItem]
 }

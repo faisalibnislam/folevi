@@ -1,5 +1,5 @@
 // The menu bar note's panel: Home's quick note (HomeBlocks.tsx CaptureField) under the menu bar. A plain box in the
-// note's serif face ("What's on your mind?"), the screenshots taken for it, then "Saves to" with the place's mark and
+// notes' serif face (Spectral 16, "What's on your mind?"), the screenshots taken for it, then "Saves to" with the place's mark and
 // folder, Add as a task, Screenshot and Save (⌘Return). Pin on top, Open as a window and "…" float at the top right
 // in one GlassEffectContainer. Colours, sizes and icons are the web's (the web is the standard).
 import AppKit
@@ -103,7 +103,7 @@ struct TopControls: View {
     }
 }
 
-/// The box: plain text in the note's serif face, Home's "What's on your mind?".
+/// The box: plain text as a note's body text, Home's "What's on your mind?".
 struct NoteBox: View {
     @Environment(MenuBarNoteModel.self) private var model
     @Environment(\.colorScheme) private var scheme
@@ -133,9 +133,10 @@ struct PlainTextBox: NSViewRepresentable {
     let focusRequest: Int
     let ink: NSColor
 
-    /// A note's body text in the serif face (editor.css: 17 px, line-height 1.62): the box writes as the note will read.
-    static let size: CGFloat = 17
-    static let lineHeight: CGFloat = (17 * 1.62).rounded()
+    /// Spectral, the notes' serif face, at 16 pt with the serif note's line height (editor.css: line-height 1.62; the
+    /// owner, 2026-11-28: serif, 16 pt).
+    static let size: CGFloat = 16
+    static let lineHeight: CGFloat = (16 * 1.62).rounded()
     static var nsFont: NSFont { FoleviFonts.nsFont(.display, size: size) }
     static var swiftUIFont: Font { FoleviFonts.font(.display, size: size) }
     static let inset = NSSize(width: 6, height: 6)

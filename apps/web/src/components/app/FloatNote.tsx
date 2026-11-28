@@ -10,6 +10,9 @@ import { FloatTabsProvider } from "@/lib/app/tabs";
 import { FloatingContext, type FloatingValue } from "@/lib/app/floatContext";
 import { closeFloat, floatTitle, inPip, openInMainWindow } from "@/lib/app/float";
 import { desktop, registerMenuCommand } from "@/lib/desktop";
+import { useAppRouter } from "@/lib/app/router";
+import { inMenuBarPanel } from "@/lib/desktop/menuBarNote";
+import { MenuBarComposer, useMenuBarCommands } from "./MenuBarNote";
 
 const DocumentView = lazy(() => import("@/components/doc/DocumentView").then((m) => ({ default: m.DocumentView })));
 
@@ -59,15 +62,20 @@ function useNoteColours(root: HTMLElement | null): { paper: string; ink: string 
 }
 
 export function FloatNote({ id }: { id: string }) {
+  // The Mac's menu bar note (`?panel=1`, components/app/MenuBarNote.tsx): the same page without the bar (the panel
+  // has its own), and `/float/new` there is the empty page that makes a note on the first keystroke.
+  const { search } = useAppRouter();
+  const panel = inMenuBarPanel(search);
+  useMenuBarCommands(panel);
   const [title, setTitle] = useState("");
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
   const colours = useNoteColours(rootEl);
   const pip = useMemo(() => inPip(), []);
   useLayoutEffect(() => {
     const root = document.documentElement;
-    root.setAttribute("data-float", pip ? "pip" : "window");
+    root.setAttribute("data-float", panel ? "menu-bar" : pip ? "pip" : "window");
     return () => root.removeAttribute("data-float");
-  }, [pip]);
+  }, [pip, panel]);
   // ⌘W (the Mac's File > Close Tab) closes the floating window: it holds one note.
   useEffect(() => registerMenuCommand("file.close-tab", () => closeFloat(id)), [id]);
   const onTitle = useCallback(
@@ -109,11 +117,15 @@ export function FloatNote({ id }: { id: string }) {
             className="ui-canvas flex h-dvh min-h-0 flex-col overflow-hidden text-ink"
             style={colours ? { ["--float-paper" as string]: colours.paper, ["--float-ink" as string]: colours.ink, background: colours.paper } : undefined}
           >
-            <FloatBar id={id} title={title} tinted={Boolean(colours)} />
+            {panel ? null : <FloatBar id={id} title={title} tinted={Boolean(colours)} />}
             <div className="relative min-h-0 flex-1">
-              <Suspense fallback={null}>
-                <DocumentView documentId={id} />
-              </Suspense>
+              {panel && id === "new" ? (
+                <MenuBarComposer />
+              ) : (
+                <Suspense fallback={null}>
+                  <DocumentView documentId={id} />
+                </Suspense>
+              )}
             </div>
           </div>
         </FloatingContext.Provider>

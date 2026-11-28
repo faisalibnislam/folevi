@@ -1,6 +1,6 @@
 // One light shadow scale for the Mac's native look (the owner, 2026-11-18: "shadows are inconsistent ... I prefer
-// less shadows"): four levels, each lighter than the 16 to 25% drops they replaced, and no shadow written with
-// numbers of its own in the Mac's sources beside them.
+// less shadows"), since 2026-11-28 the app's one hierarchy (docs/SHADOWS.md): each level a step stronger and wider
+// than the one below, the overlay still light, and no shadow written with numbers of its own in the Mac's sources.
 #if os(macOS)
 import Foundation
 import SwiftUI
@@ -10,18 +10,27 @@ import FoleviDesign
 
 @Suite("Native shadows")
 struct NativeShadowTests {
-    @Test func theFourLevelsAreLightAndInOrder() {
-        let levels: [NativeShadow] = [.card, .floating, .overlay]
-        // Each step up is a little stronger and wider, and none is heavier than 13% of black in a light window.
+    /// A level's deepest drop as SwiftUI draws it in a light window: its strength, its radius (half the CSS blur) and
+    /// its offset.
+    static func drop(_ level: NativeShadow) -> (opacity: Double, radius: CGFloat, y: CGFloat) {
+        let l = level.pair.light.last!
+        return (l.color.a, l.blur / 2, l.y)
+    }
+
+    @Test func theLevelsAreLightAndInOrder() {
+        let levels: [NativeShadow] = [.raised, .card, .lifted, .floating, .overlay]
+        // Each step up is at least as strong and wider and lower than the one below.
         for (a, b) in zip(levels, levels.dropFirst()) {
-            #expect(a.opacity < b.opacity)
-            #expect(a.radius < b.radius)
-            #expect(a.y < b.y)
+            let (x, y) = (Self.drop(a), Self.drop(b))
+            #expect(x.opacity <= y.opacity, "\(a) to \(b)")
+            #expect(x.radius < y.radius, "\(a) to \(b)")
+            #expect(x.y < y.y, "\(a) to \(b)")
         }
-        #expect(NativeShadow.overlay.opacity <= 0.13)
-        #expect(NativeShadow.overlay.radius <= 20)
+        // The overlay stays light: at most 20% of black in a light window, blurred at most 22 pt.
+        #expect(Self.drop(.overlay).opacity <= 0.2)
+        #expect(Self.drop(.overlay).radius <= 22)
         // A raised pill: a hairline of shadow, never a drop.
-        #expect(NativeShadow.raised.radius <= 2)
+        #expect(Self.drop(.raised).radius <= 2)
     }
 
     @Test func theLookKeepsHalfOfTheWebsDrawnShadows() {

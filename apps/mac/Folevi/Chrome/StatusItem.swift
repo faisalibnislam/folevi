@@ -1,6 +1,8 @@
-// The menu bar icon (docs/MAC_POLISH_PLAN.md §3.9): Folevi's "F", tinted by the system, and its menu: Quick Add,
+// The menu bar icon (docs/MAC_POLISH_PLAN.md §3.9): Folevi's "F", tinted by the system. A click opens the menu
+// bar note (MenuBarNoteHost.swift, 2026-11-28); a right-click or Control-click shows the menu it had before: Quick Add,
 // New Note, Search; the recent notes (⌘1 to ⌘8 while it's open); the save state with its dot; the places when
-// there are several (choosing one switches); Open Folevi, Settings, Quit. Settings > General can hide it.
+// there are several (choosing one switches); Open Folevi, Settings, Quit. The same items end the menu bar
+// note's own menu (`appItems`). Settings > General can hide the icon.
 import AppKit
 import FoleviDesign
 
@@ -23,11 +25,48 @@ final class StatusItem: NSObject, NSMenuDelegate {
         image?.isTemplate = true
         image?.accessibilityDescription = "Folevi"
         item.button?.image = image
-        item.button?.foleviTooltip = "Folevi"
+        item.button?.foleviTooltip = "Folevi note"
+        item.button?.setAccessibilityLabel("Folevi note")
+        item.button?.target = self
+        item.button?.action = #selector(clicked(_:))
+        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         menu.delegate = self
         menu.autoenablesItems = false
-        item.menu = menu
         self.item = item
+    }
+
+    /// A click opens the menu bar note; a right-click or Control-click, the menu.
+    @objc private func clicked(_ sender: NSStatusBarButton) {
+        let event = NSApp.currentEvent
+        if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
+            guard let item else { return }
+            item.menu = menu
+            item.button?.performClick(nil)
+            item.menu = nil
+            return
+        }
+        MacMenuBarNote.shared.toggle()
+    }
+
+    /// The icon's frame on screen (the menu bar note opens under it), nil before the menu bar has placed it.
+    var buttonScreenFrame: NSRect? {
+        guard let button = item?.button, let window = button.window else { return nil }
+        return window.convertToScreen(button.convert(button.bounds, to: nil))
+    }
+
+    /// Highlighted while the menu bar note shows, as a menu's icon is while its menu is open.
+    func setHighlighted(_ on: Bool) {
+        item?.button?.highlight(on)
+    }
+
+    /// The menu's items for the menu bar note's own menu: the same, with the recent notes in a submenu and no keys
+    /// (the panel's own shortcuts come first there).
+    func appItems() -> [NSMenuItem] {
+        let temp = NSMenu()
+        build(into: temp, forPanel: true)
+        let items = temp.items
+        temp.removeAllItems()
+        return items
     }
 
     /// The menu as it is now (built each time it opens).
@@ -35,12 +74,18 @@ final class StatusItem: NSObject, NSMenuDelegate {
         build(into: menu)
     }
 
-    func build(into menu: NSMenu) {
+    func build(into menu: NSMenu, forPanel: Bool = false) {
         menu.removeAllItems()
-        let quick = add(menu, "Quick Add Task…") { QuickAddPanel.shared.show() }
-        if let (key, mask) = MainMenu.menuKey(DesktopSettings.current.quickAddShortcut) {
-            quick.keyEquivalent = key
-            quick.keyEquivalentModifierMask = mask
+        if !forPanel {
+            let notes = add(menu, "Menu Bar Note") { MacMenuBarNote.shared.show() }
+            if let (key, mask) = MainMenu.menuKey(DesktopSettings.current.quickAddShortcut) {
+                notes.keyEquivalent = key
+                notes.keyEquivalentModifierMask = mask
+            }
+        }
+        add(menu, "Quick Add Task…") {
+            if forPanel { MacMenuBarNote.shared.note.hide() }
+            QuickAddPanel.shared.show()
         }
         add(menu, "New Note") { MainMenu.shared.run("file.new-note"); NSApp.activate() }
         add(menu, "Search Folevi…") { MainMenu.shared.run("file.open-quickly"); NSApp.activate() }
@@ -48,10 +93,20 @@ final class StatusItem: NSObject, NSMenuDelegate {
 
         let several = Chrome.places.count > 1
         if !Chrome.recent.isEmpty {
-            header(menu, "Recent Notes")
+            let target: NSMenu
+            if forPanel {
+                target = NSMenu(title: "Recent Notes")
+                target.autoenablesItems = false
+                let top = NSMenuItem(title: "Recent Notes", action: nil, keyEquivalent: "")
+                top.submenu = target
+                menu.addItem(top)
+            } else {
+                header(menu, "Recent Notes")
+                target = menu
+            }
             for (i, note) in Chrome.recent.prefix(8).enumerated() {
                 let title = note.title.isEmpty ? "Untitled" : note.title
-                let item = add(menu, title, key: "\(i + 1)") { Chrome.open(path: "/d/\(note.id)", place: note.place); NSApp.activate() }
+                let item = add(target, title, key: forPanel ? "" : "\(i + 1)") { Chrome.open(path: "/d/\(note.id)", place: note.place); NSApp.activate() }
                 item.image = NSImage(systemSymbolName: "doc.text", accessibilityDescription: nil)
                 if several, let label = Chrome.placeLabel(note.place) { item.subtitle = label }
             }
@@ -78,12 +133,12 @@ final class StatusItem: NSObject, NSMenuDelegate {
             menu.addItem(.separator())
         }
         add(menu, "Open Folevi") { WindowManager.shared.showMain() }
-        add(menu, "Settings…", key: ",") {
+        add(menu, "Settings…", key: forPanel ? "" : ",") {
             WindowManager.shared.showMain(path: "/settings")
             NSApp.activate()
         }
         menu.addItem(.separator())
-        add(menu, "Quit Folevi", key: "q") { NSApp.terminate(nil) }
+        add(menu, "Quit Folevi", key: forPanel ? "" : "q") { NSApp.terminate(nil) }
     }
 
     // MARK: pieces

@@ -73,10 +73,35 @@ jobs:
           NEXT_PUBLIC_MARKETING_URL: https://folevi.com
         run: pnpm --filter @folevi/web build
 
+  scope:
+    name: What changed
+    # Decides whether this run needs the end-to-end jobs (scripts/ci-scope.mjs). A pull request that changes only
+    # files the web app, Convex and the suite never read (the Mac, iPhone, Android and desktop apps, the handoff,
+    # docs, the version files) skips them. A push to main always runs them, and so does any doubt.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      e2e: ${{ steps.scope.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Two commits: on a pull request the merge commit and what it merges into.
+          fetch-depth: 2
+      - name: Do the end-to-end jobs need to run?
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --name-only HEAD^1 HEAD | node scripts/ci-scope.mjs >> "$GITHUB_OUTPUT" || echo "e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          fi
+
   e2e:
     name: End-to-end (local Convex + Next.js + Playwright) ${{ matrix.shard }}/8
     runs-on: ubuntu-latest
-    needs: checks
+    # Starts with the first job, not after it (2026-11-28): a pull request waits for the slower of the two, and a
+    # lint failure no longer hides what the suite would have said.
+    needs: scope
     timeout-minutes: 45
     # Over 400 tests no longer fit in one job's 45 minutes: eight runners, each with its own backend and an eighth,
     # one browser at a time (with two, the runner's CPU couldn't keep the local backend's queries under its
@@ -86,14 +111,22 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
+      - name: Skipped, this pull request changes nothing these tests read
+        if: needs.scope.outputs.e2e == 'false'
+        run: echo "The scope job found only files the web app, Convex and the suite never read (scripts/ci-scope.mjs)."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.scope.outputs.e2e != 'false'
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: needs.scope.outputs.e2e != 'false'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.scope.outputs.e2e != 'false'
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: needs.scope.outputs.e2e != 'false'
       - name: Start a local, account-free Convex backend
+        if: needs.scope.outputs.e2e != 'false'
         # A page opens 20 or more queries at once just after signing in. On this 2-CPU runner, next to the browser
         # and Next.js, those small queries share the CPU and each one's wall-clock time nears the backend's 1 second
         # limit; one that passes it fails, and the page shows its error screen (ai-attachments, native-lift and
@@ -112,7 +145,9 @@ jobs:
             CONVEX_AGENT_MODE=anonymous npx convex run testSupport:setFeatureFlag "{\"key\":\"$flag\",\"enabled\":true}"
           done
       - run: pnpm --filter @folevi/web exec playwright install --with-deps chromium
+        if: needs.scope.outputs.e2e != 'false'
       - name: Build and start the web app
+        if: needs.scope.outputs.e2e != 'false'
         # A production build, not `next dev`: compiling each page on first visit starved the runner's CPU,
         # and the local Convex backend's 1-second query limit then tripped for every open query at once.
         # `next build` reads apps/web/.env.local written by setup-local, so the build talks to the local backend.
@@ -123,6 +158,7 @@ jobs:
           (cd apps/web && npx next start --port 3000 > ../../web.log 2>&1 &)
           npx --yes wait-on@9.5.1 http://localhost:3000 --timeout 120000
       - name: Playwright
+        if: needs.scope.outputs.e2e != 'false'
         # Account mode only: the local, Mac and iPhone projects need the shell build's dev server (FOLEVI_BUILD=shell,
         # E2E_LOCAL_BASE_URL), which this job doesn't start; against this build local mode reaches Convex and fails.
         run: pnpm --filter @folevi/web exec playwright test --project account --workers 1 --shard ${{ matrix.shard }}/8
@@ -141,30 +177,43 @@ jobs:
   e2e-production:
     name: End-to-end against a production build (service worker, headers)
     runs-on: ubuntu-latest
-    needs: checks
+    # Starts with the first job, not after it (2026-11-28): a pull request waits for the slower of the two, and a
+    # lint failure no longer hides what the suite would have said.
+    needs: scope
     timeout-minutes: 30
     steps:
+      - name: Skipped, this pull request changes nothing these tests read
+        if: needs.scope.outputs.e2e == 'false'
+        run: echo "The scope job found only files the web app, Convex and the suite never read (scripts/ci-scope.mjs)."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.scope.outputs.e2e != 'false'
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: needs.scope.outputs.e2e != 'false'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.scope.outputs.e2e != 'false'
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: needs.scope.outputs.e2e != 'false'
       - name: Start a local, account-free Convex backend
+        if: needs.scope.outputs.e2e != 'false'
         run: |
           CONVEX_AGENT_MODE=anonymous npx convex dev --once --typecheck=disable
           (CONVEX_AGENT_MODE=anonymous npx convex dev --typecheck=disable > convex.log 2>&1 &)
           sleep 10
           node scripts/setup-local.mjs
       - run: pnpm --filter @folevi/web exec playwright install --with-deps chromium
+        if: needs.scope.outputs.e2e != 'false'
       - name: Build and start the production web app
+        if: needs.scope.outputs.e2e != 'false'
         # `next build` reads apps/web/.env.local written by setup-local, so the build talks to the local backend.
         run: |
           pnpm --filter @folevi/web build
           (cd apps/web && npx next start --port 3000 > ../../web.log 2>&1 &)
           npx --yes wait-on@9.5.1 http://localhost:3000 --timeout 120000
       - name: Playwright (production-only checks + offline flows)
+        if: needs.scope.outputs.e2e != 'false'
         run: pnpm --filter @folevi/web exec playwright test production.spec.ts offline.spec.ts
         env:
           E2E_NO_SERVER: "1"

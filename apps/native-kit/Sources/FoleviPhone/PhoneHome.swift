@@ -1,9 +1,9 @@
-// Home on the iPhone, as the web draws it (apps/web/src/components/iphone/IphoneHome.tsx): recent notes as cards
-// in a row, Catch me up as its own card, All notes, Drafts, Foli DNA (Shared with Me where it's off), Changes and
-// Reviews as tiles two by two, Bookmarks (rows in a rounded card), Folders (their cards in a row) and Tags (two
-// lines), and All folders, Shared with Me (when Foli DNA has its tile), the Vault (for someone with one), Templates, Archive and Trash in a card
-// at the end. Everything
-// comes from the engine's `home` view (HomeModel); the frame draws the bar, the large title and the search field.
+// Home on the iPhone: the web's redesigned Home (HomeDashboard.tsx, design version 19) in one column. The date and
+// Customize, the greeting, Catch me up as its own card, the capture field, then this person's blocks in their order
+// (Recent notes, Bookmarks, Recent folders, At a glance as a 2x3 grid, Foli DNA across, Today then My tasks, and the
+// ones they add), saved per person through homePrefs (HomeDashboardModel). The phone's places as tiles two by two,
+// Tags and the More card (All folders, Shared with Me, the Vault, Templates, Archive, Trash) follow, as the phone has
+// no sidebar. Everything comes from the engine (HomeModel and its dashboard); the frame draws the bar and search.
 #if os(iOS)
 import SwiftUI
 import FoleviDesign
@@ -48,39 +48,182 @@ public struct PhoneHomeContent: View {
 
     private func ps(_ id: String) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
 
-    /// Today's Home order (the owner, 2026-11-25, as `IphoneHome.tsx`): the recent notes as cards straight under
-    /// the search field (no heading), Catch me up, the places two by two, then Bookmarks, Folders and Tags as titled
-    /// sections, and the rest of the library at the end.
+    private var dash: HomeDashboardModel { model.dashboard }
+    private var inset: CGFloat { PhoneRowGroupMetrics.inset }
+
+    /// The web's redesigned Home in one column (the owner's design version 19, HomeDashboard.tsx): the date and
+    /// Customize, the greeting, Catch me up, the capture field, then this person's blocks in their order (At a glance
+    /// as a 2x3 grid, Today then My tasks, Foli DNA across). The phone's own places, Tags and More card follow, as
+    /// the phone has no sidebar to find them in.
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            recents
-            if model.aiOn {
-                PhoneCatchUpCard { actions.open("/catch-up") }
-                    .padding(.horizontal, PhoneRowGroupMetrics.inset)
-            }
-            tiles.padding(.top, model.aiOn ? 10 : 0)
-            starred
-            folders
-            if !model.tags.isEmpty { tags }
-            PhoneRowGroup("More") {
-                // In sight, not in a menu (the owner, 2026-11-19).
-                PhoneListRow("All folders", action: { actions.open("/folders") }) { PhoneRowGlyph(.folder) }
-                // Shared with Me moves down here when Foli DNA takes its tile (the owner, 2026-11-27).
-                if let shared = sharedBelow {
-                    PhoneListRow(shared.title, action: { actions.open(shared.route) }) { PhoneRowGlyph(Self.icon(shared.id)) }
+        TimelineView(.periodic(from: .now, by: 60)) { tl in
+            let now = ScreenClock.fixed ?? tl.date
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 20) {
+                    HomeTopLine(now: now, editing: dash.editing, toggle: { withAnimation(.easeOut(duration: 0.18)) { dash.editing.toggle() } }, reset: { dash.reset() })
+                    HomeGreeting(HomeWords.greeting(hour: Calendar.current.component(.hour, from: now), name: model.profileName), size: 30)
+                    if model.aiOn {
+                        PhoneCatchUpCard { actions.open("/catch-up") }
+                    }
+                    HomeCaptureField(model: dash, templates: { actions.open("/templates") }) { destinationMenu }
                 }
-                // Only for someone with a Vault, as the web's sidebar lists it (the phone has no sidebar).
-                if model.hasVault {
-                    PhoneListRow("Vault", action: { actions.open("/vault") }) { PhoneRowGlyph(.lock) }
+                .padding(.horizontal, inset)
+                .padding(.top, 4)
+                VStack(alignment: .leading, spacing: 36) {
+                    ForEach(dash.shown, id: \.self) { b in
+                        HomeBlockFrame(block: b, editing: dash.editing, first: dash.isFirst(b), last: dash.isLast(b), move: { dash.move(b, by: $0) }, hide: { dash.hide(b) }) {
+                            VStack(alignment: .leading, spacing: 12) { block(b, now: now) }
+                        }
+                    }
+                    if dash.editing {
+                        HomeAddBlockTile(hidden: dash.hiddenBlocks) { dash.show($0) }.padding(.horizontal, inset)
+                    }
                 }
-                PhoneListRow("Templates", action: { actions.open("/templates") }) { PhoneRowGlyph(.layoutTemplate) }
-                PhoneListRow("Archive", action: { actions.open("/archive") }) { PhoneRowGlyph(.archive) }
-                PhoneListRow("Trash", action: { actions.open("/trash") }) { PhoneRowGlyph(.trash) }
+                .padding(.top, 36)
+                VStack(alignment: .leading, spacing: 12) {
+                    HomeSectionHead("Places", icon: .files, link: nil).padding(.horizontal, inset)
+                    tiles
+                }
+                .padding(.top, 36)
+                if !model.tags.isEmpty { tags }
+                PhoneRowGroup("More") {
+                    // In sight, not in a menu (the owner, 2026-11-19).
+                    PhoneListRow("All folders", action: { actions.open("/folders") }) { PhoneRowGlyph(.folder) }
+                    // Shared with Me moves down here when Foli DNA takes its tile (the owner, 2026-11-27).
+                    if let shared = sharedBelow {
+                        PhoneListRow(shared.title, action: { actions.open(shared.route) }) { PhoneRowGlyph(Self.icon(shared.id)) }
+                    }
+                    // Only for someone with a Vault, as the web's sidebar lists it (the phone has no sidebar).
+                    if model.hasVault {
+                        PhoneListRow("Vault", action: { actions.open("/vault") }) { PhoneRowGlyph(.lock) }
+                    }
+                    PhoneListRow("Templates", action: { actions.open("/templates") }) { PhoneRowGlyph(.layoutTemplate) }
+                    PhoneListRow("Archive", action: { actions.open("/archive") }) { PhoneRowGlyph(.archive) }
+                    PhoneListRow("Trash", action: { actions.open("/trash") }) { PhoneRowGlyph(.trash) }
+                }
+                .padding(.top, 28)
             }
-            .padding(.top, 28)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .environment(\.webPhoneCards, true)
+        .onAppear {
+            dash.setVisible(true)
+            let open = actions.openNote
+            dash.openNote = { open($0) }
+            dash.loadFolders()
+        }
+        .onDisappear { dash.setVisible(false) }
+    }
+
+    // MARK: Blocks
+
+    @ViewBuilder private func block(_ b: HomeBlockId, now: Date) -> some View {
+        switch b {
+        case .recent:
+            HomeSectionHead("Recent notes", icon: .clock3) { actions.open("/notes") }.padding(.horizontal, inset)
+            recents
+        case .bookmarks:
+            HomeSectionHead("Bookmarks", icon: .bookmark) { actions.open("/starred") }.padding(.horizontal, inset)
+            starred.padding(.horizontal, model.starred.isEmpty ? inset : 0)
+        case .folders:
+            HomeSectionHead("Recent folders", icon: .folder) { actions.open("/folders") }.padding(.horizontal, inset)
+            folders
+        case .stats:
+            HomeSectionHead("At a glance", icon: .chartColumn, link: nil).padding(.horizontal, inset)
+            HomeStatsGrid(stats: dash.stats.value, now: now).padding(.horizontal, inset)
+        case .dna:
+            HomeSectionHead("Foli DNA · this week", icon: .waypoints, link: "Open") { actions.open("/graph") }.padding(.horizontal, inset)
+            HomeDnaMap(week: dash.dnaWeek(now: now), height: 260, folderColor: folderColor) { actions.openNote($0) }
+                .padding(.horizontal, inset)
+                .onAppear { dash.loadGraph() }
+        case .today:
+            HomeSectionHead("Today", icon: .calendarDays, link: "Calendar") { actions.open("/calendar") }.padding(.horizontal, inset)
+            HomeTodayCard(now: now, agenda: dash.agenda(now: now, time: { $0.formatted(date: .omitted, time: .shortened) }), due: dash.dueCount,
+                          color: { CalendarMath.color($0) }, openCalendar: { actions.open("/calendar") }, openTasks: { actions.open("/tasks") })
+                .padding(.horizontal, inset)
+        case .tasks:
+            HomeSectionHead("My tasks", icon: .listChecks) { actions.open("/tasks") }.padding(.horizontal, inset)
+            myTasks
+        case .shared:
+            HomeSectionHead("Shared with me", icon: .users) { actions.open("/shared") }.padding(.horizontal, inset)
+            hint("Notes people share with you are in Shared with me.")
+        case .templates:
+            HomeSectionHead("Templates", icon: .layoutTemplate) { actions.open("/templates") }.padding(.horizontal, inset)
+            hint("Start a note from one of your templates or a built-in one.")
+        case .pinned:
+            HomeSectionHead("Pinned note", icon: .pin, link: nil).padding(.horizontal, inset)
+            pinned
+        }
+    }
+
+    private func hint(_ text: String) -> some View {
+        Text(text).webText(PhoneType.body()).foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color).padding(.horizontal, inset)
+    }
+
+    private func folderColor(_ id: String?) -> Color {
+        guard let id, let f = model.tree.value?.folders.first(where: { $0.id == id }) else { return FoleviTokens.Chrome.inkFaint.resolve(scheme).color }
+        return FolderColor.resolve(f.color).color.color
+    }
+
+    @ViewBuilder private var myTasks: some View {
+        if let open = dash.openTasks {
+            if open.isEmpty {
+                PhoneEmptyBox("No open tasks").padding(.horizontal, inset)
+            } else {
+                PhoneRowGroup("My tasks") {
+                    ForEach(open.prefix(5), id: \.id) { t in
+                        PhoneTaskLine(task: dash.tasks.edits.shown(t), today: dash.today, showNote: true, toggle: { dash.tasks.toggle(t) }, open: { actions.openNote(t.noteId) })
+                    }
+                }
+            }
+        } else {
+            hint("Loading…")
+        }
+    }
+
+    /// The pinned note as a card, with a menu of recent notes to pin.
+    private var pinned: some View {
+        let row = dash.pinnedNote.flatMap { id in (model.recents + model.starred).first { $0.id == id } }
+        return HStack(alignment: .center, spacing: 16) {
+            if let row {
+                PhonePressable(scale: 0.97, onTap: { actions.openNote(row.id) }, onLongPress: nil) {
+                    WebNoteCard(CardMapping.noteCard(row, starred: model.actions.isStarred(row))).frame(width: Self.cardWidth)
+                }
+            }
+            Menu {
+                ForEach(model.recents.prefix(12), id: \.id) { r in
+                    Button(r.title.isEmpty ? "Untitled" : r.title) { Task { await dash.pin(r.id) } }
+                }
+                if row != nil { Button("Unpin from Home", role: .destructive) { Task { await dash.pin(nil) } } }
+            } label: {
+                HomeDestinationLabel(row == nil ? "Choose a note to pin" : "Change", folderColor: nil)
+            }
+        }
+        .padding(.horizontal, inset)
+    }
+
+    /// "Saves to: Drafts ▾": Personal and each workspace, then Drafts or a folder in it.
+    private var destinationMenu: some View {
+        let w = dash.where_
+        let folder = w.flatMap { w in w.folderId.flatMap { id in dash.folders(in: w.space).first { $0.id == id } } }
+        return Menu {
+            ForEach(dash.spaces, id: \.id) { s in
+                Section(s.name) {
+                    Button { dash.pick(HomeCaptureDest(space: s.id, folderId: nil)) } label: {
+                        if w?.space == s.id && w?.folderId == nil { Label("Drafts", systemImage: "checkmark") } else { Text("Drafts") }
+                    }
+                    ForEach(dash.folders(in: s.id), id: \.id) { f in
+                        let name = String(repeating: "  ", count: f.depth) + f.name
+                        Button { dash.pick(HomeCaptureDest(space: s.id, folderId: f.id)) } label: {
+                            if w?.space == s.id && w?.folderId == f.id { Label(name, systemImage: "checkmark") } else { Text(name) }
+                        }
+                    }
+                }
+            }
+        } label: {
+            HomeDestinationLabel(dash.destLabel, folderColor: folder.map { FolderColor.resolve($0.color).color.color })
+        }
+        .onAppear { dash.loadFolders() }
     }
 
     static func icon(_ id: HomeRow.Id) -> WebIcon {
@@ -215,17 +358,14 @@ public struct PhoneHomeContent: View {
     /// How many bookmarks Home shows before "See all".
     static let bookmarksShown = 5
 
-    private var starred: some View {
+    @ViewBuilder private var starred: some View {
         let shown = Array(model.starred.prefix(Self.bookmarksShown))
-        let more = model.moreStarred || model.starred.count > shown.count
-        return PhoneHomeSection("Bookmarks", open: { actions.open("/starred") }, seeAll: more ? { actions.open("/starred") } : nil) {
-            if model.starred.isEmpty {
-                PhoneEmptyBox("Bookmark notes to keep them close")
-            } else {
-                PhoneRowGroup("Bookmarks") {
-                    ForEach(shown, id: \.id) { row in
-                        PhoneListRow(row.title.isEmpty ? "Untitled" : row.title, action: { actions.openNote(row.id) }, onLongPress: { actions.noteMenu(row, $0) }) { PhoneRowGlyph(.fileText) }
-                    }
+        if model.starred.isEmpty {
+            HomeBookmarksEmpty()
+        } else {
+            PhoneRowGroup("Bookmarks") {
+                ForEach(shown, id: \.id) { row in
+                    PhoneListRow(row.title.isEmpty ? "Untitled" : row.title, action: { actions.openNote(row.id) }, onLongPress: { actions.noteMenu(row, $0) }) { PhoneRowGlyph(.fileText) }
                 }
             }
         }
@@ -238,34 +378,28 @@ public struct PhoneHomeContent: View {
     /// 2026). About two and a bit show at once.
     static let cardWidth: CGFloat = 176
 
-    private var folders: some View {
+    @ViewBuilder private var folders: some View {
         let strip = ps("phone.folders")
-        return PhoneHomeSection("Folders", open: { actions.open("/folders") }, more: actions.foldersMenu) {
-            if model.folders.isEmpty {
-                PhoneEmptyBox("Folders keep related notes together")
-            } else {
-                ScrollView(.horizontal) {
-                    LazyHStack(spacing: Self.stripGap) {
-                        ForEach(Array(zip(model.folders, model.folderCards)), id: \.0.id) { folder, model_ in
-                            PhonePressable(scale: 0.97, onTap: { actions.open("/folders/\(folder.id)") }, onLongPress: { actions.folderMenu(folder, $0) }) {
-                                WebFolderCard(model_).frame(width: Self.cardWidth)
-                            }
+        if model.folders.isEmpty {
+            PhoneEmptyBox("Folders keep related notes together").padding(.horizontal, inset)
+        } else {
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: Self.stripGap) {
+                    ForEach(Array(zip(model.folders, model.folderCards)), id: \.0.id) { folder, model_ in
+                        PhonePressable(scale: 0.97, onTap: { actions.open("/folders/\(folder.id)") }, onLongPress: { actions.folderMenu(folder, $0) }) {
+                            WebFolderCard(model_).frame(width: Self.cardWidth)
                         }
                     }
-                    .scrollTargetLayout()
-                    // 12 pt under the cards, room for their shadow: the web's 28 on top of the next section's 28 left
-                    // a blank band before Tags (the owner, 21 November 2026).
-                    .padding(EdgeInsets(top: strip.padding.top, leading: strip.padding.left, bottom: 12, trailing: strip.padding.right))
                 }
-                .scrollIndicators(.hidden)
-                .scrollTargetBehavior(.viewAligned)
-                // The cards' shadow fades out past the strip's edge instead of being cut off in a straight line under
-                // them (the owner, 21 November 2026); the strip spans the screen, so nothing else shows past it.
-                .scrollClipDisabled()
-                // The next section starts as close as the others do; the cards' shadow keeps its room under it.
-                .padding(.bottom, -10)
-                .accessibilityLabel("Folders")
+                .scrollTargetLayout()
+                .padding(EdgeInsets(top: 4, leading: strip.padding.left, bottom: 12, trailing: strip.padding.right))
             }
+            .scrollIndicators(.hidden)
+            .scrollTargetBehavior(.viewAligned)
+            // The cards' shadow fades out past the strip's edge instead of being cut off.
+            .scrollClipDisabled()
+            .padding(.bottom, -10)
+            .accessibilityLabel("Folders")
         }
     }
 

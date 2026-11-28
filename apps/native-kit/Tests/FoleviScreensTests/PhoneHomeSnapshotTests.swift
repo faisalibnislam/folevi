@@ -1,7 +1,7 @@
 // The iPhone layout's Home (FoleviPhone's PhoneHomeContent, as the rebuild frame shows it on iPhone and on an
-// iPad under 700 pt), in the native look (the owner, 2026-11-19: the system font; search is the tab bar's): recent notes, Catch me up as its own card, the places as tiles two by
-// two (Reviews, the odd fifth, across the row), Bookmarks and the More rows in rounded cards. Light and dark
-// against the contract's home fixture.
+// iPad under 700 pt): the web's redesigned Home in one column (the date and Customize, the greeting, Catch me up,
+// the capture field, the blocks in their order), then the places as tiles two by two, Tags and the More card.
+// Light and dark against the contract's fixtures.
 #if os(iOS)
 import Foundation
 import SwiftUI
@@ -16,11 +16,23 @@ extension Rendering {
 struct PhoneHomeSnapshotTests {
     init() { ScreenClock.fixed = fixedNow }
 
+    /// The redesigned Home's views from the contract's fixtures (At a glance, the layout, Today, My tasks, Foli DNA).
+    static func dashboardValues(_ engine: FakeEngine) {
+        engine.values["home.stats"] = Fixtures.value("view.home.stats.json")
+        engine.values["home.prefs"] = Fixtures.value("view.home.prefs.default.json")
+        engine.values["tasks.list"] = Fixtures.value("view.tasks.list.json")
+        engine.values["tasks.counts"] = Fixtures.value("view.tasks.counts.json")
+        engine.values["calendars.events"] = Fixtures.value("view.calendars.events.json")
+        engine.values["graph"] = Fixtures.value("view.graph.json")
+    }
+
     @Test func phoneHome() async {
         let engine = FakeEngine()
+        Self.dashboardValues(engine)
         let model = HomeModel(client: engine.client())
-        // The top (recents, Catch me up, the tiles) and the end (Bookmarks, Folders, Tags, the More card).
-        for (part, anchor) in [("", UnitPoint.top), ("-end", .bottom)] {
+        // The top (the greeting, Catch me up, the capture field), the middle (the blocks) and the end (the places,
+        // Tags, the More card).
+        for (part, anchor) in [("", UnitPoint.top), ("-mid", .center), ("-end", .bottom)] {
         for scheme in [ColorScheme.light, .dark] {
             let view = ScrollView {
                 VStack(spacing: 0) {
@@ -32,7 +44,7 @@ struct PhoneHomeSnapshotTests {
             .phoneNativeChrome()
             .background(FoleviTokens.Chrome.canvas.resolve(scheme).color)
             let host = ScreenHost(view, size: .iphone, scheme: scheme)
-            await eventually("phone home", timeout: .seconds(8)) { model.value != nil && model.session.value != nil }
+            await eventually("phone home", timeout: .seconds(8)) { model.value != nil && model.session.value != nil && model.dashboard.stats.value != nil }
             await host.settle(0.6)
             checkScreen(host, named: "phone-home\(part)-iphone-\(scheme == .dark ? "dark" : "light")-\(hostPlatform)")
             host.close()

@@ -40,7 +40,7 @@
   border-radius: var(--radius-control);
   background: var(--color-surface-raised);
   color: var(--color-ink);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08);
+  box-shadow: var(--shadow-floating);
   font-size: var(--text-callout);
   line-height: var(--text-callout--line-height);
 }

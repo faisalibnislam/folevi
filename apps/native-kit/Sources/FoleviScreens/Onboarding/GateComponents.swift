@@ -190,7 +190,7 @@ struct ChoiceCard<Icon: View>: View {
             .background(
                 RoundedRectangle(cornerRadius: Folevi.radius.container, style: .continuous)
                     .fill(Folevi.color.surface)
-                    .shadow(color: .black.opacity(0.05), radius: 1.5, y: 1)
+                    .nativeShadow(.raised)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Folevi.radius.container, style: .continuous)

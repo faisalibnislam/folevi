@@ -1,7 +1,7 @@
 // The iPhone app's Liquid Glass (apps/web/src/app/globals.css, `.ui-liquid` and `.ui-liquid-strong` with the
 // --liquid-* variables): what the web paints under the iPhone's floating chrome (the tab bar, the glass pills and
 // circles, menus and sheets), layer for layer and in the same order:
-//   the drop shadows (--liquid-shadow) and the hairline outline (--liquid-edge's 0.5 px ring), outside the shape;
+//   the drop shadows (--shadow-floating) and the hairline outline (--liquid-edge's 0.5 px ring), outside the shape;
 //   what's behind, blurred (backdrop-filter: blur saturate brightness);
 //   the fill (--liquid-fill, or a caller's, as the tab bar's pills have);
 //   the edge light (--liquid-edge's inset highlights);
@@ -41,13 +41,9 @@ public enum LiquidGlassLook {
                ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.09))]
     }
 
-    /// --liquid-shadow.
+    /// The floating level (--shadow-floating; the web's --liquid-shadow before 2026-11-28, docs/SHADOWS.md).
     static func shadow(_ scheme: ColorScheme) -> [ShadowLayer] {
-        scheme == .dark
-            ? [ShadowLayer(x: 0, y: 12, blur: 34, spread: -10, color: RGBA(0, 0, 0, 0.65)),
-               ShadowLayer(x: 0, y: 2, blur: 8, spread: -2, color: RGBA(0, 0, 0, 0.4))]
-            : [ShadowLayer(x: 0, y: 10, blur: 30, spread: -10, color: RGBA(0, 0, 0, 0.2)),
-               ShadowLayer(x: 0, y: 2, blur: 8, spread: -2, color: RGBA(0, 0, 0, 0.08))]
+        FoleviTokens.Shadow.floating.resolve(scheme)
     }
 
     /// --liquid-rim's stops (position, colour), at 135deg.

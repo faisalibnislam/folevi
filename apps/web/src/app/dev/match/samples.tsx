@@ -121,7 +121,7 @@ const SAMPLES: Sample[] = [
   {
     id: "dialog",
     node: (
-      <div className="ui-pop w-[440px] rounded-panel p-0 text-ink shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)]" data-style="dialog.panel">
+      <div className="ui-pop w-[440px] rounded-panel p-0 text-ink shadow-[var(--glass-edge),var(--shadow-overlay)]" data-style="dialog.panel">
         <header className="flex items-start gap-3 px-6 pb-2 pt-5" data-style="dialog.header">
           <div className="min-w-0 flex-1">
             <h2 className="ui-display text-title-2 leading-snug" data-style="dialog.title">
@@ -227,7 +227,7 @@ const SAMPLES: Sample[] = [
             <AiIcon size={26} />
           </button>
           <button type="button" aria-label="Create" className="grid h-14 w-14 place-items-center rounded-capsule">
-            <span className="grid h-10 w-10 place-items-center rounded-capsule bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.18)]">
+            <span className="grid h-10 w-10 place-items-center rounded-capsule bg-heading text-canvas shadow-[var(--shadow-raised)]">
               <Plus size={22} strokeWidth={2.6} aria-hidden />
             </span>
           </button>
@@ -268,7 +268,7 @@ const SAMPLES: Sample[] = [
             <AiIcon size={26} />
           </PillButton>
           <PillButton label="Insert" className="!h-[52px] !min-w-[52px]">
-            <span className="grid h-[38px] w-[38px] place-items-center rounded-capsule bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.18)]">
+            <span className="grid h-[38px] w-[38px] place-items-center rounded-capsule bg-heading text-canvas shadow-[var(--shadow-raised)]">
               <Plus size={22} strokeWidth={2.4} aria-hidden />
             </span>
           </PillButton>
@@ -450,8 +450,8 @@ const SAMPLES: Sample[] = [
         <div className="w-[393px] bg-[var(--iphone-solid)] px-4 pb-4 pt-1">
           <div className="space-y-5 text-subheadline">
             <section aria-label="Page style">
-              <div aria-hidden className="relative block h-32 w-full overflow-hidden rounded-chip shadow-[var(--shadow-card)]" style={{ background: "linear-gradient(180deg, var(--color-surface-sunken), var(--color-canvas))" }}>
-                <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-chip px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: paper, color: ink, fontFamily: familyFor("serif") }}>
+              <div aria-hidden className="relative block h-32 w-full overflow-hidden rounded-chip shadow-[var(--shadow-edge),var(--shadow-resting)]" style={{ background: "linear-gradient(180deg, var(--color-surface-sunken), var(--color-canvas))" }}>
+                <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-chip px-2 pt-2 text-left shadow-[var(--shadow-resting)]" style={{ background: paper, color: ink, fontFamily: familyFor("serif") }}>
                   <span className="block text-footnote font-semibold leading-tight">Plain</span>
                   <span className="mt-1.5 block h-1 w-4/5 rounded-tiny opacity-25" style={{ background: ink }} />
                   <span className="mt-1 block h-1 w-3/5 rounded-tiny opacity-25" style={{ background: ink }} />

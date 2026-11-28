@@ -18,7 +18,7 @@ export function TemplateCard({
 }) {
   const Heading = headingLevel;
   return (
-    <div className="mk-card group relative flex h-full items-start gap-3.5 p-5 transition-shadow duration-150 hover:shadow-(--shadow-pop)">
+    <div className="mk-card group relative flex h-full items-start gap-3.5 p-5 transition-shadow duration-150 hover:shadow-[var(--shadow-edge),var(--shadow-lifted)]">
       <TemplateTile name={template.icon} />
       <div className="min-w-0">
         <Heading className="text-[16px] font-semibold leading-snug text-(--color-heading)">

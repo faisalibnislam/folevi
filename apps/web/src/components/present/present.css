@@ -40,7 +40,7 @@
   margin: 0;
   border-radius: var(--radius-panel);
   overflow: hidden;
-  box-shadow: 0 30px 80px rgb(0 0 0 / 0.45);
+  box-shadow: var(--shadow-overlay);
   color: var(--color-ink);
   cursor: default;
   user-select: text;

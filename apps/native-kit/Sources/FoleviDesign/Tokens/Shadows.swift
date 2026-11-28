@@ -1,20 +1,31 @@
-// Shadow tokens (hairline, control, primary, card, sheet, pop, lift) as SwiftUI modifiers. Cast layers become
-// stacked `.shadow`s under the (opaque) content; a spread-only ring becomes a stroke; inset highlights become an inner gradient stroke.
+// Shadow tokens as SwiftUI modifiers (docs/SHADOWS.md). Edges (hairline, control, primary) outline a surface; the
+// elevation levels (raised, resting, lifted, floating, overlay) are a solid surface's edge (FoleviTokens.Shadow.edge)
+// plus that level's drop, as the web's `var(--shadow-edge), var(--shadow-<level>)`. Cast layers become stacked
+// `.shadow`s under the (opaque) content; a spread-only ring becomes a stroke; inset highlights become an inner
+// gradient stroke.
 import SwiftUI
 
 public enum FoleviShadow: Sendable {
-    case hairline, control, primary, card, sheet, pop, lift
+    case hairline, control, primary
+    /// A control lifted off its track; a card on the page; a card under the pointer or dragged; a menu, popover,
+    /// toast or floating bar; a dialog or sheet.
+    case raised, resting, lifted, floating, overlay
 
     var pair: ShadowPair {
         switch self {
         case .hairline: FoleviTokens.Shadow.hairline
         case .control: FoleviTokens.Shadow.control
         case .primary: FoleviTokens.Shadow.primary
-        case .card: FoleviTokens.Shadow.card
-        case .sheet: FoleviTokens.Shadow.sheet
-        case .pop: FoleviTokens.Shadow.pop
-        case .lift: FoleviTokens.Shadow.lift
+        case .raised: Self.edged(FoleviTokens.Shadow.raised)
+        case .resting: Self.edged(FoleviTokens.Shadow.resting)
+        case .lifted: Self.edged(FoleviTokens.Shadow.lifted)
+        case .floating: Self.edged(FoleviTokens.Shadow.floating)
+        case .overlay: Self.edged(FoleviTokens.Shadow.overlay)
         }
+    }
+
+    private static func edged(_ level: ShadowPair) -> ShadowPair {
+        ShadowPair(light: FoleviTokens.Shadow.edge.light + level.light, dark: FoleviTokens.Shadow.edge.dark + level.dark)
     }
 }
 

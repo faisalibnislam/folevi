@@ -552,7 +552,7 @@ export function TabStrip() {
             return createPortal(
               <div
                 aria-hidden
-                className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-pop)]"
+                className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-edge),var(--shadow-floating)]"
                 style={{ left: preview.left, top: preview.top }}
               >
                 {/* The tabs pictured lately stay drawn, one over another: switching shows a page already there. */}
@@ -622,8 +622,8 @@ function tabLook(ipad: boolean) {
   // open one comes forward: white, a firm dark outline, a soft shadow and bold text. On the iPad: no outline,
   // the open tab a raised capsule, the others plain text that tints under the finger.
   const tabOn = ipad
-    ? "bg-[var(--iphone-row)] font-semibold text-heading shadow-[0_1px_4px_rgb(0_0_0/0.08),0_0_0_0.5px_var(--iphone-separator)]"
-    : "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
+    ? "bg-[var(--iphone-row)] font-semibold text-heading shadow-[0_0_0_0.5px_var(--iphone-separator),var(--shadow-raised)]"
+    : "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent),var(--shadow-raised)]";
   const tabOff = ipad
     ? "text-muted active:bg-[var(--liquid-press)] [@media(hover:hover)]:hover:bg-[var(--liquid-active)] [@media(hover:hover)]:hover:text-heading"
     : "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
@@ -736,7 +736,7 @@ const TabRow = memo(function TabRow({
       data-tab-active={active ? "" : undefined}
       data-pinned={pinned ? "" : undefined}
       data-ipad-tab={ipad ? "" : undefined}
-      className={`${tabBase} ${overlay ? "ui-tab" : ""} ${width} ${pinned ? "!gap-1 !px-2" : ""} ${active ? tabOn : tabOff} ${dragging ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
+      className={`${tabBase} ${overlay ? "ui-tab" : ""} ${width} ${pinned ? "!gap-1 !px-2" : ""} ${active ? tabOn : tabOff} ${dragging ? "z-10 cursor-grabbing shadow-[var(--shadow-lifted)]" : ""}`}
       onPointerDown={(e) => act.current.pointerDown(e, id)}
       onPointerMove={(e) => act.current.dragMove(e)}
       onPointerUp={() => act.current.dragEnd()}

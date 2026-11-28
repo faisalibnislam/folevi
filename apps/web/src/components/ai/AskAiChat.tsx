@@ -11,7 +11,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { modKey } from "@/lib/hooks/useEngine";
 
 /** The launcher's shadow: soft black at 10%. */
-const SHADOW = "shadow-[0_8px_24px_rgb(0_0_0/0.1),0_2px_6px_rgb(0_0_0/0.1),inset_0_0_0_1px_rgb(255_255_255/0.12)]";
+const SHADOW = "shadow-[inset_0_0_0_1px_rgb(255_255_255/0.12),var(--shadow-floating)]";
 
 export interface AskAiProps {
   open: boolean;
@@ -134,7 +134,7 @@ function StandInSheet({ open, onClose, onDrawn }: { open: boolean; onClose: () =
       <div className="min-h-0 flex-1" aria-busy="true" />
       {/* Shaped like the chat's composer (its chips, the field and Send), so the chat takes over without a jump. */}
       <div className="flex-none px-4 pb-3 pt-1">
-        <div className="rounded-sheet bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),0_8px_24px_-10px_rgb(0_0_0/0.25)] dark:bg-raised">
+        <div className="rounded-sheet bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),var(--shadow-floating)] dark:bg-raised">
           <div aria-hidden className="flex gap-2 px-2.5 pt-2.5">
             <span className="h-7 w-24 rounded-capsule bg-[var(--color-surface-sunken)]" />
           </div>

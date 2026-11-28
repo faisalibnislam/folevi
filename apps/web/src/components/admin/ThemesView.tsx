@@ -128,7 +128,7 @@ export function ThemesView() {
                   setDragging(null);
                   void save(ids);
                 }}
-                className={`group relative overflow-hidden rounded-control bg-surface shadow-[var(--shadow-card)] transition-opacity ${dragging === t.id ? "opacity-50" : ""}`}
+                className={`group relative overflow-hidden rounded-control bg-surface shadow-[var(--shadow-edge),var(--shadow-resting)] transition-opacity ${dragging === t.id ? "opacity-50" : ""}`}
               >
                 <Link href={`/admin/themes/${t.id}`} className="block outline-none focus-visible:ring-2 focus-visible:ring-focus" aria-label={`${t.name}: ${STATUS_LABEL[t.status]}${t.plan !== "free" ? `, ${THEME_PLANS.find((p) => p.id === t.plan)?.name}` : ""}`}>
                   <span aria-hidden className="block aspect-[16/10] bg-sunken" style={{ background: `url(${thumbOf(t)}) center / cover no-repeat` }} />

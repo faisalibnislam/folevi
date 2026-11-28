@@ -54,7 +54,7 @@ public struct FoleviSwitch: View {
                     .fill(on ? FoleviTokens.Chrome.heading.resolve(scheme).color : ink.color.opacity(0.22))
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .continuous)
                     .fill(on ? FoleviTokens.Chrome.canvas.resolve(scheme).color : .white)
-                    .shadow(color: .black.opacity(0.25), radius: 1.5, y: 1)
+                    .nativeShadow(.raised)
                     .frame(width: 20, height: 20)
                     .offset(x: on ? 18 : 2)
             }

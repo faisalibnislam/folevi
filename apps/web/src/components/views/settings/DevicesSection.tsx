@@ -122,7 +122,7 @@ export function DevicesSection() {
     <>
       <Card title="Connected devices">
         <div className="flex flex-wrap items-center gap-4 rounded-control bg-[var(--glass-hover)] p-4">
-          <span aria-hidden className="grid h-11 w-11 flex-none place-items-center rounded-control bg-[var(--glass-active)] text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]">
+          <span aria-hidden className="grid h-11 w-11 flex-none place-items-center rounded-control bg-[var(--glass-active)] text-heading shadow-[var(--glass-edge),var(--shadow-raised)]">
             <MonitorSmartphone size={20} />
           </span>
           <div className="min-w-0 flex-1">

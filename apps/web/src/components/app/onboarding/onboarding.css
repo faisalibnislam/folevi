@@ -54,12 +54,12 @@
     cursor: pointer;
     border-radius: var(--radius-control);
     background: var(--color-surface);
-    box-shadow: 0 0 0 1px var(--color-line), 0 1px 2px rgb(0 0 0 / 0.04);
+    box-shadow: 0 0 0 1px var(--color-line), var(--shadow-resting);
     transition: box-shadow 180ms var(--ob-ease), transform 180ms var(--ob-ease), background-color 180ms var(--ob-ease);
   }
-  .ob-choice:hover { box-shadow: 0 0 0 1px var(--color-line-strong), 0 6px 18px -8px rgb(0 0 0 / 0.18); transform: translateY(-1px); }
+  .ob-choice:hover { box-shadow: 0 0 0 1px var(--color-line-strong), var(--shadow-lifted); transform: translateY(-1px); }
   .ob-choice:has(input:checked) {
-    box-shadow: 0 0 0 1.5px var(--color-heading), 0 8px 22px -10px rgb(0 0 0 / 0.25);
+    box-shadow: 0 0 0 1.5px var(--color-heading), var(--shadow-lifted);
   }
   .ob-choice:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 3px; }
   .ob-choice:active { transform: translateY(0) scale(0.99); }
@@ -113,9 +113,9 @@
     transition: box-shadow 200ms var(--ob-ease), transform 200ms var(--ob-ease);
   }
   .ob-tile-wrap { position: relative; display: block; cursor: pointer; border-radius: var(--radius-panel); }
-  .ob-tile-wrap:hover .ob-tile { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08), 0 10px 22px -12px rgb(0 0 0 / 0.35); }
+  .ob-tile-wrap:hover .ob-tile { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08), var(--shadow-lifted); }
   .ob-tile-wrap:has(input:checked) .ob-tile {
-    box-shadow: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-heading), 0 12px 24px -12px rgb(0 0 0 / 0.4);
+    box-shadow: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-heading), var(--shadow-lifted);
   }
   .ob-tile-wrap:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 6px; }
   .ob-badge {
@@ -129,7 +129,7 @@
     border-radius: var(--radius-chip);
     background: var(--color-heading);
     color: var(--color-canvas);
-    box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+    box-shadow: var(--shadow-raised);
     transform: scale(0.3);
     opacity: 0;
     transition: transform 320ms var(--ob-spring), opacity 180ms;
@@ -207,7 +207,7 @@
     overflow: hidden;
     border-radius: var(--radius-panel);
     background: var(--color-surface);
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 30px 60px -24px rgb(0 0 0 / 0.45), 0 10px 20px -10px rgb(0 0 0 / 0.2);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), var(--shadow-overlay);
     transform: translate(var(--x), var(--y)) rotate(var(--r));
     animation: ob-deal 900ms var(--ob-ease) both, ob-float 7s ease-in-out infinite alternate;
     animation-delay: calc(var(--i) * 90ms + 120ms), calc(var(--i) * -1.3s);
@@ -228,7 +228,7 @@
     overflow: hidden;
     border-radius: var(--radius-container);
     background: var(--glass-canvas);
-    box-shadow: var(--shadow-lift), 0 50px 100px -40px rgb(0 0 0 / 0.35);
+    box-shadow: var(--shadow-edge), var(--shadow-overlay);
     font-size: 13px;
     line-height: 1.45;
     color: var(--color-ink);
@@ -257,24 +257,24 @@
     background: var(--glass-sidebar);
     -webkit-backdrop-filter: blur(30px) saturate(1.8);
     backdrop-filter: blur(30px) saturate(1.8);
-    box-shadow: var(--glass-edge), var(--glass-shadow);
+    box-shadow: var(--glass-edge), var(--shadow-resting);
   }
   .ob-pop {
     background: color-mix(in oklab, var(--color-surface-raised) 94%, transparent);
     -webkit-backdrop-filter: blur(28px) saturate(1.8);
     backdrop-filter: blur(28px) saturate(1.8);
-    box-shadow: var(--glass-edge), var(--shadow-pop);
+    box-shadow: var(--glass-edge), var(--shadow-edge), var(--shadow-floating);
   }
   .ob-content {
     background: var(--glass-content);
-    box-shadow: var(--glass-edge), var(--glass-shadow);
+    box-shadow: var(--glass-edge), var(--shadow-resting);
   }
   .ob-well { background: var(--glass-hover); box-shadow: inset 0 0 0 1px var(--glass-border); }
   .ob-row-on {
     background: var(--glass-active);
     color: var(--color-heading);
     font-weight: 600;
-    box-shadow: var(--glass-edge), 0 1px 3px rgb(0 0 0 / 0.06);
+    box-shadow: var(--glass-edge), var(--shadow-raised);
   }
   .ob-tab {
     display: flex;
@@ -292,7 +292,7 @@
     color: var(--color-heading);
     font-weight: 600;
     background: var(--color-surface-raised);
-    box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent);
+    box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent), var(--shadow-raised);
   }
   .ob-dock-on { background: var(--color-accent); color: var(--color-accent-ink); box-shadow: var(--shadow-primary); }
 
@@ -310,7 +310,7 @@
     overflow: hidden;
     border-radius: var(--radius-panel);
     background: var(--glass-content);
-    box-shadow: var(--glass-edge), var(--glass-shadow);
+    box-shadow: var(--glass-edge), var(--shadow-resting);
   }
   .ob-page-art {
     position: absolute;
@@ -331,7 +331,7 @@
     background: var(--n-paper);
     color: var(--n-ink);
     border-radius: var(--radius-panel);
-    box-shadow: var(--shadow-sheet);
+    box-shadow: var(--shadow-edge), var(--shadow-overlay);
     transition: background-color 600ms var(--ob-ease), color 600ms var(--ob-ease), box-shadow 600ms var(--ob-ease);
   }
   :root[data-theme="dark"] .ob-note {

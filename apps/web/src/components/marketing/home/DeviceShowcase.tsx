@@ -270,7 +270,7 @@ export function DeviceShowcase() {
             ) : null}
           </div>
           {/* The iPhone, in front of the window's lower right corner. */}
-          <div className="mk-phone absolute bottom-0 right-0 w-[24%] bg-[#111113] p-[0.6%] shadow-[0_30px_60px_-18px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.08)_inset]">
+          <div className="mk-phone absolute bottom-0 right-0 w-[24%] bg-[#111113] p-[0.6%] shadow-[0_0_0_1px_rgb(255_255_255/0.08)_inset,var(--shadow-overlay)]">
             <div ref={screen} className="mk-phone-screen relative aspect-[402/874] overflow-hidden bg-(--color-surface)">
               {phoneScale ? (
                 <div className="absolute left-0 top-0 origin-top-left" style={{ width: PHONE_W, height: PHONE_H, transform: `scale(${phoneScale})` }}>

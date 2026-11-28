@@ -89,6 +89,6 @@ struct GlassModifier<S: Shape>: ViewModifier {
                 }
             }
             .overlay(shape.stroke(Folevi.color.glassBorder, lineWidth: 0.75))
-            .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+            .nativeShadow(.floating)
     }
 }

@@ -100,7 +100,7 @@ export function NoteBars({ editor, ai, open, tab, onPick, readOnly }: { editor: 
             }}
             className="!h-[52px] !min-w-[52px]"
           >
-            <span className="grid h-[38px] w-[38px] place-items-center rounded-capsule bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.18)]">
+            <span className="grid h-[38px] w-[38px] place-items-center rounded-capsule bg-heading text-canvas shadow-[var(--shadow-raised)]">
               <Plus size={22} strokeWidth={2.4} aria-hidden />
             </span>
           </PillButton>

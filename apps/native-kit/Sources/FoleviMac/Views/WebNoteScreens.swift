@@ -112,7 +112,7 @@ struct WebSelectedCheck: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(webVar("color-heading", scheme).color)
-                .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
+                .nativeShadow(.raised)
             WebIconView(.check, size: 14, strokeWidth: 3).foregroundStyle(webVar("color-canvas", scheme).color)
         }
         .frame(width: 24, height: 24)
@@ -2652,11 +2652,10 @@ struct WebCatchUpCard: View {
                 shape.fill(NativeLook.hover.opacity(0.6))
             } else {
             shape.fill(webVar("glass-active", scheme).color)
-                // --glass-edge (an inner and an outer hairline) and --glass-shadow
+                // --glass-edge (an inner and an outer hairline) and the resting level (--shadow-resting)
                 .overlay(shape.inset(by: 0.5).stroke(Color.white.opacity(dark ? 0.08 : 0.6), lineWidth: 1))
                 .overlay(shape.inset(by: -0.5).stroke(Color.black.opacity(dark ? 0.4 : 0.06), lineWidth: 1))
-                .shadow(color: .black.opacity(dark ? 0.3 : 0.04), radius: 1, y: 1)
-                .shadow(color: Color(red: dark ? 0 : 20 / 255, green: dark ? 0 : 20 / 255, blue: dark ? 0 : 40 / 255).opacity(dark ? 0.6 : 0.14), radius: dark ? 13 : 10, y: dark ? 16 : 12)
+                .nativeShadow(.card)
             }
         }
         .padding(.top, 24)

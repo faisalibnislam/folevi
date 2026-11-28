@@ -72,7 +72,7 @@ export function ReadOnlyBookmark({
   );
   const card = "my-2 flex min-h-[7.5rem] items-stretch overflow-hidden ui-card rounded-control no-underline break-inside-avoid";
   return href ? (
-    <a href={href} target="_blank" rel="noopener noreferrer nofollow" className={`${card} transition-shadow hover:shadow-[var(--shadow-pop)]`} data-bookmark="">
+    <a href={href} target="_blank" rel="noopener noreferrer nofollow" className={`${card} transition-shadow hover:shadow-[var(--shadow-edge),var(--shadow-floating)]`} data-bookmark="">
       {body}
     </a>
   ) : (
@@ -115,7 +115,7 @@ export function ReadOnlyFile({ href, name, size, mimeType }: { href: string | nu
   );
   const card = "my-1.5 flex items-center gap-3 ui-card rounded-control px-3 py-2.5 no-underline break-inside-avoid";
   return href ? (
-    <a href={href} download={name ?? true} className={`${card} transition-shadow hover:shadow-[var(--shadow-pop)]`} aria-label={`Download ${label}${size ? `, ${formatBytes(size)}` : ""}`} data-file="">
+    <a href={href} download={name ?? true} className={`${card} transition-shadow hover:shadow-[var(--shadow-edge),var(--shadow-floating)]`} aria-label={`Download ${label}${size ? `, ${formatBytes(size)}` : ""}`} data-file="">
       {body}
     </a>
   ) : (

@@ -111,7 +111,7 @@ public struct PhoneAllFoldersScreen: View {
                         }
                         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.grid)) } action: { frames[f.id] = $0 }
                         .scaleEffect(held ? 1.06 : 1)
-                        .shadow(color: .black.opacity(held ? 0.22 : 0), radius: held ? 18 : 0, y: held ? 10 : 0)
+                        .nativeShadow(held ? .lifted : nil)
                         .offset(liftOffset(f.id))
                         .zIndex(held ? 1 : 0)
                         // (A UIKit hold, not a SwiftUI drag: a finger that moves before the hold is up scrolls the
@@ -273,7 +273,7 @@ public struct PhoneCardSheet<Content: View>: View {
                 .background(
                     RoundedRectangle(cornerRadius: FoleviTokens.Radius.sheet, style: .continuous)
                         .fill(PhoneSurface.solid.resolve(scheme).color)
-                        .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
+                        .nativeShadow(.overlay)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.sheet, style: .continuous))
                 .scaleEffect(shown || WebMotion.reduced ? 1 : leaving ? 0.97 : 0.94)

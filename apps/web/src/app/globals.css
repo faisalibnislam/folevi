@@ -1228,7 +1228,7 @@
 /* The small folder (FolderGlyph.tsx) in the folder card's colours and depth (the owner, 28 November 2026): the
    back's gradient as [data-fc="back"], the front's as [data-fc="front"] (opaque), a hairline shadow above the front,
    a light top edge on it and a small drop shadow under the whole folder. */
-.fg { filter: drop-shadow(0 0.5px 0.75px rgb(30 30 50 / 0.22)); }
+.fg { filter: drop-shadow(0 0.5px 0.75px rgb(30 30 50 / 0.088)); } /* 60% lighter than first set (the owner, 28 November 2026) */
 .fg .fg-b1 { stop-color: color-mix(in oklab, var(--fg-tone) 84%, #2c2c3a); }
 .fg .fg-b2 { stop-color: color-mix(in oklab, var(--fg-tone) 86%, #ffffff); }
 .fg .fg-f1 { stop-color: color-mix(in oklab, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 50%, #ffffff) 62%, var(--fg-tone)) 60%, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 92%, #3a3a48) 66%, var(--fg-tone))); }
@@ -1236,7 +1236,7 @@
 .fg .fg-page { fill: #ffffff; stroke: rgb(0 0 0 / 0.08); stroke-width: 4; }
 .fg .fg-lip { fill: rgb(30 30 50 / 0.16); }
 .fg .fg-edge { stroke: rgb(255 255 255 / 0.55); stroke-width: 7; stroke-linecap: round; fill: none; }
-:root[data-theme="dark"] .fg { filter: drop-shadow(0 0.5px 0.75px rgb(0 0 0 / 0.5)); }
+:root[data-theme="dark"] .fg { filter: drop-shadow(0 0.5px 0.75px rgb(0 0 0 / 0.2)); }
 :root[data-theme="dark"] .fg .fg-b1 { stop-color: color-mix(in oklab, var(--fg-tone) 44%, #1a1a1e); }
 :root[data-theme="dark"] .fg .fg-b2 { stop-color: color-mix(in oklab, var(--fg-tone) 56%, #2a2a2f); }
 :root[data-theme="dark"] .fg .fg-f1 { stop-color: color-mix(in oklab, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 48%, #3a3a42) 82%, color-mix(in oklab, var(--fg-tone) 50%, #222227)) 60%, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 40%, #1f1f24) 78%, color-mix(in oklab, var(--fg-tone) 50%, #222227))); }

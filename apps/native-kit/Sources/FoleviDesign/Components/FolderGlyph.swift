@@ -62,7 +62,7 @@ public struct FolderGlyph: View {
             top.addLine(to: CGPoint(x: 224.4 * s, y: 101 * s))
             ctx.stroke(top, with: .color(edge.color), style: StrokeStyle(lineWidth: 7 * s, lineCap: .round))
         }
-        .shadow(color: (dark ? RGBA(0, 0, 0, 0.5) : RGBA(30, 30, 50, 0.22)).color, radius: 0.75, y: 0.5)
+        .shadow(color: (dark ? RGBA(0, 0, 0, 0.2) : RGBA(30, 30, 50, 0.088)).color, radius: 0.75, y: 0.5)
         .frame(width: size * 240 / box.height, height: size)
         .accessibilityHidden(true)
     }

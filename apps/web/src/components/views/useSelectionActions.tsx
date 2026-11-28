@@ -4,6 +4,7 @@
 // runs them), shared by the floating selection bar and the right-click menu on a selected item: open in new tabs,
 // move (the Move dialog, or a drag onto a folder), copy elsewhere, bookmark, tag, colour, archive, trash, delete.
 // Each reuses the single-item action (notes: useNoteActions, with its toast and Undo; folders: useFolderActions).
+import { useNoteColumnsActive } from "@/lib/app/useNoteColumns";
 import { useMutation } from "convex/react";
 import { useMemo, useState, type ReactNode } from "react";
 import { AppWindow, Archive, ArchiveRestore, Bookmark, BookmarkOff, CopyPlus, FolderInput, Hash, Palette, Trash2, Undo2, X } from "lucide-react";
@@ -85,7 +86,9 @@ export function useSelectionActions({ entries, trash = false, clear }: { entries
   const notes = useMemo(() => entries.filter((e): e is Extract<SelectionEntry, { kind: "note" }> => e.kind === "note"), [entries]);
   const folders = useMemo(() => entries.filter((e): e is Extract<SelectionEntry, { kind: "folder" }> => e.kind === "folder"), [entries]);
   const kinds = useMemo(() => entries.map((e) => (e.kind === "note" ? { kind: "note" as const, starred: e.starred, archived: e.archived, template: e.template } : { kind: "folder" as const })), [entries]);
-  const available = bulkActions(kinds, { trash, canEdit, canCopy, tabs: !isNarrow && !phone });
+  // (No tabs in the columns layout: docs/NOTE_COLUMNS.md.)
+  const columnsOn = useNoteColumnsActive();
+  const available = bulkActions(kinds, { trash, canEdit, canCopy, tabs: !isNarrow && !phone && !columnsOn });
 
   // Dialogs keep the items they were opened for: the selection may change (or clear) while one is open.
   const [moving, setMoving] = useState<{ notes: string[]; folders: string[]; current?: string | null } | null>(null);

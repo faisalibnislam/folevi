@@ -29,3 +29,12 @@ suite (285 files passed), `tsc --noEmit`, eslint on the changed files (no errors
 Left: drag and drop from the column to a sidebar folder was not tried by hand (same handlers as the cards); a tag
 list wasn't tried (no tags in the dev account); Windows and Linux apps not run; Mac and iPad plan in
 `handoff/state/web.md`.
+
+Later the same day (owner's answers in this session): Columns holds everywhere once chosen. Every note opens in a
+list's column (`listForNote`: folder, Drafts, Trash, Archive, Shared with Me; a nested page in its top note's
+folder with that row marked), the address gets `?list=` in place. No tab bar and no tabs while it's on (saved tabs
+untouched); New note is a pencil beside Search; with the sidebar hidden its menu and New note sit in the column's
+head or float top left. Shared with Me has a column. Narrow windows keep columns with the list hidden to its rail.
+Checked in the browser: Home to a note (Drafts column), a nested page (Personal column, Field Notes marked), Tasks
+and Drafts with the sidebar hidden, 860 px, Shared with Me (empty), New note button. 18 unit tests.
+

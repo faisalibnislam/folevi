@@ -54,7 +54,6 @@ import { FolderMenu } from "@/components/app/FolderMenu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { FilterField, ListPageHeader, ROW_ICON_BUTTON, ROW_SEG, RowSort, RowTraySep, SECTION_LABEL } from "./ListPageHeader";
 import { NoteColumns } from "./NoteColumns";
-import { useOpenManyInBackground } from "@/lib/app/tabs";
 
 // Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
 // time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
@@ -157,6 +156,8 @@ export type Summary = NonNullable<ReturnType<typeof usePaginatedQuery<typeof api
 export interface ColumnsInput {
   list: string;
   noteId: string | null;
+  /** The row marked open: the note, or the top note a nested page is inside. */
+  row?: string | null;
   note: ReactNode;
 }
 
@@ -584,6 +585,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
       <NoteColumns
         list={columns.list}
         noteId={columns.noteId}
+        row={columns.row ?? columns.noteId}
         note={columns.note}
         view={view}
         title={title}
@@ -1036,7 +1038,6 @@ function useDocMenu({ doc, view, arrange, select, recent, floatable, columns }: 
   const notes = useNoteActions();
   const toast = useToast();
   const { navigate } = useAppRouter();
-  const openInTabs = useOpenManyInBackground();
   const [moveOpen, setMoveOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -1059,9 +1060,8 @@ function useDocMenu({ doc, view, arrange, select, recent, floatable, columns }: 
           ...(phone && doc.kind !== "template"
             ? []
             : [
-                columns && doc.kind !== "template"
-                  ? { label: "Open in New Tab", icon: <ExternalLink size={14} />, onSelect: () => openInTabs?.([{ kind: "note", id: doc.id, name: doc.title || "Untitled" }]) }
-                  : { label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
+                // (In the columns layout a click already opens the note, and there are no tabs to open it in.)
+                ...(columns && doc.kind !== "template" ? [] : [{ label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) }]),
               ]),
           ...(floatable && doc.kind !== "template" ? floatMenuItems({ id: doc.id, title: doc.title }) : []),
           doc.starred

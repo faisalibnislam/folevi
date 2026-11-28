@@ -4,7 +4,8 @@ import { NotePanes } from "./NotePanes";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
 import { useAppRouter } from "@/lib/app/router";
-import { useColumnsList } from "@/lib/app/useNoteColumns";
+import { useColumnsInfo } from "@/lib/app/useNoteColumns";
+import { withListParam } from "@/lib/app/noteColumns";
 import { DocumentBrowser } from "@/components/views/DocumentBrowser";
 import { TasksView } from "@/components/views/TasksView";
 import { CalendarView } from "@/components/views/CalendarView";
@@ -159,11 +160,28 @@ function Routes() {
   const caps = useCapabilities();
   // A library on this device has its own Vault (docs/MAC_REBUILD_PLAN.md §5.6) where local mode has it.
   const vaultHere = useCanCall(api.vault.get);
-  // The columns layout (docs/NOTE_COLUMNS.md): a list's page and a note opened in it are one view, kept as it is
-  // while the note changes (the column keeps its scroll, filter and selection).
-  const columns = useColumnsList();
+  // The columns layout (docs/NOTE_COLUMNS.md): a list's page and a note shown in it are one view, kept as it is
+  // while the note changes (the column keeps its scroll, filter and selection). With it on, every note is shown in
+  // a list (its own, worked out from its details while the address doesn't name one yet).
+  const { list: columns, pending: columnsPending } = useColumnsInfo();
+  const { search, navigate } = useAppRouter();
+  // A note shown in a list it isn't addressed with gets the list in its address (in place), so a reload, its tab
+  // and Back come back to the same column.
+  const unnamed = columns?.noteId && route.name === "doc" && !search.get("list") ? columns.path : null;
+  useEffect(() => {
+    if (unnamed && route.name === "doc") navigate(withListParam(`/d/${encodeURIComponent(route.id)}`, search, unnamed), { replace: true });
+  }, [unnamed, route, search, navigate]);
+  if (columnsPending) return <NoteLoading />;
   if (columns) {
     const list = columns.route;
+    const input = { list: columns.path, noteId: columns.noteId, row: columns.row, note: columns.noteId ? <NotePage id={columns.noteId} /> : null };
+    if (list.name === "shared") {
+      return (
+        <Later title="Shared with Me">
+          <SharedView key={columns.path} columns={input} />
+        </Later>
+      );
+    }
     const view = list.name === "notes" ? "all" : list.name;
     return (
       <DocumentBrowser
@@ -172,7 +190,7 @@ function Routes() {
         folderId={list.name === "folder" ? list.id : undefined}
         tagId={list.name === "tag" ? list.id : undefined}
         title={list.name === "notes" ? "All notes" : list.name === "folders" ? "All folders" : undefined}
-        columns={{ list: columns.path, noteId: columns.noteId, note: columns.noteId ? <NotePage id={columns.noteId} /> : null }}
+        columns={input}
       />
     );
   }

@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, SquarePen, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
-import { useListViewTab, useOpenManyInBackground } from "@/lib/app/tabs";
+import { useListViewTab } from "@/lib/app/tabs";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { useShell } from "@/components/app/Shell";
+import { SidebarMenu } from "@/components/app/SidebarMenu";
+import { useCreateDocument } from "@/components/app/useCreateDocument";
 import { clampColumn, columnsHref, groupNotes, LAST_NOTES_KEY, lastNoteKey, noteAfterLeaving, pickNote, rememberNote, stepNote, type LastNotes } from "@/lib/app/noteColumns";
-import { useColumnCollapsed, useColumnWidth } from "@/lib/app/useNoteColumns";
+import { COLUMNS_MIN_WINDOW, useColumnCollapsed, useColumnWidth } from "@/lib/app/useNoteColumns";
 import { ageText, formatRelative } from "@/lib/format";
 import { useKeyLabels } from "@/lib/shortcuts";
 import { ViewChrome } from "@/components/app/Shell";
@@ -22,6 +26,8 @@ export interface NoteColumnsProps {
   /** The list's own path (`?list=`), and the note open in it. */
   list: string;
   noteId: string | null;
+  /** The row marked open: the note, or the top note a nested page is inside. */
+  row?: string | null;
   /** The note's page (RouteView's), while one is open. */
   note: ReactNode;
   view: string;
@@ -52,6 +58,9 @@ export interface NoteColumnsProps {
   dropTarget: string | null;
   /** The selection's bar, menus and dialogs. */
   overlay: ReactNode;
+  /** Rows of another kind above the notes and below them (Shared with Me: its shared folders, its Vault items). */
+  before?: ReactNode;
+  after?: ReactNode;
   children?: ReactNode;
 }
 
@@ -60,7 +69,9 @@ const ROW_ICON = "ui-btn ui-btn-ghost size-control flex-none";
 export function NoteColumns(p: NoteColumnsProps) {
   const { navigate } = useAppRouter();
   const { scopeKey } = useAppState();
-  const openInBackground = useOpenManyInBackground();
+  const row = p.row ?? p.noteId;
+  const { sidebarOpen } = useShell();
+  const createDocument = useCreateDocument();
   const [width, setWidth] = useColumnWidth();
   const [collapsed, setCollapsed] = useColumnCollapsed();
   const keys = useKeyLabels();
@@ -77,8 +88,8 @@ export function NoteColumns(p: NoteColumnsProps) {
     if (pick) open(pick.id, "replace");
   }, [p.noteId, ready, p.docs, last, memoryKey, open]);
   useEffect(() => {
-    if (p.noteId && p.docs.some((d) => d.id === p.noteId)) setLast((cur) => rememberNote(cur, memoryKey, p.noteId!));
-  }, [p.noteId, p.docs, memoryKey, setLast]);
+    if (row && p.docs.some((d) => d.id === row)) setLast((cur) => rememberNote(cur, memoryKey, row));
+  }, [row, p.docs, memoryKey, setLast]);
 
   // The open note leaving the list (moved, archived, trashed, restored): the one that took its place opens. Only a
   // note that was in the list counts: a note just made may not be in it yet.
@@ -86,12 +97,12 @@ export function NoteColumns(p: NoteColumnsProps) {
   useEffect(() => {
     const order = p.docs.map((d) => d.id);
     const before = seen.current;
-    seen.current = { id: p.noteId, order };
-    if (!ready || !p.noteId || before.id !== p.noteId || !before.order.includes(p.noteId) || order.includes(p.noteId)) return;
-    const next = noteAfterLeaving(before.order, order, p.noteId);
+    seen.current = { id: row, order };
+    if (!ready || !row || before.id !== row || !before.order.includes(row) || order.includes(row)) return;
+    const next = noteAfterLeaving(before.order, order, row);
     if (next) open(next, "replace");
     else navigate(p.list, { replace: true });
-  }, [p.docs, p.noteId, ready, open, navigate, p.list]);
+  }, [p.docs, row, ready, open, navigate, p.list]);
 
   // The rows in their groups, and in the order the arrow keys go through them.
   const [now, setNow] = useState(() => Date.now());
@@ -109,7 +120,7 @@ export function NoteColumns(p: NoteColumnsProps) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
     if ((e.target as HTMLElement).closest("input, textarea, select, [contenteditable='true'], [role='menu']")) return;
-    const next = stepNote(order, p.noteId, e.key === "ArrowDown" ? 1 : -1);
+    const next = stepNote(order, row, e.key === "ArrowDown" ? 1 : -1);
     e.preventDefault();
     if (!next) return;
     open(next, "replace");
@@ -121,22 +132,28 @@ export function NoteColumns(p: NoteColumnsProps) {
   };
   // The open note's row is in view when the list opens on it.
   useEffect(() => {
-    if (!p.noteId) return;
-    listRef.current?.querySelector(`[data-card-id="${CSS.escape(p.noteId)}"]`)?.scrollIntoView({ block: "nearest" });
-  }, [p.noteId]);
+    if (!row) return;
+    listRef.current?.querySelector(`[data-card-id="${CSS.escape(row)}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [row]);
 
+  // In a narrow window the column starts hidden (its rail shows it), so the note keeps its room; ⌘⌥L and the rail
+  // show it there for the moment, without changing the choice kept for wide windows.
+  const narrow = useMediaQuery(`(max-width: ${COLUMNS_MIN_WINDOW - 1}px)`);
+  const [narrowShown, setNarrowShown] = useState(false);
+  const hidden = narrow ? !narrowShown : collapsed;
+  const setHidden = (h: boolean) => (narrow ? setNarrowShown(!h) : setCollapsed(h));
   // ⌘⌥L hides or shows the column.
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       // (AltGr is Ctrl+Alt on Windows and Linux: AltGr+L types a letter on some layouts, never this.)
       if ((e.metaKey || e.ctrlKey) && e.altKey && !e.shiftKey && e.code === "KeyL" && !e.getModifierState?.("AltGraph")) {
         e.preventDefault();
-        setCollapsed(!collapsed);
+        setHidden(!hidden);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [collapsed, setCollapsed]);
+  });
 
   // Resizing: drag the edge, or ← → on it.
   const [dragW, setDragW] = useState<number | null>(null);
@@ -169,20 +186,31 @@ export function NoteColumns(p: NoteColumnsProps) {
   const showLabel = keys("Show note list (⌘⌥L)");
   const listEmpty = ready && p.docs.length === 0;
 
-  const column = collapsed ? (
+  // With the sidebar hidden, its menu and New note sit at the top of the column (there's no tab bar in this layout).
+  const chrome = sidebarOpen ? null : (
+    <>
+      <SidebarMenu />
+      <button type="button" aria-label="New note" title={keys("New note (⌘⌥N)")} onClick={() => void createDocument({})} className={ROW_ICON}>
+        <SquarePen size={16} aria-hidden />
+      </button>
+    </>
+  );
+  const column = hidden ? (
     // A slim rail keeps the way back to the list where it was.
-    <div className="flex w-12 flex-none flex-col items-center pt-[60px]">
-      <button type="button" aria-label="Show note list" title={showLabel} onClick={() => setCollapsed(false)} className={ROW_ICON}>
+    <div className="flex w-12 flex-none flex-col items-center gap-1 pt-3">
+      {chrome}
+      <button type="button" aria-label="Show note list" title={showLabel} onClick={() => setHidden(false)} className={ROW_ICON}>
         <PanelLeftOpen size={16} aria-hidden />
       </button>
     </div>
   ) : (
-    <section aria-label={`${p.title}: notes`} data-note-column="" style={{ width: shownWidth }} className="relative flex min-h-0 flex-none flex-col pt-[56px]">
+    <section aria-label={`${p.title}: notes`} data-note-column="" style={{ width: shownWidth }} className="relative flex min-h-0 flex-none flex-col pt-2">
       <header data-toolbar="" className="flex-none px-3 pb-2 pt-3">
         <div className="flex min-w-0 items-center gap-2">
+          {chrome}
           {p.mark}
           <h2 className="ui-list-name min-w-0 flex-1 truncate">{p.title}</h2>
-          <button type="button" aria-label="Hide note list" title={hideLabel} onClick={() => setCollapsed(true)} className={ROW_ICON}>
+          <button type="button" aria-label="Hide note list" title={hideLabel} onClick={() => setHidden(true)} className={ROW_ICON}>
             <PanelLeftClose size={16} aria-hidden />
           </button>
         </div>
@@ -197,6 +225,7 @@ export function NoteColumns(p: NoteColumnsProps) {
         </div>
       </header>
       <div ref={listRef} onKeyDown={onKeyDown} className="min-h-0 flex-1 overflow-y-auto px-2 pb-[max(1.5rem,var(--fab-clearance))]">
+        {p.before}
         {p.loading ? (
           <div aria-busy className="space-y-2 px-1 pt-2">
             {Array.from({ length: 7 }).map((_, i) => (
@@ -217,7 +246,7 @@ export function NoteColumns(p: NoteColumnsProps) {
                     key={d.id}
                     doc={d}
                     href={columnsHref(d.id, p.list)}
-                    current={d.id === p.noteId}
+                    current={d.id === row}
                     selected={p.selected.has(d.id)}
                     dropTarget={p.dropTarget === d.id}
                     showFolder={p.view !== "folder" && d.kind !== "template"}
@@ -225,13 +254,13 @@ export function NoteColumns(p: NoteColumnsProps) {
                     unsynced={p.unsynced.has(d.id) ? p.unsyncedMark : null}
                     rowProps={p.rowProps(d)}
                     menu={p.rowMenu(d)}
-                    onOpenInTab={() => openInBackground?.([{ kind: "note", id: d.id, name: d.title || "Untitled" }])}
                   />
                 ))}
               </ul>
             </section>
           ))
         )}
+        {p.after}
         {p.canLoadMore && ready ? (
           <div className="py-4 text-center">
             <Button onClick={p.onLoadMore}>Load more</Button>
@@ -296,7 +325,6 @@ function NoteRow({
   unsynced,
   rowProps,
   menu,
-  onOpenInTab,
 }: {
   doc: Summary;
   href: string;
@@ -308,7 +336,6 @@ function NoteRow({
   unsynced: ReactNode;
   rowProps: Record<string, unknown>;
   menu: ReactNode;
-  onOpenInTab: () => void;
 }) {
   const excerpt = doc.excerpt?.trim();
   return (
@@ -317,11 +344,6 @@ function NoteRow({
       data-current={current || undefined}
       data-selected={selected || undefined}
       className={`ui-note-row group ${dropTarget ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
-      onAuxClick={(e) => {
-        if (e.button !== 1) return;
-        e.preventDefault();
-        onOpenInTab();
-      }}
     >
       <AppLink href={href} aria-current={current ? "page" : undefined} className="block min-w-0 rounded-chip px-3 py-2.5 pr-10 outline-none hover:no-underline focus-visible:ring-2 focus-visible:ring-focus">
         <span className="ui-list-name block truncate">{doc.title || "Untitled"}</span>

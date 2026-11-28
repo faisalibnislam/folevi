@@ -9,6 +9,8 @@ import {
   dateGroup,
   groupNotes,
   isColumnsList,
+  listForNote,
+  withListParam,
   lastNoteKey,
   listFromSearch,
   listPath,
@@ -175,5 +177,40 @@ describe("columns layout: which note a list opens on", () => {
     expect(clampColumn(10)).toBe(COLUMN_MIN);
     expect(clampColumn(10_000)).toBe(COLUMN_MAX);
     expect(clampColumn(301.4)).toBe(301);
+  });
+});
+
+describe("columns layout: every note in a list", () => {
+  const where = (over: Partial<Parameters<typeof listForNote>[1]> = {}, doc: Parameters<typeof listForNote>[1]["document"] = {}) => ({
+    document: doc,
+    isMember: true,
+    inTrash: false,
+    folder: null,
+    breadcrumbs: [],
+    ...over,
+  });
+
+  it("shows a note in its folder's column, else Drafts, Trash or Archive while it's there", () => {
+    expect(listForNote("n", where({ folder: { id: "f 1" } }))).toEqual({ path: "/folders/f%201", row: "n" });
+    expect(listForNote("n", where())).toEqual({ path: "/drafts", row: "n" });
+    expect(listForNote("n", where({ inTrash: true, folder: { id: "f" } }))?.path).toBe("/trash");
+    expect(listForNote("n", where({}, { deletedAt: 5 }))?.path).toBe("/trash");
+    expect(listForNote("n", where({ folder: { id: "f" } }, { archivedAt: 5 }))?.path).toBe("/archive");
+  });
+
+  it("shows a note shared with you in Shared with Me, and leaves templates on their own page", () => {
+    expect(listForNote("n", where({ isMember: false, folder: null }))?.path).toBe("/shared");
+    expect(listForNote("n", where({}, { kind: "template" }))).toBeNull();
+  });
+
+  it("marks the top note's row for a nested page, in the top note's folder", () => {
+    expect(listForNote("sub", where({ folder: { id: "f" }, breadcrumbs: [{ id: "top" }, { id: "mid" }] }))).toEqual({ path: "/folders/f", row: "top" });
+  });
+
+  it("adds the list to a note's address, keeping its other fields", () => {
+    expect(withListParam("/d/n", "new=1", "/drafts")).toBe("/d/n?new=1&list=%2Fdrafts");
+    expect(withListParam("/d/n", new URLSearchParams("list=%2Fnotes&b=2"), "/trash")).toBe("/d/n?list=%2Ftrash&b=2");
+    expect(isColumnsList(parseRoute("/shared"))).toBe(true);
+    expect(isColumnsList(parseRoute("/shared/folder1"))).toBe(false);
   });
 });

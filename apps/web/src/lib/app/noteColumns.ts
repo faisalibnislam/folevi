@@ -5,9 +5,9 @@
 import { parseRoute, type Route } from "./router";
 
 /** The lists shown as a column (Templates keeps its own page). */
-export type ColumnsListRoute = Extract<Route, { name: "notes" | "starred" | "archive" | "trash" | "unsorted" | "folder" | "folders" | "tag" }>;
-/** (The Folders page, `folders`, lists every note that's in a folder.) */
-const LIST_NAMES = new Set(["notes", "starred", "archive", "trash", "unsorted", "folder", "folders", "tag"]);
+export type ColumnsListRoute = Extract<Route, { name: "notes" | "starred" | "archive" | "trash" | "unsorted" | "folder" | "folders" | "tag" | "shared" }>;
+/** (The Folders page, `folders`, lists every note that's in a folder; `shared` is Shared with Me.) */
+const LIST_NAMES = new Set(["notes", "starred", "archive", "trash", "unsorted", "folder", "folders", "tag", "shared"]);
 
 export function isColumnsList(route: Route): route is ColumnsListRoute {
   return LIST_NAMES.has(route.name);
@@ -38,6 +38,43 @@ export function listFromSearch(search: URLSearchParams | string): { path: string
 /** Where a note in a list goes: the note's address with the list after it (and `new=1` for a note just made). */
 export function columnsHref(noteId: string, list: string, opts?: { fresh?: boolean }): string {
   return `/d/${encodeURIComponent(noteId)}?${opts?.fresh ? "new=1&" : ""}list=${encodeURIComponent(list)}`;
+}
+
+/** The note's address as it is (its other query fields kept), with the list it's shown in. */
+export function withListParam(pathname: string, search: URLSearchParams | string, list: string): string {
+  const q = new URLSearchParams(typeof search === "string" ? search : search.toString());
+  q.set("list", list);
+  return `${pathname}?${q.toString()}`;
+}
+
+/** What a note's details (documents.get) say about where it is, as much as the column needs. */
+export interface NoteWhere {
+  document: { kind?: string; archivedAt?: number | null; deletedAt?: number | null };
+  isMember: boolean;
+  inTrash?: boolean;
+  folder: { id: string } | null;
+  breadcrumbs: { id: string }[];
+}
+
+/**
+ * The list a note opened on its own shows in, with the Columns layout on (docs/NOTE_COLUMNS.md): Trash or Archive
+ * while it's there, a note shared with you in Shared with Me, else its folder (a nested page: its top note's), else
+ * Drafts. Templates aren't in a note list: null, the note page as it is. `row` is the row to mark: the note, or the
+ * top note a nested page is inside.
+ */
+export function listForNote(noteId: string, where: NoteWhere): { path: string; row: string } | null {
+  if (where.document.kind === "template") return null;
+  const row = where.breadcrumbs[0]?.id ?? noteId;
+  const path = !where.isMember
+    ? "/shared"
+    : where.inTrash || where.document.deletedAt
+      ? "/trash"
+      : where.document.archivedAt
+        ? "/archive"
+        : where.folder
+          ? `/folders/${encodeURIComponent(where.folder.id)}`
+          : "/drafts";
+  return { path, row };
 }
 
 /** The list on screen in the columns layout: a list's own page, or a note opened in one. */

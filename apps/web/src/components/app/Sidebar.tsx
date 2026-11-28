@@ -1,6 +1,9 @@
 "use client";
 
-import { useNavRoute } from "@/lib/app/useNoteColumns";
+import { useNavRoute, useNoteColumnsActive } from "@/lib/app/useNoteColumns";
+import { useCreateDocument } from "./useCreateDocument";
+import { useKeyLabels } from "@/lib/shortcuts";
+import { SquarePen } from "lucide-react";
 import { useMutation } from "convex/react";
 import { Fragment, useEffect, useId, useMemo, useState } from "react";
 import { ArrowDownUp, Archive, CalendarDays, SquareCheckBig, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, SlidersHorizontal, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
@@ -470,16 +473,35 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
 /** "Search or jump to…" (⌘K): the same box at the top of the app's sidebar and of a note's own sidebar. */
 export function SidebarSearch() {
   const { openPalette } = useShell();
-  return (
+  // In the columns layout there's no tab bar: New note sits beside the search box (docs/NOTE_COLUMNS.md).
+  const columnsOn = useNoteColumnsActive();
+  const createDocument = useCreateDocument();
+  const keys = useKeyLabels();
+  const search = (
     <button
       type="button"
       onClick={openPalette}
       className="ui-well flex h-9 w-full items-center gap-2 rounded-control pl-3 pr-1.5 text-left text-subheadline text-muted transition-colors hover:text-ink pointer-coarse:h-11"
     >
       <Search size={14} aria-hidden />
-      <span className="flex-1">Search or jump to…</span>
+      <span className="min-w-0 flex-1 truncate">Search or jump to…</span>
       <Kbd>{modKey()}K</Kbd>
     </button>
+  );
+  if (!columnsOn) return search;
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="min-w-0 flex-1">{search}</div>
+      <button
+        type="button"
+        aria-label="New note"
+        title={keys("New note (⌘⌥N)")}
+        onClick={() => void createDocument({})}
+        className="ui-hit grid size-9 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:size-11"
+      >
+        <SquarePen size={16} aria-hidden />
+      </button>
+    </div>
   );
 }
 

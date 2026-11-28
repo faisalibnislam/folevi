@@ -7,7 +7,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { openNextFresh, openNextInNewTab } from "@/lib/app/tabs";
 import { loadDocumentView } from "@/lib/app/noteView";
 import { haptic } from "@/lib/nativeApp";
-import { useColumnsList } from "@/lib/app/useNoteColumns";
+import { useColumnsList, useNoteColumnsActive } from "@/lib/app/useNoteColumns";
 import { columnsHref } from "@/lib/app/noteColumns";
 
 /**
@@ -22,6 +22,7 @@ export function useCreateDocument() {
   const { navigate, route } = useAppRouter();
   // In the columns layout (docs/NOTE_COLUMNS.md) a new note starts in the list on screen and opens in its column.
   const columns = useColumnsList();
+  const columnsOn = useNoteColumnsActive();
   const currentFolder = columns ? (columns.route.name === "folder" ? columns.route.id : null) : route.name === "folder" ? route.id : null;
   return useCallback(
     async (opts: { title?: string; parentDocumentId?: string | null; folderId?: string | null; templateId?: string | null; kind?: "document" | "template"; navigateTo?: boolean }) => {
@@ -47,9 +48,12 @@ export function useCreateDocument() {
         // The new note opens ready to type in, never on a placeholder that would swallow the first keys.
         await loadDocumentView().catch(() => undefined);
         // In a list's column a new note (not a template) opens there, in the list's tab.
-        const inColumn = columns && !opts.parentDocumentId && (opts.kind ?? "document") === "document" && opts.templateId === undefined;
-        if (inColumn) {
-          navigate(columnsHref(id, columns.path, { fresh: true }));
+        // Elsewhere with the layout on (Home, Tasks…), in its folder's column or Drafts': a note just made isn't on the
+        // server yet for its list to be worked out from.
+        const topLevel = !opts.parentDocumentId && (opts.kind ?? "document") === "document";
+        const list = columns && topLevel && opts.templateId === undefined ? columns.path : columnsOn && topLevel ? (inFolder ? `/folders/${encodeURIComponent(inFolder)}` : "/drafts") : null;
+        if (list) {
+          navigate(columnsHref(id, list, { fresh: true }));
           return id;
         }
         // A new top-level page opens in its own tab; a nested one stays in the note's tab.
@@ -60,6 +64,6 @@ export function useCreateDocument() {
       }
       return id;
     },
-    [engine, navigate, currentFolder, columns],
+    [engine, navigate, currentFolder, columns, columnsOn],
   );
 }

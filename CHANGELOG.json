@@ -1,6 +1,24 @@
 {
   "releases": [
     {
+      "version": "1.9.80",
+      "build": 111,
+      "released": "2026-11-28T06:10:42+06:00",
+      "type": "update",
+      "summary": "Every Folevi app is free now, with new Folevi Cloud plans, and Foli AI works on your own AI key.",
+      "added": [
+        "New plans: every app is free, and you pay only for Folevi Cloud. Free, Core ($2 a month), Pro ($4) and Pro AI ($10), with no device limit on any plan and credit packs on every plan.",
+        "Foli AI on your own Anthropic, OpenAI or Google Gemini key, on every plan, with no credits used.",
+        "A switch to turn Foli AI off for a whole workspace, in Settings > Workspace > Privacy."
+      ],
+      "improved": [
+        "Core no longer blocks Foli AI: turning it off is a setting, for yourself or for a workspace.",
+        "About, sign-up and emails name Folevi's operator, Space Cherries LLC.",
+        "On a public or shared computer, your AI key is never saved to disk."
+      ],
+      "tag": "v1.9.80"
+    },
+    {
       "version": "1.8.80",
       "build": 110,
       "released": "2026-11-27T09:48:23+06:00",

@@ -55,7 +55,7 @@ const ROWS: Row[] = [
   },
   {
     label: "Apps",
-    folevi: { mark: "yes", text: "Mac, Windows, Linux, iPhone, iPad and web" },
+    folevi: { mark: "yes", text: "Mac, iPhone, iPad and web" },
     them: { notion: { mark: "yes", text: "Web, Mac, Windows, iOS, Android" }, obsidian: { mark: "yes", text: "Mac, Windows, Linux, iOS, Android" } },
   },
   {

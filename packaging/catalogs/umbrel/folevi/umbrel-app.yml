@@ -7,7 +7,7 @@ version: "1.5.73"
 tagline: Your notes, on your own server
 description: >-
   Folevi Server is your own Folevi for your family or team: notes, tasks and files on your Umbrel, used from the
-  normal Folevi apps on Mac, iPhone, iPad, Android and the web. Open the app to create the owner account.
+  normal Folevi apps on Mac, iPhone, iPad and the web. Open the app to create the owner account.
 releaseNotes: >-
   See https://folevi.com/server/changelog
 developer: Space Cherries LLC

@@ -3,28 +3,13 @@ import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { DownloadsBar } from "@/components/marketing/DownloadsBar";
 import { PlatformMark, type PlatformMarkName } from "@/components/marketing/PlatformMark";
 import { pageMetadata } from "@/components/marketing/seo";
-import {
-  ANDROID_DOWNLOAD_URL,
-  ANDROID_INSTALL_NOTE,
-  ANDROID_REQUIREMENT,
-  APP_STORE_URL,
-  IOS_REQUIREMENT,
-  LINUX_CHECKSUMS_URL,
-  LINUX_DOWNLOADS,
-  MAC_DOWNLOAD_URL,
-  MAC_REQUIREMENT,
-  WEB_APP_URL,
-  WINDOWS_DOWNLOAD_ARM64_URL,
-  WINDOWS_DOWNLOAD_X64_URL,
-  WINDOWS_REQUIREMENT,
-} from "@/components/marketing/site";
+import { APP_STORE_URL, COMING_SOON_NOTE, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL } from "@/components/marketing/site";
 import { fetchServerManifest, formatSize, serverFile, SERVER_ARCHES, type ServerArch, type ServerManifest, type ServerPlatform } from "@/components/marketing/server/manifest";
 import { Eyebrow, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
-  title: "Download Folevi for Mac, Windows, Linux, iPhone, iPad and Android",
-  description:
-    "Every Folevi download in one place: Mac, Windows, Linux (Beta: AppImage, .deb, .rpm), iPhone and iPad, Android, the web app and Folevi Server (Beta).",
+  title: "Download Folevi for Mac, iPhone and iPad",
+  description: `Every Folevi download in one place: Mac, iPhone and iPad, the web app and Folevi Server (Early Beta). ${COMING_SOON_NOTE}`,
   path: "/downloads",
 });
 
@@ -41,7 +26,15 @@ type Item = { name: string; detail: string; href?: string; action: string; links
 /** `beta`: still in beta (lib/beta.ts): a Beta badge by the title and the Beta note under the list. */
 type Platform = { id: string; title: string; mark: PlatformMarkName; note?: string; beta?: boolean; items: Item[] };
 
-/** Every download Folevi offers, one row each. Links come from components/marketing/site.ts. */
+/**
+ * A paused app's section (Android, Windows and Linux, owner 2026-11-28): one row with the muted "Coming soon"
+ * chip and no link. Their download links stay in site.ts for when they come back.
+ */
+function comingSoon(id: string, mark: PlatformMarkName, title: string, detail: string): Platform {
+  return { id, mark, title, items: [{ name: `Folevi for ${title}`, detail, action: "Coming soon" }] };
+}
+
+/** Every download Folevi offers, one row each, then the paused apps. Links come from components/marketing/site.ts. */
 function platforms(manifest: ServerManifest | null): Platform[] {
   return [
   {
@@ -52,44 +45,11 @@ function platforms(manifest: ServerManifest | null): Platform[] {
     items: [{ name: "Folevi for Mac", detail: "Apple silicon and Intel (.dmg)", href: MAC_DOWNLOAD_URL, action: "Download" }],
   },
   {
-    id: "windows",
-    mark: "windows",
-    title: "Windows",
-    note: `${WINDOWS_REQUIREMENT}. This early build isn’t signed yet, so Windows asks you to confirm it (More info, then Run anyway).`,
-    items: [
-      { name: "Folevi for Windows", detail: "Intel and AMD PCs (x64 installer)", href: WINDOWS_DOWNLOAD_X64_URL, action: "Download" },
-      { name: "Folevi for Windows", detail: "Arm PCs (arm64 installer)", href: WINDOWS_DOWNLOAD_ARM64_URL, action: "Download" },
-    ],
-  },
-  {
-    id: "linux",
-    mark: "linux",
-    title: "Linux",
-    beta: true,
-    note: "The AppImage updates itself; the .deb and .rpm update through your package manager.",
-    items: [
-      { name: "AppImage", detail: "Most distributions, Intel and AMD", href: LINUX_DOWNLOADS.appimage.x64, action: "Download" },
-      { name: "AppImage", detail: "Most distributions, ARM", href: LINUX_DOWNLOADS.appimage.arm64, action: "Download" },
-      { name: ".deb", detail: "Ubuntu, Debian and Mint, Intel and AMD", href: LINUX_DOWNLOADS.deb.x64, action: "Download" },
-      { name: ".deb", detail: "Ubuntu, Debian and Mint, ARM", href: LINUX_DOWNLOADS.deb.arm64, action: "Download" },
-      { name: ".rpm", detail: "Fedora and openSUSE, Intel and AMD", href: LINUX_DOWNLOADS.rpm.x64, action: "Download" },
-      { name: ".rpm", detail: "Fedora and openSUSE, ARM", href: LINUX_DOWNLOADS.rpm.arm64, action: "Download" },
-      { name: "Checksums", detail: "SHA-256 for every Linux package", href: LINUX_CHECKSUMS_URL, action: "View" },
-    ],
-  },
-  {
     id: "iphone-ipad",
     mark: "apple",
     title: "iPhone and iPad",
     note: `${IOS_REQUIREMENT}.`,
     items: [{ name: "Folevi for iPhone and iPad", detail: "On the App Store", href: APP_STORE_URL, action: "App Store" }],
-  },
-  {
-    id: "android",
-    mark: "android",
-    title: "Android",
-    note: `${ANDROID_REQUIREMENT}. ${ANDROID_INSTALL_NOTE}`,
-    items: [{ name: "Folevi for Android", detail: "Phones and tablets (.apk, about 124 MB)", href: ANDROID_DOWNLOAD_URL, action: "Download" }],
   },
   {
     id: "web",
@@ -105,9 +65,12 @@ function platforms(manifest: ServerManifest | null): Platform[] {
     beta: true,
     note: manifest
       ? `Version ${manifest.version}. Run Folevi on your own NAS or server. Checksums, the one-line install command and the container image are on the Folevi Server page.`
-      : "Run Folevi on your own NAS or server. The first beta is almost ready; its packages appear here and on the Folevi Server page as soon as it’s out.",
+      : "Run Folevi on your own NAS or server. The Early Beta is almost ready; its packages appear here and on the Folevi Server page as soon as it’s out.",
     items: serverItems(manifest),
   },
+  comingSoon("windows", "windows", "Windows", "Arm, Intel and AMD PCs"),
+  comingSoon("linux", "linux", "Linux", "AppImage, .deb and .rpm"),
+  comingSoon("android", "android", "Android", "Phones and tablets"),
   ];
 }
 
@@ -148,7 +111,7 @@ export default async function DownloadsPage() {
       <HeaderCard crumbs={CRUMBS}>
         <Eyebrow>Downloads</Eyebrow>
         <h1 className="mk-display mt-5 text-[44px] leading-[0.98] sm:text-[64px]">Download Folevi.</h1>
-        <p className="mk-lede mt-6 max-w-[56ch]">Every Folevi app and package, for every platform, in one list. Every app is free with every feature, and you don’t need an account. Folevi Server is free to run yourself. Jump to yours from the bar at the bottom.</p>
+        <p className="mk-lede mt-6 max-w-[56ch]">Every Folevi app and package in one list. Every app is free with every feature, and you don’t need an account. Folevi Server is free to run yourself. {COMING_SOON_NOTE} Jump to yours from the bar at the bottom.</p>
       </HeaderCard>
 
       {PLATFORMS.map((p) => (

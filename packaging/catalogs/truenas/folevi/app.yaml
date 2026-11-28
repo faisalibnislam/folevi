@@ -7,7 +7,7 @@ categories:
   - productivity
 changelog_url: https://folevi.com/server/changelog
 date_added: "2026-11-25"
-description: Your own Folevi server (Beta) for your family or team. Notes, tasks and files on your own TrueNAS, used from the normal Folevi apps on Mac, iPhone, iPad, Android and the web.
+description: Your own Folevi server (Early Beta) for your family or team. Notes, tasks and files on your own TrueNAS, used from the normal Folevi apps on Mac, iPhone, iPad and the web.
 home: https://folevi.com/server
 host_mounts: []
 icon: https://pkg.folevi.com/icons/folevi-256.png

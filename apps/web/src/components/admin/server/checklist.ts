@@ -78,7 +78,7 @@ export function checklistItems(input: { settings: ServerSettings; people: number
   items.push({
     id: "apps",
     title: "Connect your apps",
-    detail: marked("apps") ? "Done." : "Add this server in Folevi for Mac, iPhone, iPad and Android.",
+    detail: marked("apps") ? "Done." : "Add this server in Folevi for Mac, iPhone and iPad.",
     state: marked("apps") ? "done" : "todo",
     skipAs: ["apps"],
     href: "#connect-apps",

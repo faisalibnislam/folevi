@@ -9,6 +9,7 @@ export function pageMetadata({
   absoluteTitle = false,
   ogImage = "root",
   article,
+  noindex = false,
 }: {
   title: string;
   description: string;
@@ -22,6 +23,8 @@ export function pageMetadata({
   ogImage?: "root" | "segment";
   /** Docs articles: shared as articles, with their last update (YYYY-MM-DD). */
   article?: { modified: string };
+  /** Keep the page out of search results (it stays reachable): the paused apps' pages (owner, 2026-11-28). */
+  noindex?: boolean;
 }): Metadata {
   const url = absoluteUrl(path);
   // Titles that already name Folevi ("Getting started with Folevi") don't repeat it in the suffix.
@@ -35,6 +38,7 @@ export function pageMetadata({
     title: fullTitle === title ? { absolute: title } : title,
     description,
     alternates: { canonical: url },
+    ...(noindex ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       ...(article ? { type: "article" as const, modifiedTime: article.modified } : { type: "website" as const }),
       url,
@@ -61,7 +65,7 @@ export function organizationLd(): Record<string, unknown> {
     "@type": "Organization",
     name: "Folevi",
     url: absoluteUrl("/"),
-    description: "Folevi makes a digital workspace for notes, docs, tasks and databases, on the web and in free apps for Mac, Windows, Linux, iPhone, iPad and Android.",
+    description: "Folevi makes a digital workspace for notes, docs, tasks and databases, on the web and in free apps for Mac, iPhone and iPad.",
     logo: absoluteUrl("/icons/icon-512.png"),
     email: SUPPORT_EMAIL,
     contactPoint: [
@@ -154,7 +158,7 @@ export function softwareLd(): Record<string, unknown> {
     name: "Folevi",
     url: absoluteUrl("/"),
     applicationCategory: "ProductivityApplication",
-    operatingSystem: "macOS 26, Windows 10, Windows 11, Linux, iOS 26, iPadOS 26, Web",
+    operatingSystem: "macOS 26, iOS 26, iPadOS 26, Web",
     description:
       "A digital workspace for notes, docs, tasks and databases (table, gallery and kanban views), with team workspaces and Foli AI. Every app is free forever, with every feature and no account: pages are files in a folder you pick, such as iCloud Drive or any folder on your device. Folevi Cloud adds the web app, sharing and teams.",
     // The Personal plans, one offer per price, from the plan catalog (team plans cost the same per member).

@@ -13,7 +13,7 @@ const PLACES: Array<{ icon: ReactNode; title: string; body: string }> = [
   { icon: <Cloud size={18} />, title: "iCloud Drive", body: "On every iPhone, iPad and Mac signed in to your iCloud account." },
   { icon: <Folder size={18} />, title: "Dropbox or Google Drive", body: "Folevi only uses its own folder there." },
   { icon: <Folder size={18} />, title: "Any folder", body: "Such as one in OneDrive, or one the Files app offers." },
-  { icon: <Server size={18} />, title: "Your own Folevi Server", body: "Free to run on your computer, NAS or server. In Beta." },
+  { icon: <Server size={18} />, title: "Your own Folevi Server", body: "Free to run on your computer, NAS or server. In Early Beta." },
   { icon: <HardDrive size={18} />, title: "Just this device", body: "Turn on sync later in Settings." },
 ];
 

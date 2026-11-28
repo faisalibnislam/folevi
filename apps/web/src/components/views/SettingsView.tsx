@@ -626,7 +626,7 @@ function SettingsSearch({ items, query, setQuery }: { items: Item[]; query: stri
           }}
           placeholder={aiOn ? "Search or describe a setting" : "Search settings"}
           aria-label="Search settings"
-          aria-controls="settings-search-results"
+          aria-controls={typing ? "settings-search-results" : undefined}
           className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
         />
         {typing ? (

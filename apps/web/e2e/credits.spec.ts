@@ -71,8 +71,8 @@ test("Core keeps Foli AI; turning Foli AI off hides every AI entry point in Pers
   await page.goto(`${APP}/documents`);
   await expect(launcher(page)).toBeVisible({ timeout: 30_000 });
 
-  // Settings → Account: the person turns Foli AI off, and every entry point goes.
-  await page.goto(`${APP}/settings/account`);
+  // Settings → Foli AI: the person turns Foli AI off, and every entry point goes.
+  await page.goto(`${APP}/settings/ai`);
   const toggle = page.getByRole("switch", { name: "Foli AI", exact: true });
   await expect(toggle).toBeEnabled({ timeout: 30_000 });
   await expect(toggle).toHaveAttribute("aria-checked", "true");

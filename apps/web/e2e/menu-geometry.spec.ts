@@ -227,7 +227,7 @@ test.describe("menu geometry", { tag: ["@local", "@mac"] }, () => {
       await card.getByRole("button", { name: /^More actions for/ }).click();
       await check(page, page.getByRole("menu", { name: /^More actions for/ }), "note card", look);
       await esc();
-      const folder = page.locator('[aria-labelledby="home-recent-folders"] li').first();
+      const folder = page.locator('[aria-labelledby="home-folders-title"] li').first();
       if (await folder.count()) {
         await folder.hover();
         await folder.getByRole("button", { name: /^Folder options for|^More actions for/ }).click();

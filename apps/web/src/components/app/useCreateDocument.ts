@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { ulid, DEFAULT_DOCUMENT_STYLE, DEFAULT_COVER } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -18,7 +18,13 @@ import { columnsHref } from "@/lib/app/noteColumns";
  * into that folder; elsewhere it starts in Drafts. Pass `folderId` (null for Drafts) to choose.
  */
 export function useCreateDocument() {
-  const { engine } = useAppState();
+  const { engine: current } = useAppState();
+  // A New note pressed while the sync engine is still starting (just after the page loads, or after switching
+  // account) waits for it instead of doing nothing.
+  const engineRef = useRef(current);
+  useEffect(() => {
+    engineRef.current = current;
+  }, [current]);
   const { navigate, route } = useAppRouter();
   // In the columns layout (docs/NOTE_COLUMNS.md) a new note starts in the list on screen and opens in its column.
   const columns = useColumnsList();
@@ -26,6 +32,11 @@ export function useCreateDocument() {
   const currentFolder = columns ? (columns.route.name === "folder" ? columns.route.id : null) : route.name === "folder" ? route.id : null;
   return useCallback(
     async (opts: { title?: string; parentDocumentId?: string | null; folderId?: string | null; templateId?: string | null; kind?: "document" | "template"; navigateTo?: boolean }) => {
+      let engine = engineRef.current;
+      for (let waited = 0; !engine && waited < 10_000; waited += 50) {
+        await new Promise((r) => setTimeout(r, 50));
+        engine = engineRef.current;
+      }
       if (!engine) return null;
       const id = ulid();
       const inFolder = opts.folderId !== undefined ? opts.folderId : !opts.parentDocumentId && (opts.kind ?? "document") === "document" ? currentFolder : null;
@@ -64,6 +75,6 @@ export function useCreateDocument() {
       }
       return id;
     },
-    [engine, navigate, currentFolder, columns, columnsOn],
+    [navigate, currentFolder, columns, columnsOn],
   );
 }

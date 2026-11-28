@@ -96,3 +96,13 @@ Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `We
 - A note list's Sort button is hidden while the list is empty (Archive, an empty folder).
 - Functions pushed to the dev deployment with `npx convex dev --once`.
 - Home capture field: the "Saves to" list uses the menu level (`ui-pop`, floating shadow) like every other menu, not `ui-raised`.
+
+## Sidebar filled icons, Home heading tiles, Reset in Customize
+
+- The sidebar's selected item shows its icon filled (`components/app/SidebarFilledIcons.tsx`, `NavItem` `activeIcon`):
+  Home, Foli DNA, Bookmarks, Drafts, All notes, Tasks, Calendar, Reviews, Shared with Me, Vault, Changes,
+  Templates. Details (the door, the check, calendar dots) are cut out in the row's colour. Not yet on the Mac's
+  native sidebar or the folder rows.
+- Home's section heading tiles: black background, white icon, no border or shadow.
+- Customize mode has Reset next to Done (puts Home back to the default sections and order); the old bottom button
+  is gone.

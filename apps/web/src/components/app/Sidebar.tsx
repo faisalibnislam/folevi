@@ -38,6 +38,7 @@ import { flattenFolders, folderAncestors } from "@folevi/editor-schema";
 import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { applySidebarOrder, planSidebarDrop, setSidebarTreeDrops, SIDEBAR_FOLDER_SORTS, sortSidebarFolders, type SidebarFolderSort } from "@/lib/app/sidebarFolderSort";
 import { folderPlace } from "@/lib/app/folderDrop";
+import { FILLED_SIDEBAR_ICONS } from "./SidebarFilledIcons";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useBackendMode, useCanCall, useCapabilities } from "@/lib/mode";
@@ -107,6 +108,7 @@ function menuPoint(e: React.MouseEvent | React.KeyboardEvent): { x: number; y: n
 function NavItem({
   href,
   icon,
+  activeIcon,
   label,
   count,
   onNavigate,
@@ -120,6 +122,8 @@ function NavItem({
 }: {
   href: string;
   icon: React.ReactNode;
+  /** The icon filled, shown while the item is selected (SidebarFilledIcons.tsx). */
+  activeIcon?: React.ReactNode;
   label: string;
   count?: number;
   onNavigate?: () => void;
@@ -189,7 +193,7 @@ function NavItem({
       } ${over ? "bg-[var(--glass-active)] text-heading ring-2 ring-heading" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
     >
       <span className={`transition-colors ${active ? "text-heading" : "text-muted group-hover:text-heading"}`} aria-hidden>
-        {icon}
+        {active && activeIcon ? activeIcon : icon}
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {locked ? <LockGlyph /> : null}
@@ -733,7 +737,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     return [{ label: more ? "Move to sidebar" : "Move to More", onSelect: () => saveLayout(moveSidebarItem(layout, id, !more)) }, customize];
   };
   const item = (id: SidebarItemId, extra?: Partial<Parameters<typeof NavItem>[0]>) => (
-    <NavItem href={SIDEBAR_ITEMS[id].href} icon={SIDEBAR_ITEMS[id].icon} label={SIDEBAR_ITEMS[id].label} onNavigate={onNavigate} menu={itemMenu(id)} {...extra} />
+    <NavItem href={SIDEBAR_ITEMS[id].href} icon={SIDEBAR_ITEMS[id].icon} activeIcon={FILLED_SIDEBAR_ICONS[id]} label={SIDEBAR_ITEMS[id].label} onNavigate={onNavigate} menu={itemMenu(id)} {...extra} />
   );
   const renderItem = (id: SidebarItemId): React.ReactNode => {
     switch (id) {

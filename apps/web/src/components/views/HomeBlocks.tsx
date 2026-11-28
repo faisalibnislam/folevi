@@ -6,7 +6,7 @@
 // mode. The layout and the pinned note are one person's, synced (convex/homePrefs.ts).
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useMutation } from "convex/react";
-import { ArrowDown, ArrowRight, ArrowUp, CalendarDays, Check, ChevronDown, EyeOff, LayoutTemplate, NotebookPen, PencilLine, Plus, SquareCheckBig } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, CalendarDays, Check, ChevronDown, RotateCcw, EyeOff, LayoutTemplate, NotebookPen, PencilLine, Plus, SquareCheckBig } from "lucide-react";
 import { scopeIdKey, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -35,7 +35,7 @@ export function SectionHead({ id, children, action, icon: Icon }: { id: string; 
     <div className="flex items-center justify-between gap-3">
       <h2 id={id} className="flex min-w-0 items-center gap-2.5 font-serif text-title-3 font-semibold leading-tight text-heading">
         {Icon ? (
-          <span aria-hidden className="grid size-7 flex-none place-items-center rounded-small border border-[var(--color-line)] bg-surface text-muted shadow-[var(--shadow-raised)]">
+          <span aria-hidden className="grid size-7 flex-none place-items-center rounded-small bg-heading text-canvas">
             <Icon size={14} aria-hidden />
           </span>
         ) : null}
@@ -57,16 +57,24 @@ export function BlockLink({ href, children }: { href: string; children: ReactNod
 }
 
 /** Home's top line: the date at the left, Customize at the right. */
-export function HomeTopLine({ editing, onToggle }: { editing: boolean; onToggle: () => void }) {
+export function HomeTopLine({ editing, onToggle, onReset }: { editing: boolean; onToggle: () => void; onReset?: () => void }) {
   const now = useNow();
   const date = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
   return (
     <div className="flex h-control items-center justify-between gap-3">
       <p className="text-subheadline text-faint">{date}</p>
+      <span className="flex items-center gap-2">
+      {editing && onReset ? (
+        <button type="button" onClick={onReset} className="ui-btn ui-btn-quiet h-control-sm gap-2 px-3 text-subheadline" title="Put Home back to its default sections and order">
+          <RotateCcw size={14} aria-hidden />
+          Reset
+        </button>
+      ) : null}
       <button type="button" aria-pressed={editing} onClick={onToggle} className={`ui-btn ${editing ? "ui-btn-primary" : "ui-btn-quiet"} h-control-sm gap-2 px-3 text-subheadline`}>
         {editing ? <Check size={14} aria-hidden /> : <PencilLine size={14} aria-hidden />}
         {editing ? "Done" : "Customize"}
       </button>
+      </span>
     </div>
   );
 }

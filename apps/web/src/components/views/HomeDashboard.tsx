@@ -345,7 +345,7 @@ export function HomeDashboard() {
       tabTitle="Home"
     >
       <div className="@container mx-auto max-w-[1320px] px-4 pb-[max(4rem,var(--fab-clearance))] pt-3 sm:px-8 xl:px-11">
-        <HomeTopLine editing={editing} onToggle={() => setEditing((e) => !e)} />
+        <HomeTopLine editing={editing} onToggle={() => setEditing((e) => !e)} onReset={() => void setLayout({ layout: null })} />
         {/* The opening, the page's full width: the greeting, the Foli AI summary (while Foli AI is on), the capture field. */}
         <div className="mt-1 flex min-w-0 flex-col gap-6">
           <HomeGreeting />
@@ -369,13 +369,6 @@ export function HomeDashboard() {
           )}
           {editing ? <AddBlockTile blocks={rows.filter((r) => r.hidden).map((r) => r.block)} saved={layout} saveLayout={saveLayout} /> : null}
         </div>
-        {editing ? (
-          <div className="mt-8 flex justify-end">
-            <button type="button" className="ui-btn ui-btn-quiet h-control px-3 text-callout" onClick={() => void setLayout({ layout: null })}>
-              Reset to the default Home
-            </button>
-          </div>
-        ) : null}
       </div>
     </ViewChrome>
   );

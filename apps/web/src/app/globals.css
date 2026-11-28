@@ -1915,3 +1915,7 @@ svg.lucide :is(path, line, polyline, polygon, rect, circle, ellipse) { vector-ef
 :root[data-float][data-desktop] [data-float-bar] {
   padding-left: 12px;
 }
+
+/* Settings search: the card a result opened on glows briefly (SettingsView.tsx, SettingsSearch). */
+#main section.ui-card[data-found] { box-shadow: 0 0 0 2px var(--color-focus); transition: box-shadow 0.4s ease; }
+#main section.ui-card { transition: box-shadow 0.6s ease; }

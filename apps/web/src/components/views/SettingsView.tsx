@@ -1,8 +1,9 @@
 "use client";
 
 import { isServerEdition } from "@/lib/edition";
-import { useEffect, useState, type ComponentType } from "react";
-import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, SpellCheck2, UserRound, UserRoundPlus, Users } from "lucide-react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
+import { searchSettings } from "@/lib/app/settingsSearch";
+import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, Search, X, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, SpellCheck2, UserRound, UserRoundPlus, Users } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
@@ -128,6 +129,21 @@ export function SettingsView({ section: asked }: { section: Section }) {
   }, [asked, bare]); // eslint-disable-line react-hooks/exhaustive-deps
   const iphone = useIphoneApp();
   const ipad = useIpadLayout();
+  const [query, setQuery] = useState("");
+  // A search result opens its section at the setting: ?find=<card title> scrolls to that card.
+  const find = search.get("find");
+  useEffect(() => {
+    if (!find) return;
+    const t = window.setTimeout(() => {
+      const h = [...document.querySelectorAll("#main h3")].find((el) => el.textContent?.trim() === find);
+      const card = h?.closest("section");
+      if (!card) return;
+      card.scrollIntoView({ block: "start", behavior: "smooth" });
+      card.setAttribute("data-found", "");
+      window.setTimeout(() => card.removeAttribute("data-found"), 1600);
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [find, section]);
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
   const workspaceItems = WORKSPACE.filter((i) => allowed(i.who) && !serverHides(i.id));
   // Desktop app: only in the Mac app; This device: only in the iPhone and iPad app (or opened by its address).
@@ -250,7 +266,8 @@ export function SettingsView({ section: asked }: { section: Section }) {
       <div className="@container">
       <div data-mac-settings-window={settingsWindow ? "" : undefined} className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8 @3xl:grid-cols-[216px_minmax(0,1fr)] @3xl:gap-10">
         <nav aria-label="Settings sections" hidden={settingsWindow} className="@3xl:sticky @3xl:top-6 @3xl:self-start">
-          <div className="flex gap-6 overflow-x-auto pb-1 @3xl:flex-col @3xl:gap-5 @3xl:overflow-visible @3xl:pb-0">
+          <SettingsSearch items={[...groups.flatMap((g) => g.items), ABOUT]} query={query} setQuery={setQuery} />
+          <div hidden={query.trim() !== ""} className="flex gap-6 overflow-x-auto pb-1 @3xl:flex-col @3xl:gap-5 @3xl:overflow-visible @3xl:pb-0">
             {groups.map((g) => (
               <div key={g.label} className="flex-none">
                 <p className="mb-1.5 truncate px-2.5 text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">{g.label}</p>
@@ -497,5 +514,81 @@ function NoWorkspaceCard() {
       </Button>
       <NewWorkspaceDialog open={open} onClose={() => setOpen(false)} onCreated={() => navigate("/settings/workspace")} />
     </Card>
+  );
+}
+
+/**
+ * Settings search: one field above the sections. Typing swaps the section list for the matching settings
+ * (lib/app/settingsSearch.ts); a result opens its section at that setting. Arrow keys move, Return opens,
+ * Escape clears.
+ */
+function SettingsSearch({ items, query, setQuery }: { items: Item[]; query: string; setQuery: (q: string) => void }) {
+  const { navigate } = useAppRouter();
+  const [at, setAt] = useState(0);
+  const input = useRef<HTMLInputElement>(null);
+  const byId = new Map(items.map((i) => [i.id as string, i]));
+  const hits = searchSettings(query, (id) => byId.get(id as Section)?.label).slice(0, 12);
+  const open = (h: (typeof hits)[number]) => {
+    setQuery("");
+    navigate(`/settings/${h.section}?find=${encodeURIComponent(h.title)}`);
+  };
+  const typing = query.trim() !== "";
+  return (
+    <div className="mb-5 @3xl:mb-4">
+      <label className="flex h-8 items-center gap-2 rounded-chip bg-[var(--glass-hover)] px-2.5 text-callout text-muted focus-within:ring-2 focus-within:ring-focus pointer-coarse:h-11">
+        <Search size={15} aria-hidden className="flex-none" />
+        <input
+          ref={input}
+          type="search"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setAt(0);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") setAt((a) => Math.min(a + 1, hits.length - 1));
+            else if (e.key === "ArrowUp") setAt((a) => Math.max(a - 1, 0));
+            else if (e.key === "Enter" && hits[at]) open(hits[at]);
+            else if (e.key === "Escape") setQuery("");
+            else return;
+            e.preventDefault();
+          }}
+          placeholder="Search settings"
+          aria-label="Search settings"
+          aria-controls="settings-search-results"
+          className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
+        />
+        {typing ? (
+          <button type="button" aria-label="Clear search" onClick={() => { setQuery(""); input.current?.focus(); }} className="flex-none text-muted hover:text-heading">
+            <X size={14} aria-hidden />
+          </button>
+        ) : null}
+      </label>
+      {typing ? (
+        <ul id="settings-search-results" className="mt-2 flex flex-col gap-0.5" aria-label="Matching settings">
+          {hits.map((h, i) => {
+            const it = byId.get(h.section);
+            const Icon = it?.icon ?? Search;
+            return (
+              <li key={h.section + h.title}>
+                <button
+                  type="button"
+                  onClick={() => open(h)}
+                  onMouseEnter={() => setAt(i)}
+                  className={`flex w-full items-center gap-2.5 rounded-chip px-2.5 py-1.5 text-left outline-none pointer-coarse:py-2.5 ${i === at ? "bg-[var(--glass-hover)] text-heading" : "text-ink/90"}`}
+                >
+                  <Icon size={16} aria-hidden className="flex-none text-muted" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-body">{h.title}</span>
+                    <span className="block truncate text-footnote text-muted">{it?.label}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+          {hits.length === 0 ? <li className="px-2.5 py-1.5 text-footnote text-muted">No settings match. Try another word.</li> : null}
+        </ul>
+      ) : null}
+    </div>
   );
 }

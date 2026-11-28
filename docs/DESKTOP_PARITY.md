@@ -85,3 +85,5 @@ PR 128). Left:
 Spotlight, Shortcuts and Siri, the Services menu, Quick Look's panel, Look Up, spelling learning, Apple's
 on-device model, iCloud Drive, the Dock menu as such, traffic-light placement, the clipboard workaround for
 WebKit, Electron migration.
+
+- Settings search (web, 2026-11-28): a search field above the Settings sections. Not in the Windows and Linux app yet.

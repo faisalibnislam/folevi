@@ -34,3 +34,15 @@ Owner feedback on 28 November 2026, made on the web and in the shared native car
 Not changed: the owner saw New folder in a folder close without making the folder (screen recording, right after signing in again). It did not reproduce from a fresh load on the dev deployment: short names and the parent's own name both made the folder at once, and nothing from the recorded attempts reached the server. Worth watching for after a session-ended sign-in.
 
 Not run: native snapshot tests (FoleviScreensTests); their reference images for folder and note cards will need refreshing.
+
+## Settings search (web and Mac)
+
+- One "Search settings" field above the Settings sections (`SettingsView.tsx`, `SettingsSearch`). Typing swaps the
+  section list for matching settings; a result opens its section at that card (`?find=<card title>`), which glows
+  briefly. Arrow keys, Return and Escape work.
+- The index is `apps/web/src/lib/app/settingsSearch.ts`: each card title with everyday words ("dark mode",
+  "cancel subscription", "2fa"). Filler words are dropped, so a question ("how do I turn on dark mode") finds the
+  same as a keyword. It runs locally, with no Foli AI call: the owner asked for a simple search.
+- Not yet: the iPhone and iPad Settings lists, the Windows/Linux app's own settings (recorded gap), and native
+  Mac Settings. Add new settings cards to the index when they're added.
+- Tests: `apps/web/test/settings-search.test.ts`.

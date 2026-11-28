@@ -107,3 +107,4 @@ Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `We
 - Customize mode has Reset next to Done (puts Home back to the default sections and order); the old bottom button
   is gone.
 - Sidebar More: it opens by itself once when you go to a page under it, then its toggle is yours. Before, it was forced open while that page was showing, so clicking More did nothing.
+- A folder page with folders and notes names both sections: "Folders" then "Notes". The folder row sits 16px closer to its heading (the cards keep room at the top for peeking notes).

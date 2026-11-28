@@ -785,7 +785,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
             <h2 id="subfolders-title" data-section-label="" className={SECTION_LABEL}>
               Folders
             </h2>
-            <ul aria-label="Folders inside" className="mb-10 grid grid-cols-[repeat(auto-fill,var(--subfolder-card))] gap-x-[var(--subfolder-gap-x)] gap-y-[var(--subfolder-gap-y)]">
+            <ul aria-label="Folders inside" className="-mt-4 mb-10 grid grid-cols-[repeat(auto-fill,var(--subfolder-card))] gap-x-[var(--subfolder-gap-x)] gap-y-[var(--subfolder-gap-y)]">
               {subfolderCards.map((f) => {
                 const on = selection.selected.has(f.id);
                 return (
@@ -825,6 +825,12 @@ function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { 
           </section>
         ) : null}
 
+        {/* A folder with folders and notes names both sections (the owner, 28 November 2026). */}
+        {subfolderCards.length && !filtering && !loading && !listFailed && docs.length ? (
+          <h2 data-section-label="" className={SECTION_LABEL}>
+            Notes
+          </h2>
+        ) : null}
         {loading ? (
           <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy>
             {Array.from({ length: 8 }).map((_, i) => (

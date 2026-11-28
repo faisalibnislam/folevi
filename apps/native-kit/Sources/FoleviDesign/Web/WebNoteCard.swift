@@ -555,10 +555,9 @@ public struct WebNoteCard: View {
     }
 
     private func footer(cq: CGFloat, heading: RGBA, muted: RGBA, chip: RGBA) -> some View {
-        // At Footnote, as a folder card's Edited date and the list views' dates: one size for a card's time everywhere
-        // (DocumentCard.tsx; the owner, 28 November 2026).
-        let footStyle = WebTextStyle.role(.footnote).cardInterface(chrome?.forText != nil)
-        let footH = max(8.6 * cq, 20)
+        // At the card-time size, as a folder card's Edited date: one size for a card's time everywhere (DocumentCard.tsx).
+        let footStyle = WebTextStyle.cardTime.cardInterface(chrome?.forText != nil)
+        let footH = max(8.6 * cq, 14)
         return HStack(spacing: 2 * cq) {
             if unsynced {
                 HStack(spacing: 4) {
@@ -584,7 +583,7 @@ public struct WebNoteCard: View {
                     }
                 }
                 .foregroundStyle(heading.color)
-                .padding(.horizontal, 6)
+                .padding(.horizontal, 4)
                 .frame(height: footH)
                 .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill(chip.color))
                 .frame(maxWidth: (100 - 13) * cq * 0.62 * 0.94, alignment: .trailing)
@@ -1035,9 +1034,9 @@ public struct WebFolderCard: View {
         let nameSize = min(30, max(14, 8 * cq * k * (subfolder ? 0.8 : 1)))
         let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.15, weight: 600)
         let countSize = min(18, max(11, 4.9 * cq * k))
-        // The Edited date at Footnote, as a note card's time (one size for a card's time everywhere: the owner, 28 November 2026).
+        // The Edited date at the card-time size, as a note card's time.
         let countStyle = WebTextStyle(size: countSize, leading: countSize * 1.3, weight: 500).cardInterface(chrome?.forText != nil)
-        let editedStyle = WebTextStyle.role(.footnote).cardInterface(chrome?.forText != nil)
+        let editedStyle = WebTextStyle.cardTime.cardInterface(chrome?.forText != nil)
         let nameW = Self.nameWidth(w, menuRoom: menuRoom && !phone)
         let nameLines = subfolder ? 1 : Self.nameLines(front: frontH, cq: cq, name: nameStyle.leading, count: countStyle.leading, edited: model.editedText.isEmpty ? 0 : editedStyle.leading)
         return ZStack(alignment: .topLeading) {
@@ -1401,5 +1400,14 @@ struct BookmarkRibbon: Shape {
         p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + 16 * y))
         p.closeSubpath()
         return p
+    }
+}
+
+extension WebTextStyle {
+    /// A card's time ("Oct 20", no "Edited"): one size on note cards and folder cards, 80.5% of Footnote (globals.css
+    /// --type-card-time; the owner, 28 November 2026).
+    static var cardTime: WebTextStyle {
+        let f = WebTextStyle.role(.footnote)
+        return WebTextStyle(size: f.size * 0.805, leading: f.leading * 0.805, weight: f.weight)
     }
 }

@@ -58,4 +58,4 @@
 - [native-apps-today-ui-2026-11-25.md](native-apps-today-ui-2026-11-25.md): iOS and Android go native except the writing area, matching today's UI with Liquid Glass / Material 3, iOS 26+, one big switch
 - [Desktop feature parity](desktop-feature-parity.md): 2026-11-25, web and Mac features also go to Windows and Linux when relevant; keep docs/DESKTOP_PARITY.md current
 - [Control scale](control-scale-2026-11-26.md): 2026-11-26, one control height (36, 44 on touch), corner, edge, weight and icon for every field, button, dropdown and switch on every platform; All notes is the reference
-- [Consistent type sizes](consistent-type-sizes-2026-11-28.md): 2026-11-28, the same role is the same size everywhere; a card's time is Footnote on note cards, folder cards and lists
+- [Consistent type sizes](consistent-type-sizes-2026-11-28.md): 2026-11-28, the same role is the same size everywhere; a card's time is one size (--type-card-time) on note and folder cards, no "Edited" word

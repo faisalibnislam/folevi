@@ -45,7 +45,7 @@ public struct FolderCardModel: Hashable, Sendable, Identifiable {
         self.parentName = parentName
         self.subfolders = subfolders
         self.subfolderColorIds = subfolderColorIds
-        self.editedText = editedText ?? (ageText.isEmpty ? "" : "Edited \(ageText.hasPrefix("Just") ? "just now" : ageText)")
+        self.editedText = editedText ?? ageText
     }
 
     /// "3 notes", "1 folder · 2 notes", "3 folders", or "No notes yet" (FolderCardArt's folderCountText).

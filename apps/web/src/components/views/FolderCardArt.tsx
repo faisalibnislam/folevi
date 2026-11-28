@@ -133,7 +133,7 @@ export function folderCountText(notes: number, subfolders = 0) {
 
 /**
  * The drawing. Goes inside an element with FOLDER_CARD_FRAME, inside one with FOLDER_CARD_BOX. `age` is the last
- * change as the app writes it ("Nov 18", "2 days ago"); the front says "Edited <age>".
+ * change as the app writes it ("Nov 18", "2 days ago"); the front shows it bare, as a note card's footer does.
  */
 export function FolderCardArt({
   name,
@@ -204,8 +204,8 @@ export function FolderCardArt({
           <span data-fc="count" className="mt-[1cqw] truncate text-[clamp(11px,calc(4.9cqw*var(--fc-text,1)),18px)] font-medium leading-[1.3] opacity-90">
             {folderCountText(count, subfolders)}
           </span>
-          <span data-fc="edited" className="mt-auto truncate text-footnote opacity-85">
-            Edited {age}
+          <span data-fc="edited" className="mt-auto truncate text-[length:var(--type-card-time)] leading-[var(--type-card-time-leading)] opacity-85">
+            {age}
           </span>
         </span>
       </div>

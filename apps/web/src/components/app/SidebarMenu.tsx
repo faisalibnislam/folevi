@@ -1,6 +1,6 @@
 "use client";
 
-import { Maximize2, Minimize2, PanelLeft, SquarePen } from "lucide-react";
+import { Columns3, FileText, Folder, LayoutGrid, Maximize2, Minimize2, PanelLeft, SquarePen } from "lucide-react";
 import { useCreateDocument } from "./useCreateDocument";
 import { useKeyLabels } from "@/lib/shortcuts";
 import { useAppRouter } from "@/lib/app/router";
@@ -36,15 +36,15 @@ export function SidebarMenu() {
       ? [
           "separator" as const,
           { heading: "Layout" },
-          { label: "Cards and rows", checked: !layout.columns, onSelect: () => layout.setColumns(false) },
-          { label: "Columns", checked: layout.columns, onSelect: () => layout.setColumns(true) },
+          { label: "Cards and rows", icon: <LayoutGrid size={14} />, checked: !layout.columns, onSelect: () => layout.setColumns(false) },
+          { label: "Columns", icon: <Columns3 size={14} />, checked: layout.columns, onSelect: () => layout.setColumns(true) },
         ]
       : []),
     ...(onNote && !inColumn
       ? [
           "separator" as const,
-          { label: "Show folders", checked: docSidebarMode === "folders", onSelect: () => setDocSidebarMode("folders") },
-          { label: "Show document", checked: docSidebarMode === "document", onSelect: () => setDocSidebarMode("document") },
+          { label: "Show folders", icon: <Folder size={14} />, checked: docSidebarMode === "folders", onSelect: () => setDocSidebarMode("folders") },
+          { label: "Show document", icon: <FileText size={14} />, checked: docSidebarMode === "document", onSelect: () => setDocSidebarMode("document") },
         ]
       : []),
   ];

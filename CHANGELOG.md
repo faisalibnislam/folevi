@@ -8,12 +8,12 @@ Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0
 
 Released 2026-11-28 11:48:26+06:00 (build 112, tag v1.9.81)
 
-The Mac app gets a quick note in the menu bar: write a thought from any app and save it to Folevi.
+The Mac app gets a menu bar note: a real Folevi note you open from the menu bar or with ⌥Space.
 
 ### Added
 
-- A quick note under the menu bar icon or with ⌥Space, as on Home: write, then Save (⌘Return) makes a note in Drafts or the folder you pick, with its first line as the title. Open and Undo follow the save.
-- Add as a task (⇧⌘Return), screenshots saved with the note (⇧⌘5), pin on top, and open as a window.
+- Menu bar note on the Mac: the menu bar icon or ⌥Space opens a small panel with a real note in Folevi's editor. New notes go to Drafts, or to a folder you pick.
+- In the panel you can send the note to the main window (⌘Return), paste in a screenshot (⇧⌘5), pin the panel on top, or open it as a window.
 
 ### Improved
 

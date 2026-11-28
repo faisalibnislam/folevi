@@ -117,6 +117,17 @@ struct NoteTests {
         #expect(model.noteID == "01A")
     }
 
+    @Test func sendToFoleviOpensItAndStartsANewOne() {
+        let (model, host, _) = makeNote()
+        model.perform(.sendToFolevi)
+        #expect(host.opened.isEmpty, "nothing to send before a note is made")
+        model.pathChanged("/float/01A?panel=1")
+        model.perform(.sendToFolevi)
+        #expect(host.opened == ["/d/01A"])
+        #expect(model.noteID == nil)
+        #expect(host.loaded.last == "/float/new?panel=1&space=personal")
+    }
+
     @Test func openInFolevi() {
         let (model, host, _) = makeNote()
         model.perform(.openInFolevi)
@@ -188,7 +199,8 @@ struct DestinationTests {
     @Test func thePanelMenuEndsWithFolevisItems() {
         let (model, _, _) = makeNote()
         let titles = model.panelMenu().items.map(\.title)
-        #expect(titles.first == "New Note Here")
+        #expect(titles.first == "Send to Folevi")
+        #expect(titles.contains("New Note Here"))
         #expect(titles.last == "Open Folevi")
         #expect(titles.contains("Open as a Window"))
         #expect(titles.contains("Pin on Top"))
@@ -207,6 +219,7 @@ struct KeysTests {
         #expect(a(S(key: "p", command: true, shift: true)) == .pin)
         #expect(a(S(key: "d", command: true, option: true)) == .window)
         #expect(a(S(key: "o", command: true, shift: true)) == .openInFolevi)
+        #expect(a(S(key: "return", command: true)) == .sendToFolevi)
         #expect(a(S(key: "b", command: true)) == nil, "⌘B is the editor's")
         #expect(a(S(key: "c", command: true)) == nil)
         #expect(a(S(key: "n")) == nil)

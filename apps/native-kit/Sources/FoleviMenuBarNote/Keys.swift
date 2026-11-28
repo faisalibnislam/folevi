@@ -14,6 +14,7 @@ extension MenuBarNoteModel {
             let key: String
             switch event.keyCode {
             case 23 where f.contains(.shift): key = "5" // ⇧5 reads "%"
+            case 36, 76: key = "return"
             default: key = (event.charactersIgnoringModifiers ?? "").lowercased()
             }
             return Shortcut(key: key, command: f.contains(.command), shift: f.contains(.shift), option: f.contains(.option), control: f.contains(.control))
@@ -21,7 +22,7 @@ extension MenuBarNoteModel {
     }
 
     enum Action: Equatable {
-        case newNote, screenshot, pin, window, openInFolevi
+        case newNote, sendToFolevi, screenshot, pin, window, openInFolevi
     }
 
     /// The action a key press runs, or nil (pure: tests).
@@ -29,6 +30,7 @@ extension MenuBarNoteModel {
         guard s.command, !s.control else { return nil }
         switch (s.key, s.shift, s.option) {
         case ("n", false, false): return .newNote
+        case ("\r", false, false), ("return", false, false): return .sendToFolevi
         case ("5", true, false): return .screenshot
         case ("p", true, false): return .pin
         case ("d", false, true): return .window
@@ -46,6 +48,7 @@ extension MenuBarNoteModel {
     func perform(_ action: Action) {
         switch action {
         case .newNote: newNote()
+        case .sendToFolevi: sendToFolevi()
         case .screenshot: capture(.region)
         case .pin: panel?.togglePin()
         case .window: panel?.toggleDetach()

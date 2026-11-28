@@ -3,21 +3,62 @@ import AudioToolbox
 import CoreImage
 import ScreenCaptureKit
 
-/// Screenshot capture with no Screen Recording permission.
-///
-/// Verified on macOS 26/27 (see ARCHITECTURE.md): `SCContentSharingPicker` is system-mediated, so
-/// a stream built from the filter it returns captures without a TCC prompt. We grab exactly one
-/// frame and stop. `/usr/sbin/screencapture -i` is *not* used: launched from a sandboxed app it
-/// triggers the Screen Recording prompt. Region capture = pick a display, then select a region
-/// on our own overlay drawn over the frozen frame.
+/// Screenshots the way macOS's own work (owner, 2026-11-28): Folevi asks once for Screen Recording (the system's
+/// prompt; afterwards System Settings > Privacy & Security), then every capture is immediate: the display under the
+/// pointer is grabbed with ScreenCaptureKit (Folevi's own windows left out) and an area is chosen on Notlet's overlay
+/// (dimmed backdrop, crosshair, live size, Esc cancels, Return takes the whole display). A window is chosen with the
+/// system's picker, which needs no permission (Notlet's route).
 @MainActor
 final class ScreenshotService: NSObject, SCContentSharingPickerObserver {
     enum Mode: String, CaseIterable, Sendable { case region, window, display }
+
+    enum Outcome {
+        case image(CGImage)
+        case cancelled
+        /// Screen Recording isn't allowed (yet): the system asked, or the person must allow it in System Settings.
+        case needsPermission
+    }
 
     private var continuation: CheckedContinuation<FilterBox?, Never>?
     private var grabber: FrameGrabber?
     private var regionWindow: RegionSelectionWindow?
     private var isCapturing = false
+
+    /// Whether Folevi may record the screen. Asks the system the first time (its prompt); false until it's allowed.
+    static func ensureAccess() -> Bool {
+        if CGPreflightScreenCaptureAccess() { return true }
+        return CGRequestScreenCaptureAccess()
+    }
+
+    /// System Settings at Screen Recording.
+    static func openPrivacySettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") { NSWorkspace.shared.open(url) }
+    }
+
+    func take(_ mode: Mode) async -> Outcome {
+        if mode == .window {
+            return await capture(.window).map(Outcome.image) ?? .cancelled
+        }
+        guard Self.ensureAccess() else { return .needsPermission }
+        guard !isCapturing else { return .cancelled }
+        isCapturing = true
+        defer { isCapturing = false }
+        let mouse = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main,
+              let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber,
+              let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true),
+              let display = content.displays.first(where: { $0.displayID == number.uint32Value }) else { return .needsPermission }
+        let mine = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
+        let filter = SCContentFilter(display: display, excludingApplications: mine, exceptingWindows: [])
+        let config = SCStreamConfiguration()
+        let scale = CGFloat(filter.pointPixelScale)
+        config.width = max(1, Int(filter.contentRect.width * scale))
+        config.height = max(1, Int(filter.contentRect.height * scale))
+        config.showsCursor = false
+        guard let frame = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config) else { return .cancelled }
+        if mode == .display { return .image(frame) }
+        return await selectRegion(in: frame, on: screen).map(Outcome.image) ?? .cancelled
+    }
 
     func capture(_ mode: Mode) async -> CGImage? {
         // One capture at a time: a second request would replace the pending picker continuation
@@ -66,7 +107,11 @@ final class ScreenshotService: NSObject, SCContentSharingPickerObserver {
         let screen = NSScreen.screens.first { $0.frame.size == contentSize && $0.frame.contains(NSEvent.mouseLocation) }
             ?? NSScreen.screens.first { $0.frame.size == contentSize } ?? NSScreen.main
         guard let screen else { return image }
-        return await withCheckedContinuation { cont in
+        return await selectRegion(in: image, on: screen)
+    }
+
+    private func selectRegion(in image: CGImage, on screen: NSScreen) async -> CGImage? {
+        await withCheckedContinuation { cont in
             let window = RegionSelectionWindow(screen: screen, image: image) { [weak self] cropped in
                 self?.regionWindow?.orderOut(nil)
                 self?.regionWindow = nil

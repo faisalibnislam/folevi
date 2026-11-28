@@ -19,6 +19,12 @@ public final class MenuBarNoteModel {
     var spaces: [NoteSpace]?
     var spacesError: String?
     var toast: String?
+    /// The toast's one button (Open Settings).
+    @ObservationIgnored var toastAction: ToastAction?
+    struct ToastAction {
+        let title: String
+        let run: () -> Void
+    }
     public internal(set) var isPanelVisible = false
     @ObservationIgnored private var toastTask: Task<Void, Never>?
 
@@ -82,6 +88,14 @@ public final class MenuBarNoteModel {
         host?.focusNote()
     }
 
+    /// Send to Folevi (⌘↩): the note opens in Folevi's main window, and the panel starts a new empty note.
+    func sendToFolevi() {
+        guard let id = noteID else { return showToast("Write something first.") }
+        host?.flush()
+        newNote()
+        host?.openInFolevi(path: "/d/\(id)")
+    }
+
     /// The note in Folevi's main window.
     func openInFolevi() {
         guard let id = noteID else { return }
@@ -125,7 +139,7 @@ public final class MenuBarNoteModel {
 
     // MARK: Screenshots
 
-    /// A screenshot into the note at the caret (Notlet's permission-free picker route: no Screen Recording prompt).
+    /// A screenshot into the note at the caret, the way macOS's own work: Screen Recording asked for once (ScreenshotService).
     func capture(_ mode: ScreenshotService.Mode = .region) {
         Task { await performCapture(mode) }
     }
@@ -137,9 +151,15 @@ public final class MenuBarNoteModel {
             panel.hide()
             try? await Task.sleep(for: .milliseconds(220))
         }
-        guard let image = await screenshots.capture(mode) else {
+        let image: CGImage
+        switch await screenshots.take(mode) {
+        case .image(let taken): image = taken
+        case .cancelled:
             if wasVisible { panel.show() }
             return
+        case .needsPermission:
+            panel.show()
+            return showToast("Allow Folevi under Screen Recording in System Settings, then take the screenshot again.", action: ("Open Settings", { ScreenshotService.openPrivacySettings() }), duration: 10)
         }
         if settings.screenshotSound { ScreenshotService.playShutter() }
         var final = image
@@ -163,7 +183,8 @@ public final class MenuBarNoteModel {
 
     // MARK: Toast
 
-    func showToast(_ message: String, duration: TimeInterval = 5) {
+    func showToast(_ message: String, action: (String, () -> Void)? = nil, duration: TimeInterval = 5) {
+        toastAction = action.map { ToastAction(title: $0.0, run: $0.1) }
         Motion.animate(Motion.spring) { toast = message }
         NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
                              userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])

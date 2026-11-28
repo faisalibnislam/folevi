@@ -25,6 +25,7 @@ extension MenuBarNoteModel {
     func panelMenu() -> NSMenu {
         let menu = NSMenu(title: "Note")
         menu.autoenablesItems = false
+        menu.addItem(ActionMenuItem("Send to Folevi", key: "\r", enabled: noteID != nil) { [weak self] in self?.sendToFolevi() })
         menu.addItem(ActionMenuItem("New Note Here", key: "n") { [weak self] in self?.newNote() })
         menu.addItem(ActionMenuItem("Open in Folevi", key: "o", modifiers: [.command, .shift], enabled: noteID != nil) { [weak self] in self?.openInFolevi() })
         let shots = NSMenu(title: "Screenshot")

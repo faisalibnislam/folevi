@@ -12,20 +12,33 @@ struct PanelRootView: View {
     static let barHeight: CGFloat = 46
 
     var body: some View {
-        VStack(spacing: 0) {
-            TopBar()
-                .padding(.horizontal, 8)
-                .padding(.top, 8)
-                .padding(.bottom, 6)
+        // The note fills the panel; the glass bar floats over its top (Notlet's layout), so the note's paper runs
+        // to the panel's edges. In a window the bar sits under the title bar's buttons.
+        ZStack(alignment: .top) {
             NoteSurface(view: model.host?.noteView)
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Note")
+            TopBar()
+                .padding(.horizontal, 8)
+                .padding(.top, model.settings.isDetached ? 30 : 8)
         }
         .overlay(alignment: .bottom) {
             if let toast = model.toast {
-                Text(toast)
-                    .font(QNStyle.label)
-                    .lineLimit(3)
+                HStack(spacing: 10) {
+                    Text(toast)
+                        .font(QNStyle.label)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let action = model.toastAction {
+                        Button(action.title) {
+                            model.toast = nil
+                            action.run()
+                        }
+                        .font(QNStyle.labelStrong)
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
+                    }
+                }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .quickGlass(in: Capsule())
@@ -76,11 +89,11 @@ struct TopBar: View {
                 Spacer(minLength: 0)
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        actionGroup { newButton; screenshotButton; if !model.settings.isDetached { pinButton }; windowButton }
+                        actionGroup { sendButton; newButton; screenshotButton; if !model.settings.isDetached { pinButton }; windowButton }
                         PanelMenuButton()
                     }
                     HStack(spacing: 8) {
-                        actionGroup { newButton; screenshotButton }
+                        actionGroup { sendButton; newButton; screenshotButton }
                         PanelMenuButton()
                     }
                     PanelMenuButton()
@@ -96,12 +109,18 @@ struct TopBar: View {
             .quickGlass(.regular.interactive(), in: Capsule())
     }
 
+    private var sendButton: some View {
+        GlassIconButton(icon: .send, help: "Send to Folevi (⌘Return)", label: "Send to Folevi") { model.sendToFolevi() }
+            .disabled(model.noteID == nil)
+            .opacity(model.noteID == nil ? 0.4 : 1)
+    }
+
     private var newButton: some View {
-        GlassIconButton(icon: .plus, help: "New note (⌘N), in \(model.destination.label)", label: "New note") { model.newNote() }
+        GlassIconButton(icon: .plus, help: "New note (⌘N)", label: "New note") { model.newNote() }
     }
 
     private var screenshotButton: some View {
-        GlassIconButton(icon: .camera, help: "Screenshot into this note (⇧⌘5)", label: "Take a screenshot into this note") { model.capture(.region) }
+        GlassIconButton(icon: .camera, help: "Screenshot (⇧⌘5)", label: "Take a screenshot into this note") { model.capture(.region) }
     }
 
     private var pinButton: some View {
@@ -113,7 +132,7 @@ struct TopBar: View {
     }
 
     private var windowButton: some View {
-        GlassIconButton(icon: .appWindow, help: model.settings.isDetached ? "Back to the menu bar (⌥⌘D)" : "Open as a window (⌥⌘D)",
+        GlassIconButton(icon: model.settings.isDetached ? .arrowUpToLine : .appWindow, help: model.settings.isDetached ? "Back to the menu bar (⌥⌘D)" : "Open as a window (⌥⌘D)",
                         label: model.settings.isDetached ? "Back to the menu bar" : "Open as a window") {
             model.panel?.toggleDetach()
         }
@@ -149,7 +168,7 @@ struct DestinationButton: View {
         .onHover { hovering = $0 }
         .quickGlass(.regular.interactive(), in: Capsule())
         .background(MenuAnchorView(anchor: anchor))
-        .help("Where new notes go. Click to choose.")
+        .foleviTooltip("Where new notes go")
         .accessibilityLabel("New notes go to \(destination.spaceName), \(destination.folderName ?? "Drafts")")
         .accessibilityHint("Opens a menu of workspaces and folders.")
     }
@@ -170,7 +189,7 @@ struct GlassIconButton: View {
                 .frame(width: 18, height: 18)
         }
         .buttonStyle(CapsuleItemButtonStyle())
-        .help(help)
+        .foleviTooltip(help)
         .accessibilityLabel(label)
     }
 }
@@ -231,7 +250,7 @@ struct PanelMenuButton: View {
         .quickGlass(.regular.interactive(), in: Capsule())
         .background(MenuAnchorView(anchor: anchor))
         .fixedSize()
-        .help("More")
+        .foleviTooltip("More")
         .accessibilityLabel("More actions and Folevi")
     }
 }

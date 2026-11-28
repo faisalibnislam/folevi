@@ -30,3 +30,11 @@ Not done or not checked:
 - If the note shown is deleted elsewhere, the panel shows the float page's "not found" until New is pressed.
 - Differs from Notlet: one note, no dots. Folevi's editor (Markdown shortcuts as you type) replaces Notlet's, so there's no plain-Markdown mode (⇧⌘T). Also left out: the widget, Shortcuts, Services, Apple Notes and backups. The menu bar icon stays Folevi's "F".
 - The marketing site still says "Quick Add from any app" for the Mac: for the Landing Page session.
+
+Later the same day, after the owner tried it in Folevi Dev:
+- The panel's empty page was a stand-in for a new note, which made the editor jump when typing started (the owner's screen recording). Now it isn't a stand-in: `/float/new?panel=1...` makes the real note at once, the way the web's New note does. A note the panel made and left empty is moved to the Trash and deleted when the panel moves on (New, another destination); Send to Folevi skips an empty note.
+- Added Send to Folevi (⌘Return): opens the note in the main window and starts a new one in the panel.
+- Screenshots ask for Screen Recording once (the system's prompt); after that the camera and ⇧⌘5 capture at once, with the area overlay. A window still goes through the system's picker.
+- Folevi's own tooltips; the window button changes when the panel is a window; the toast is a card; the block handle sits inside the panel.
+- The worktree had no `.env.local`, so the shell build talked to a placeholder Convex and notes didn't reach Folevi Dev. Copy `.env.local` and `apps/web/.env.local` from the main checkout before `build-shell.mjs` in a new worktree.
+- The owner asked that the Foli macOS session (`local_9551308d-5a94-4988-8d38-bee371064bbe`) own the feature from here; it has the hand-over.

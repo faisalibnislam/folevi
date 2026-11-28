@@ -243,7 +243,7 @@ export function CaptureField() {
             <ChevronDown size={12} aria-hidden />
           </button>
           {open ? (
-            <div role="listbox" aria-label="Where it saves" className="ui-raised absolute left-0 top-full z-30 mt-1 max-h-80 w-64 overflow-y-auto rounded-container p-1.5">
+            <div role="listbox" aria-label="Where it saves" className="ui-pop absolute left-0 top-full z-30 mt-1 max-h-80 w-64 overflow-y-auto rounded-container p-1.5">
               {spaces.map((s) => (
                 <SpaceOptions key={scopeIdKey(s.scope)} scope={s.scope} spaceName={s.name} dest={where} pick={pick} />
               ))}

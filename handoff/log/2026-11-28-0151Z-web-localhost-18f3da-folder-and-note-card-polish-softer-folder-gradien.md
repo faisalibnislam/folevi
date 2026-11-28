@@ -95,3 +95,4 @@ Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `We
   readers).
 - A note list's Sort button is hidden while the list is empty (Archive, an empty folder).
 - Functions pushed to the dev deployment with `npx convex dev --once`.
+- Home capture field: the "Saves to" list uses the menu level (`ui-pop`, floating shadow) like every other menu, not `ui-raised`.

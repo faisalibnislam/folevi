@@ -115,7 +115,7 @@ struct NotificationsPanel: View {
                 .foregroundStyle(on ? moreVar("color-heading", scheme) : moreVar("color-ink-muted", scheme))
                 .frame(maxWidth: .infinity).frame(height: Self.segHeight)
                 .background(RoundedRectangle(cornerRadius: Self.segRadius).fill(on ? moreVar("color-surface", scheme) : .clear)
-                    .shadow(color: .black.opacity(on ? Self.segShadow : 0), radius: 1.5, y: 0.5))
+                    .nativeShadow(on && Self.segShadow > 0 ? .raised : nil))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.webHover(radius: Self.segRadius, selected: on))

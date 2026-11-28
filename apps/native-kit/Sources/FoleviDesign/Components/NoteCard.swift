@@ -194,9 +194,7 @@ public struct NoteCardView: View {
             .padding(.trailing, cq)
             .padding(.bottom, cq)
         }
-        .shadow(color: RGBA(20, 20, 30, 0.08).color, radius: 7, x: -3, y: 6)
-        .shadow(color: RGBA(20, 20, 30, 0.05).color, radius: 14, x: -4, y: 12)
-        .shadow(color: RGBA(20, 20, 30, 0.03).color, radius: 2.5, x: 0, y: 2)
+        .nativeShadow(.card)
     }
 
     @ViewBuilder private func preview(cq: CGFloat, faint: RGBA) -> some View {

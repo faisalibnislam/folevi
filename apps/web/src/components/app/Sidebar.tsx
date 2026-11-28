@@ -181,7 +181,7 @@ function NavItem({
       onDragStart={dragFolderId ? (e) => startFolderDrag(e, dragFolderId) : dragNoteId ? (e) => startNoteDrag(e, [dragNoteId], () => label) : undefined}
       onDragEnd={dragFolderId || dragNoteId ? endFolderDrag : undefined}
       className={`group relative flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-body outline-none transition-[background-color,box-shadow,color] duration-150 motion-reduce:transition-none pointer-coarse:h-11 ${
-        active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
+        active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),var(--shadow-raised)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"
       } ${over ? "bg-[var(--glass-active)] text-heading ring-2 ring-heading" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
     >
       <span className={`transition-colors ${active ? "text-heading" : "text-muted group-hover:text-heading"}`} aria-hidden>

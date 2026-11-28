@@ -120,7 +120,7 @@ function MiniPage({ title, icon, children, bare = false }: { title: string; icon
     <div
       ref={box}
       data-tab-card="view"
-      className="absolute inset-0 overflow-hidden rounded-control bg-[var(--color-surface-raised)] shadow-[0_0_0_1px_var(--color-line),0_6px_18px_-8px_rgb(20_20_30/0.22)]"
+      className="absolute inset-0 overflow-hidden rounded-control bg-[var(--color-surface-raised)] shadow-[0_0_0_1px_var(--color-line),var(--shadow-resting)]"
     >
       {bare ? (
         children
@@ -301,7 +301,7 @@ function CardsDrawing() {
   return (
     <div className="relative mx-auto mt-6 h-64 w-72">
       {[2, 1, 0].map((i) => (
-        <div key={i} className="absolute inset-0 rounded-panel bg-[var(--color-surface-raised)] p-6 shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_8px_18px_-10px_rgb(20_20_30/0.3)]" style={{ transform: `translate(${i * 14}px, ${-i * 14}px)` }}>
+        <div key={i} className="absolute inset-0 rounded-panel bg-[var(--color-surface-raised)] p-6 shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),var(--shadow-lifted)]" style={{ transform: `translate(${i * 14}px, ${-i * 14}px)` }}>
           {i === 0 ? (
             <div className="space-y-3 pt-12">
               <Line w="80%" strong />

@@ -46,7 +46,7 @@ function JoinGlyph({ kind }: { kind: "join" | "unjoin" }) {
 /** A slim upright pill (the Join and Unjoin buttons), drawn like the tab strip's controls: the raised surface, a
  * fine outline and a soft shadow, the glyph quiet until it's pointed at. */
 const PILL =
-  "pointer-events-auto grid h-16 w-[18px] place-items-center rounded-container bg-[var(--color-surface-raised)] text-muted shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1px_color-mix(in_oklab,var(--color-heading)_14%,transparent)] outline-none backdrop-blur transition-[opacity,color,box-shadow] duration-150 hover:text-heading hover:shadow-[0_2px_8px_rgb(0_0_0/0.14),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_28%,transparent)] focus-visible:ring-2 focus-visible:ring-focus";
+  "pointer-events-auto grid h-16 w-[18px] place-items-center rounded-container bg-[var(--color-surface-raised)] text-muted shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-heading)_14%,transparent),var(--shadow-raised)] outline-none backdrop-blur transition-[opacity,color,box-shadow] duration-150 hover:text-heading hover:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_28%,transparent),var(--shadow-lifted)] focus-visible:ring-2 focus-visible:ring-focus";
 
 interface Snap {
   /** Where the gap lands, as a share of the width from the left edge. */
@@ -487,7 +487,7 @@ function Spine({ id, title, shift, lifted, onDragStart, onOpen }: { id: string; 
       </button>
       {peek
         ? createPortal(
-            <div aria-hidden className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-pop)]" style={{ left: peek.left, top: peek.top }}>
+            <div aria-hidden className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-edge),var(--shadow-floating)]" style={{ left: peek.left, top: peek.top }}>
               <MiniPage documentId={id} title={title} className="aspect-[16/10] w-full" />
               <div className="truncate border-t border-line px-3 py-2 text-subheadline font-semibold text-heading">{title}</div>
             </div>,

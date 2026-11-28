@@ -181,7 +181,7 @@ export function TotpEnrollment({ totpUri }: { totpUri: string }) {
   }, [totpUri]);
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-      <div className="grid h-[188px] w-[188px] flex-none place-items-center rounded-chip bg-white p-3 shadow-[var(--shadow-card)]">
+      <div className="grid h-[188px] w-[188px] flex-none place-items-center rounded-chip bg-white p-3 shadow-[var(--shadow-edge),var(--shadow-resting)]">
         {/* A locally generated data-URI QR code; next/image adds nothing here. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {qr ? <img src={qr} alt="QR code to add Folevi to your authenticator app" width={164} height={164} /> : <span className="text-footnote text-muted">Preparing…</span>}

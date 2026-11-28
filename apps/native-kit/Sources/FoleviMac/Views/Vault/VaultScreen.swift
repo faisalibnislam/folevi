@@ -362,7 +362,7 @@ enum VaultPill {
                 .background {
                     if on {
                         Capsule().fill(scheme == .dark ? Color.white.opacity(0.17) : Color.white)
-                            .shadow(color: NativeShadow.raised.color(scheme), radius: NativeShadow.raised.radius, y: NativeShadow.raised.y)
+                            .nativeShadow(.raised)
                     } else if hovered {
                         Capsule().fill(Color.primary.opacity(0.07))
                     }

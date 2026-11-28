@@ -579,7 +579,7 @@ export function ChatThread({
         <button
           type="button"
           onClick={toLatest}
-          className={`absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-capsule bg-[var(--color-surface-raised)] font-medium text-heading shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_4px_14px_-4px_rgb(0_0_0/0.25)] outline-none animate-[iphone-fade-in_160ms_ease-out] focus-visible:ring-2 focus-visible:ring-focus hover:bg-[color-mix(in_oklab,var(--color-surface-raised),var(--color-ink)_6%)] active:opacity-70 motion-reduce:animate-none ${iphone ? "h-9 px-3.5 text-subheadline" : "h-8 px-3 text-subheadline"}`}
+          className={`absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-capsule bg-[var(--color-surface-raised)] font-medium text-heading shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),var(--shadow-floating)] outline-none animate-[iphone-fade-in_160ms_ease-out] focus-visible:ring-2 focus-visible:ring-focus hover:bg-[color-mix(in_oklab,var(--color-surface-raised),var(--color-ink)_6%)] active:opacity-70 motion-reduce:animate-none ${iphone ? "h-9 px-3.5 text-subheadline" : "h-8 px-3 text-subheadline"}`}
         >
           <ArrowDown size={iphone ? 16 : 14} aria-hidden /> Jump to latest
         </button>
@@ -604,7 +604,7 @@ export function ChatThread({
             className={
               iphone
                 ? // Sheet corners with every control 10 px in and a capsule (globals.css), so the corners nest.
-                  "iphone-composer relative w-full rounded-sheet bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),0_8px_24px_-10px_rgb(0_0_0/0.25)] dark:bg-raised dark:shadow-[0_0_0_1px_rgb(255_255_255/0.09),0_8px_24px_-10px_rgb(0_0_0/0.6)]"
+                  "iphone-composer relative w-full rounded-sheet bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),var(--shadow-floating)] dark:bg-raised dark:shadow-[0_0_0_1px_rgb(255_255_255/0.09),var(--shadow-floating)]"
                 : "relative w-full rounded-panel bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]"
             }
           >

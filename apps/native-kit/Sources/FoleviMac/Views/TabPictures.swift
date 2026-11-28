@@ -499,7 +499,7 @@ private struct PreviewCard: ViewModifier {
             .background(WebStyles.vars["color-surface-raised"]?.resolve(scheme).color ?? .clear)
             .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).strokeBorder(line, lineWidth: 1))
-            .shadow(color: .black.opacity(0.18), radius: 18, y: 12)
+            .nativeShadow(.floating)
         #endif
     }
 }

@@ -62,7 +62,7 @@ public struct FoleviTooltipChip: View {
         .fixedSize(horizontal: true, vertical: false)
         .background { TooltipBlur().clipShape(shape) }
         .overlay { shape.strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5) }
-        .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+        .nativeShadow(.floating)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isStaticText)
     }

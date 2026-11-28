@@ -115,7 +115,7 @@ export function DnaTimeline({
           <div className={`absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-tiny bg-heading ${glide}`} style={{ width: `${pos * 100}%` }} />
           <span
             aria-hidden
-            className={`absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-small border-2 border-heading bg-[var(--color-surface-raised)] shadow-sm transition-transform duration-150 group-hover:scale-110 group-focus-visible:ring-2 group-focus-visible:ring-[var(--color-focus)] group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-[var(--color-surface-raised)] ${glide}`}
+            className={`absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-small border-2 border-heading bg-[var(--color-surface-raised)] shadow-[var(--shadow-raised)] transition-transform duration-150 group-hover:scale-110 group-focus-visible:ring-2 group-focus-visible:ring-[var(--color-focus)] group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-[var(--color-surface-raised)] ${glide}`}
             style={{ left: `${pos * 100}%` }}
           />
           <span

@@ -228,7 +228,7 @@ export function SlashDemo() {
         {/* The key just pressed. */}
         <span
           className={cx(
-            "absolute bottom-4 right-4 grid h-9 min-w-9 place-items-center rounded-control bg-(--color-surface) px-2.5 text-[15px] font-semibold text-(--color-heading) shadow-[var(--shadow-control),0_6px_14px_-6px_rgb(0_0_0/0.25)] transition-all duration-150",
+            "absolute bottom-4 right-4 grid h-9 min-w-9 place-items-center rounded-control bg-(--color-surface) px-2.5 text-[15px] font-semibold text-(--color-heading) shadow-[var(--shadow-control),var(--shadow-raised)] transition-all duration-150",
             s.key ? "scale-100 opacity-100" : "scale-90 opacity-0",
           )}
         >

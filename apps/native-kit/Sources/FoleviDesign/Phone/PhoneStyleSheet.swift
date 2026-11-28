@@ -211,13 +211,13 @@ public struct PhoneStyleSheetContent: View {
                 .padding(.horizontal, 8)
                 .padding(.top, 8)
                 .frame(width: geo.size.width * 0.38, height: geo.size.height - 12, alignment: .topLeading)
-                .background(WebShapeBox(shape: WebCornersShape(topLeft: FoleviTokens.Radius.chip, topRight: FoleviTokens.Radius.chip, bottomRight: 0, bottomLeft: 0), fill: sheet, shadows: [ShadowLayer(x: 0, y: 6, blur: 18, spread: -6, color: RGBA(0, 0, 0, 0.35))]))
+                .background(WebShapeBox(shape: WebCornersShape(topLeft: FoleviTokens.Radius.chip, topRight: FoleviTokens.Radius.chip, bottomRight: 0, bottomLeft: 0), fill: sheet, shadows: FoleviTokens.Shadow.resting.resolve(scheme)))
                 .padding(.top, 12)
             }
         }
         .frame(height: 128)
         .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular))
-        .background(WebShapeBox(shape: WebCornersShape(topLeft: FoleviTokens.Radius.chip, topRight: FoleviTokens.Radius.chip, bottomRight: FoleviTokens.Radius.chip, bottomLeft: FoleviTokens.Radius.chip), fill: nil, shadows: FoleviTokens.Shadow.card.resolve(scheme)))
+        .background(WebShapeBox(shape: WebCornersShape(topLeft: FoleviTokens.Radius.chip, topRight: FoleviTokens.Radius.chip, bottomRight: FoleviTokens.Radius.chip, bottomLeft: FoleviTokens.Radius.chip), fill: nil, shadows: FoleviTokens.Shadow.edge.resolve(scheme) + FoleviTokens.Shadow.resting.resolve(scheme)))
         .accessibilityHidden(true)
     }
 

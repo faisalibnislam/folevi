@@ -15,7 +15,7 @@ export function Switch({ checked, onChange, label, describedBy, disabled }: { ch
         checked ? "bg-heading enabled:hover:bg-[color-mix(in_oklab,var(--color-heading)_84%,transparent)]" : "bg-[color-mix(in_oklab,var(--color-ink)_22%,transparent)] enabled:hover:bg-[color-mix(in_oklab,var(--color-ink)_32%,transparent)]"
       }`}
     >
-      <span aria-hidden className={`inline-block h-5 w-5 rounded-tiny shadow-[0_1px_3px_rgb(0_0_0/0.25)] transition-transform duration-150 ${checked ? "translate-x-[18px] bg-canvas" : "translate-x-[2px] bg-white"}`} />
+      <span aria-hidden className={`inline-block h-5 w-5 rounded-tiny shadow-[var(--shadow-raised)] transition-transform duration-150 ${checked ? "translate-x-[18px] bg-canvas" : "translate-x-[2px] bg-white"}`} />
     </button>
   );
 }

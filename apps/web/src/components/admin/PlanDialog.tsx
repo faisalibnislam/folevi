@@ -257,7 +257,7 @@ function PlanChangeDialog({
                 key={t.tier}
                 className={`relative flex cursor-pointer flex-col rounded-control px-3 py-2.5 text-subheadline transition-[background-color,box-shadow] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus ${
                   checked
-                    ? "bg-[var(--color-surface-raised)] shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_var(--color-heading)]"
+                    ? "bg-[var(--color-surface-raised)] shadow-[inset_0_0_0_1.5px_var(--color-heading),var(--shadow-raised)]"
                     : "bg-[var(--glass-hover)] shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)]"
                 }`}
               >

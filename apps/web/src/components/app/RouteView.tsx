@@ -81,7 +81,7 @@ function NoteLoading() {
   const iphone = useIphoneApp();
   return (
     <ViewChrome title="" iphone={{ large: false, innerScroll: true }}>
-      <div className={iphone ? "relative h-full px-3 pt-[calc(env(safe-area-inset-top)+72px)]" : "fb-page relative h-full overflow-y-auto rounded-panel bg-[var(--color-surface-sunken)] px-3 pb-28 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] sm:px-8"}>
+      <div className={iphone ? "relative h-full px-3 pt-[calc(env(safe-area-inset-top)+72px)]" : "fb-page relative h-full overflow-y-auto rounded-panel bg-[var(--color-surface-sunken)] px-3 pb-28 pt-8 shadow-[var(--glass-edge),var(--shadow-resting)] sm:px-8"}>
         <div className="mx-auto max-w-3xl space-y-3 py-6" aria-busy aria-label="Loading document">
           {[80, 95, 60, 88].map((w, i) => (
             <div key={i} className="h-4 animate-pulse rounded-tiny bg-sunken motion-reduce:animate-none" style={{ width: `${w}%` }} />

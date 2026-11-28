@@ -304,7 +304,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
 /** The check on a card in Select mode. */
 function SelectMark({ on }: { on: boolean }) {
   return (
-    <span aria-hidden className={`pointer-events-none absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-capsule shadow-[0_1px_4px_rgb(0_0_0/0.2)] transition-colors duration-150 ${on ? "bg-heading text-canvas" : "bg-[rgb(255_255_255/0.85)] ring-[1.5px] ring-inset ring-[rgb(0_0_0/0.25)]"}`}>
+    <span aria-hidden className={`pointer-events-none absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-capsule shadow-[var(--shadow-raised)] transition-colors duration-150 ${on ? "bg-heading text-canvas" : "bg-[rgb(255_255_255/0.85)] ring-[1.5px] ring-inset ring-[rgb(0_0_0/0.25)]"}`}>
       {on ? <Check size={16} strokeWidth={3} /> : null}
     </span>
   );
@@ -329,7 +329,7 @@ function NoteGlyph({ folderColor }: { folderColor?: string | null }) {
   const spine = folderColor !== undefined && folderColor !== null ? folderHex(folderColor) : "color-mix(in oklab, var(--color-heading) 14%, var(--color-canvas))";
   return (
     <span aria-hidden className="grid h-7 w-7 flex-none place-items-center">
-      <span className="relative h-6 w-5 overflow-hidden rounded-l-tiny rounded-r-chip bg-surface shadow-[inset_0_0_0_1px_var(--color-line),0_1px_2px_rgb(0_0_0/0.06)]">
+      <span className="relative h-6 w-5 overflow-hidden rounded-l-tiny rounded-r-chip bg-surface shadow-[inset_0_0_0_1px_var(--color-line),var(--shadow-raised)]">
         <span className="absolute inset-y-0 left-0 w-1" style={{ background: spine }} />
         <span className="absolute left-2 right-1.5 top-1.5 h-[1.5px] rounded-capsule bg-[var(--color-line-strong)]" />
         <span className="absolute left-2 right-2.5 top-3 h-[1.5px] rounded-capsule bg-[var(--color-line)]" />

@@ -17,6 +17,8 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Next steps
 
+- Mac 1.9.82 is on hold for the native port (the owner, 28 November 2026, asked when 1.9.82 should go out: "Wait for the full port"). It carries the menu bar quick note (PR 199), the shadow levels (PR 196/200) and today's native port (branch `claude/native-port-1128`: Home, Settings, lists, sidebar, Tasks on Mac, iPad and iPhone). Release only after that port is in main and the owner says "release Mac" in the PR manager session; iPhone/iPad go to TestFlight then (owner's choice the same day).
+
 - Android hardware checks nobody has done: the hosted APK on a real phone, sign-in, push. On the emulator the big heading on the first screens briefly showed a duplicated second line before settling; unknown whether that is the emulator or the app.
 - The owner or a signed-in admin opens Admin > Billing setup once and confirms no Polar product shows a price mismatch. The Mac, iPhone, iPad, Android, Windows and Linux apps people have installed were built before the new pricing and own keys; the next build of each carries the native parts (own-key settings on the Mac and iPhone, the new plan copy).
 - Downloads and Vercel's CDN (PR 187, 2026-11-28): `/download/*` carries `CDN-Cache-Control: no-store` since Vercel had cached a 100-byte ranged response for a Linux AppImage and served it to everyone. After any upload to the bucket, check a file with two `Range: bytes=0-99` requests and then a plain request: the full length must come back.

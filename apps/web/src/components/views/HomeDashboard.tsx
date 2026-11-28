@@ -131,17 +131,21 @@ function TodaysReviews() {
 }
 
 /** Notes a row of cards shows on a wide window (as many whole rows as fit narrower: four, then three). */
-const ROW_NOTES = 5;
+const ROW_NOTES = 6;
+/** One row of cards at each width: 2 (two rows), 3, 5, then 6 on a full-width window; the rest are hidden. */
+const ROW_GRID = "grid grid-cols-2 gap-6 @[560px]:grid-cols-3 @[880px]:grid-cols-5 @[1160px]:grid-cols-6";
+const rowItem = (i: number) =>
+  i >= 5 ? "hidden @[1160px]:block" : i === 4 ? "hidden @[880px]:block" : i === 3 ? "@[560px]:hidden @[880px]:block" : "";
 
 /** A row of note cards, the same size in Recent notes, Bookmarks and Pinned note. */
 function NoteRow({ docs, label, recent, empty }: { docs: Summary[] | undefined; label: string; recent?: boolean; empty: ReactNode }) {
   if (docs && !docs.length) return <div className="pt-4">{empty}</div>;
   return (
-    <ul aria-label={label} aria-busy={docs === undefined || undefined} className="mt-4 grid grid-cols-2 gap-4 @[560px]:grid-cols-3 @[880px]:grid-cols-5">
+    <ul aria-label={label} aria-busy={docs === undefined || undefined} className={`mt-5 ${ROW_GRID}`}>
       {docs === undefined
-        ? Array.from({ length: ROW_NOTES }, (_, i) => <li key={i} className="aspect-[25/27] animate-pulse rounded-l-tiny rounded-r-small bg-sunken motion-reduce:animate-none [&:nth-child(5)]:hidden @[560px]:[&:nth-child(4)]:hidden @[880px]:[&:nth-child(4)]:block @[880px]:[&:nth-child(5)]:block" />)
-        : docs.slice(0, ROW_NOTES).map((d) => (
-            <li key={d.id} className="[&:nth-child(5)]:hidden @[560px]:[&:nth-child(4)]:hidden @[880px]:[&:nth-child(4)]:block @[880px]:[&:nth-child(5)]:block">
+        ? Array.from({ length: ROW_NOTES }, (_, i) => <li key={i} className={`aspect-[25/27] animate-pulse rounded-l-tiny rounded-r-small bg-sunken motion-reduce:animate-none ${rowItem(i)}`} />)
+        : docs.slice(0, ROW_NOTES).map((d, i) => (
+            <li key={d.id} className={rowItem(i)}>
               <NoteCard d={d} recent={recent} />
             </li>
           ))}
@@ -212,7 +216,7 @@ export function HomeDashboard() {
   // Only the most recently changed folders are counted (a fixed minimum, so resizing rarely refetches).
   const org = useOfflineQuery(api.organization.recentFolders, { scope, limit: Math.max(RECENT_FOLDERS, folders.cols * 2) });
   // One row of folder cards (as many as fit, five at most).
-  const recentFolders = (org?.folders ?? []).slice(0, Math.min(ROW_NOTES, folders.cols));
+  const recentFolders = (org?.folders ?? []).slice(0, ROW_NOTES);
   // Home's first frame (the one the click that opened it waits for) has the opening and the notes; the folder cards
   // come in the background right after (INP, docs/perf/web-results.md).
   const [allCards, setAllCards] = useState(false);
@@ -286,10 +290,10 @@ export function HomeDashboard() {
                 <EmptyState size="inline" title="No folders yet" body="Folders keep related notes together." />
               </div>
             ) : (
-              <div ref={folders.ref} className="mt-4">
-                <ul className="grid" style={{ gridTemplateColumns: `repeat(${Math.min(ROW_NOTES, folders.cols)}, minmax(0, 1fr))`, columnGap: sizes.gap, rowGap: sizes.rowGap }}>
-                  {(allCards ? recentFolders : []).map((f) => (
-                    <li key={f.id}>
+              <div className="mt-5">
+                <ul className={ROW_GRID}>
+                  {(allCards ? recentFolders : []).map((f, i) => (
+                    <li key={f.id} className={rowItem(i)}>
                       <FolderCard folder={f} parentName={f.parentName ?? undefined} />
                     </li>
                   ))}

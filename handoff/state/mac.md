@@ -13,6 +13,8 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Next steps
 
+- Port the customizable Home (2026-11-28, web PR from `claude/dazzling-sanderson-1d2975`): design version 19: greeting, Foli AI summary, capture field with a Saves-to picker; then Recent notes, Bookmarks, Today and My tasks beside Foli DNA, Recent folders, Shared with me / Pinned note / Templates to add, and Customize (move, remove, add blocks). Data: `homePrefs.get`, `homePrefs.setLayout`, `homePrefs.setPinnedNote`, `ai.homeSummary`; block ids and defaults in `apps/web/src/lib/app/homeLayout.ts`. See docs/DESKTOP_PARITY.md.
+
 - The owner tries Float this note on the Mac (several panels, pin off and on, over a full-screen app).
 - Try Import from Apple Notes with a Notes account or macOS user made only for testing (with the owner's OK): big library, big attachments, "denied", attachments saving into Folevi's temporary folder, checklist ticks.
 - The owner tries More and Customize sidebar in the app: a drag in Customize sidebar, right-click Move to More, VoiceOver on the More row and the checkboxes, and a change made on the web showing up here.

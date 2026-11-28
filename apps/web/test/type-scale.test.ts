@@ -39,6 +39,8 @@ const NOTE_TYPOGRAPHY: Record<string, string[]> = {
   "components/e2ee/ApproveDeviceDialog.tsx": ["text-[40px]"],
   // The onboarding's hero line on a wide screen (a display size, like the marketing site's).
   "components/app/Onboarding.tsx": ["sm:text-[44px]"],
+  // Home's greeting on a wide window (the opening's display line, the owner's Home design version 16).
+  "components/views/HomeBlocks.tsx": ["[860px]:text-[44px]"],
 };
 
 /** Inline fontSize numbers: images drawn without CSS, sizes that scale with a drawing, and font previews. */

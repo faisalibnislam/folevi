@@ -2,16 +2,14 @@
 
 import { startTransition, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { useAiEnabled } from "@/components/ai/useAi";
-import { CatchUp } from "@/components/ai/CatchUp";
-import { ArrowRight, ChevronLeft, ChevronRight, Clock3, Folder, Layers } from "lucide-react";
-import { Bookmark } from "lucide-react";
+import { ArrowRight, Layers } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
 import { editedText } from "@/lib/format";
 import { ViewChrome } from "@/components/app/Shell";
-import { NOTE_CARD_ASPECT, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
+import { NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderCard } from "./FolderCard";
 import { DocMenu, NoteContextMenu, contextPoint, type Summary as DocSummary } from "./DocumentBrowser";
 import { startNoteDrag } from "@/lib/app/noteDrag";
@@ -20,6 +18,12 @@ import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { WaitingToSync, waitingOf } from "@/components/sync/WaitingToSync";
 import { cardCount, useReviewWindow } from "@/components/study/review";
 import { useCardSizes } from "@/lib/cardSize";
+import { arrangeHome, homeRows, type HomeBlock, type HomeBlockId } from "@/lib/app/homeLayout";
+import { useQuery } from "@/lib/convex/queries";
+import { useToast, errorMessage } from "@/components/ui/Toast";
+import { AddBlockTile, BlockLink, CaptureField, DnaWeek, HomeBlockFrame, HomeGreeting, HomeTopLine, SectionHead, TasksPreview, TodayCard, useHomePrefs } from "./HomeBlocks";
+import { HomeSummary } from "./HomeSummary";
+import { SharedList, TemplatesList } from "./HomeLists";
 
 const GAP = 32;
 
@@ -42,33 +46,6 @@ function useColumns(min: number, gap = GAP) {
     return () => ro.disconnect();
   }, [el, min, gap]);
   return { ref: setEl, cols };
-}
-
-function Section({ title, icon, href, count, children, empty, shelf }: { title: string; icon: ReactNode; href: string; count?: string; children: ReactNode; empty?: ReactNode; shelf?: boolean }) {
-  const id = title.toLowerCase().replace(/\s+/g, "-");
-  return (
-    <section
-      aria-labelledby={`home-${id}`}
-      className={
-        shelf ? "mt-7 first:mt-6" : "mt-10 first:mt-6"
-      }
-    >
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 id={`home-${id}`} className="ui-display flex items-center gap-2.5 text-title-2">
-          <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
-            {icon}
-          </span>
-          {title}
-          {count ? <span className="ml-2 text-subheadline font-normal text-muted">{count}</span> : null}
-        </h2>
-        <AppLink href={href} className="ui-hit inline-flex items-center gap-1 rounded-chip px-2.5 py-1 text-subheadline font-medium text-ink transition-colors hover:bg-accent-soft">
-          See all <span className="sr-only">{title.toLowerCase()}</span>
-          <ArrowRight size={13} aria-hidden />
-        </AppLink>
-      </div>
-      {empty ?? children}
-    </section>
-  );
 }
 
 type Summary = DocSummary;
@@ -115,79 +92,8 @@ function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
   );
 }
 
-const CAROUSEL_COUNT = 10;
-/** Cards a row draws with the click that opens Home (a wide screen shows about six); the rest follow a moment later. */
-const CAROUSEL_FIRST = 7;
 /** Recent folders fetched at least (two rows of the widest grid). */
 const RECENT_FOLDERS = 12;
-
-/**
- * One row of note cards that scrolls sideways, with arrow buttons at either end (shown only when there's
- * more to see that way). Cards are real list items, so Tab moves through them and scrolls them into view.
- */
-function NoteCarousel({ docs, label, recent, allCards }: { docs: Summary[] | undefined; label: string; recent?: boolean; /** False for Home's first frame: only the cards a screen shows. */ allCards: boolean }) {
-  const { noteCard: CARD_WIDTH, gap: CARD_GAP } = useCardSizes();
-  const [el, setEl] = useState<HTMLUListElement | null>(null);
-  const [edges, setEdges] = useState({ start: true, end: true });
-
-  useEffect(() => {
-    if (!el) return;
-    const update = () => setEdges({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", update);
-      ro.disconnect();
-    };
-  }, [el, docs]);
-  const scroll = (dir: 1 | -1) => {
-    if (!el) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollBy({ left: dir * Math.max(CARD_WIDTH + CARD_GAP, el.clientWidth - CARD_WIDTH / 2), behavior: reduce ? "auto" : "smooth" });
-  };
-  if (docs === undefined) {
-    return (
-      <div className="flex overflow-hidden pb-7 pt-2" style={{ gap: CARD_GAP }} role="status" aria-busy aria-label="Loading">
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-tiny rounded-r-small bg-sunken motion-reduce:animate-none`} />
-        ))}
-      </div>
-    );
-  }
-  // The cards fade out at either edge while there's more to scroll that way. A mask on the row, not a
-  // coloured overlay, so the fade matches whatever is behind it (the glass panel, a note's artwork).
-  const fadeMask = `linear-gradient(to right, ${edges.start ? "#000" : "transparent"} 0, #000 64px, #000 calc(100% - 64px), ${edges.end ? "#000" : "transparent"} 100%)`;
-  // The arrows sit in the page's side margin, beside the row (over the cards only on phones, where there's no margin).
-  const arrow = "absolute top-[calc(50%-10px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-chip bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform,background-color] hover:scale-105 hover:bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_6%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
-  return (
-    <div className="relative">
-      <ul
-        ref={setEl}
-        aria-label={label}
-        style={{ maskImage: fadeMask, WebkitMaskImage: fadeMask, gap: CARD_GAP }}
-        className="-mx-4 -mb-5 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto px-4 pb-12 pt-2 [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden"
-      >
-        {docs.slice(0, allCards ? CAROUSEL_COUNT : CAROUSEL_FIRST).map((d) => (
-          <li key={d.id} style={{ width: CARD_WIDTH }} className="flex-none snap-start">
-            <NoteCard d={d} recent={recent} />
-          </li>
-        ))}
-      </ul>
-      {!edges.start ? (
-        <button type="button" aria-label={`Scroll ${label.toLowerCase()} back`} title="Back" onClick={() => scroll(-1)} className={`${arrow} left-0 sm:h-8 sm:w-8 sm:-left-8`}>
-          <ChevronLeft size={18} aria-hidden />
-        </button>
-      ) : null}
-      {!edges.end ? (
-        <button type="button" aria-label={`Scroll ${label.toLowerCase()} forward`} title="More" onClick={() => scroll(1)} className={`${arrow} right-0 sm:h-8 sm:w-8 sm:-right-8`}>
-          <ChevronRight size={18} aria-hidden />
-        </button>
-      ) : null}
-    </div>
-  );
-}
 
 /**
  * Today's reviews: how many flashcards are due (from every note you can read), with a way to start. Shown
@@ -202,7 +108,7 @@ function TodaysReviews() {
   if (!today?.hasCards) return null;
   const waiting = today.due + today.new;
   return (
-    <section aria-labelledby="home-reviews" className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-container bg-[var(--glass-active)] px-5 py-4 shadow-[var(--glass-edge),var(--glass-shadow)]">
+    <section aria-labelledby="home-reviews" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-container bg-[var(--glass-active)] px-5 py-4 shadow-[var(--glass-edge),var(--glass-shadow)]">
       <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
         <Layers size={17} strokeWidth={1.9} />
       </span>
@@ -223,9 +129,73 @@ function TodaysReviews() {
   );
 }
 
+/** Notes a row of cards shows on a wide window (as many whole rows as fit narrower: four, then three). */
+const ROW_NOTES = 5;
+
+/** A row of note cards, the same size in Recent notes, Bookmarks and Pinned note. */
+function NoteRow({ docs, label, recent, empty }: { docs: Summary[] | undefined; label: string; recent?: boolean; empty: ReactNode }) {
+  if (docs && !docs.length) return <div className="pt-4">{empty}</div>;
+  return (
+    <ul aria-label={label} aria-busy={docs === undefined || undefined} className="mt-4 grid grid-cols-2 gap-4 @[560px]:grid-cols-3 @[880px]:grid-cols-5">
+      {docs === undefined
+        ? Array.from({ length: ROW_NOTES }, (_, i) => <li key={i} className="aspect-[25/27] animate-pulse rounded-l-tiny rounded-r-small bg-sunken motion-reduce:animate-none [&:nth-child(5)]:hidden @[560px]:[&:nth-child(4)]:hidden @[880px]:[&:nth-child(4)]:block @[880px]:[&:nth-child(5)]:block" />)
+        : docs.slice(0, ROW_NOTES).map((d) => (
+            <li key={d.id} className="[&:nth-child(5)]:hidden @[560px]:[&:nth-child(4)]:hidden @[880px]:[&:nth-child(4)]:block @[880px]:[&:nth-child(5)]:block">
+              <NoteCard d={d} recent={recent} />
+            </li>
+          ))}
+    </ul>
+  );
+}
+
 /**
- * Home: recent notes and bookmarked notes (the latest 10 each, in a sideways-scrolling row) and recent folders (two rows), each with
- * "See all". Rows are whole rows at any width.
+ * Pinned note: one note this person keeps on Home (convex/homePrefs.ts), as its card. Until one is chosen (or when
+ * it can no longer be opened), a pick of the recent notes.
+ */
+function PinnedNote({ id, choices, pin }: { id: string | null; choices: Summary[] | undefined; pin: (documentId: string | null) => Promise<unknown> }) {
+  const toast = useToast();
+  const got = useQuery(api.documents.get, id ? { documentId: id } : "skip");
+  const doc = id && got && !got.inTrash ? got.document : null;
+  const set = (documentId: string | null) => void pin(documentId).catch((e) => toast.show(errorMessage(e), { tone: "error" }));
+  const change = doc ? (
+    <button type="button" className="ui-btn ui-btn-quiet h-control-sm px-2.5 text-subheadline" onClick={() => set(null)}>
+      Change
+    </button>
+  ) : undefined;
+  return (
+    <section aria-labelledby="home-pinned-title">
+      <SectionHead id="home-pinned-title" action={change}>
+        Pinned note
+      </SectionHead>
+      {id && got === undefined ? (
+        <p className="pt-3 text-subheadline text-muted">Loading…</p>
+      ) : doc ? (
+        <div className="@container">
+          <NoteRow docs={[doc as Summary]} label="Pinned note" empty={null} />
+        </div>
+      ) : (
+        <>
+          <p className="pt-3 text-subheadline text-muted">Choose a note to keep here.</p>
+          <ul aria-label="Notes to pin" className="mt-1 grid grid-cols-1 gap-x-10 @[640px]:grid-cols-2">
+            {(choices ?? []).slice(0, 6).map((d) => (
+              <li key={d.id} className="border-b border-[var(--color-line)]">
+                <button type="button" className="min-h-11 w-full truncate text-left text-subheadline text-ink hover:text-heading" onClick={() => set(d.id)}>
+                  {d.title || "Untitled"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Home (the owner's design version 19): a top line (the date, Customize), the opening (the greeting, the Foli AI
+ * summary while Foli AI is on, the capture field), then this person's sections (lib/app/homeLayout.ts): Recent notes,
+ * Bookmarks, Today and My tasks beside Foli DNA, Recent folders, and the ones they add (Shared with me, Pinned note,
+ * Templates). Each section is a serif title over a hairline with See all; Today and the DNA map are the only tiles.
  */
 export function HomeDashboard() {
   const aiOn = useAiEnabled();
@@ -233,56 +203,154 @@ export function HomeDashboard() {
   // The latest edited notes, minus any this person removed from the list.
   // As last seen on this device while there's no live answer (offline), with notes made or renamed here laid
   // over it: a note written offline is in Recent notes at once, marked as waiting to sync.
-  const recent = useNotesWithLocal(useOfflineQuery(api.documents.recentNotes, { scope, limit: CAROUSEL_COUNT }), { include: "recent", byUpdated: true, limit: CAROUSEL_COUNT });
-  const starredList = useOfflineQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: CAROUSEL_COUNT, cursor: null } });
-  const starredPage = useNotesWithLocal(starredList?.page, { include: "none" });
-  const starred = starredList && starredPage ? { ...starredList, page: starredPage } : starredList;
+  const recent = useNotesWithLocal(useOfflineQuery(api.documents.recentNotes, { scope, limit: ROW_NOTES * 2 }), { include: "recent", byUpdated: true, limit: ROW_NOTES * 2 });
+  const starredList = useOfflineQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: ROW_NOTES, cursor: null } });
+  const starred = useNotesWithLocal(starredList?.page, { include: "none" });
   const sizes = useCardSizes();
   const folders = useColumns(sizes.folderMin, sizes.gap);
   // Only the most recently changed folders are counted (a fixed minimum, so resizing rarely refetches).
   const org = useOfflineQuery(api.organization.recentFolders, { scope, limit: Math.max(RECENT_FOLDERS, folders.cols * 2) });
-  const recentFolders = (org?.folders ?? []).slice(0, folders.cols * 2);
-  // Home's first frame (the one the click that opened it waits for) has the notes a screen shows; the cards past the
-  // rows' edges and the folder cards, the last section, come in the background right after (INP,
-  // docs/perf/web-results.md). Nothing sits below the folders, so nothing moves when they come.
+  // One row of folder cards (as many as fit, five at most).
+  const recentFolders = (org?.folders ?? []).slice(0, Math.min(ROW_NOTES, folders.cols));
+  // Home's first frame (the one the click that opened it waits for) has the opening and the notes; the folder cards
+  // come in the background right after (INP, docs/perf/web-results.md).
   const [allCards, setAllCards] = useState(false);
   useEffect(() => {
     if (!allCards) startTransition(() => setAllCards(true));
   }, [allCards]);
+
+  const { prefs, setLayout, setPinnedNote } = useHomePrefs();
+  const [editing, setEditing] = useState(false);
+  const layout = prefs?.layout;
+  const rows = arrangeHome(layout);
+  const shown = rows.filter((r) => !r.hidden);
+  const saveLayout = (l: { order: string[]; hidden: string[] }) => setLayout({ layout: l });
+  const head = (id: string, text: string, href: string, link = "See all") => (
+    <SectionHead id={id} action={<BlockLink href={href}>{link}</BlockLink>}>
+      {text}
+    </SectionHead>
+  );
+  /** A block's content; `paired` when it sits in the two-column row (Today and My tasks beside Foli DNA). */
+  const blockBody = (id: HomeBlockId, paired: boolean): ReactNode => {
+    switch (id) {
+      case "recent":
+        return (
+          <section aria-labelledby="home-recent-title">
+            {head("home-recent-title", "Recent notes", "/notes")}
+            <NoteRow docs={recent} label="Recent notes" recent empty={<EmptyState size="inline" title="No notes yet" body="Notes you open show up here." />} />
+          </section>
+        );
+      case "bookmarks":
+        return (
+          <section aria-labelledby="home-bookmarks-title">
+            {head("home-bookmarks-title", "Bookmarks", "/starred")}
+            <NoteRow docs={starred} label="Bookmarked notes" empty={<EmptyState size="inline" title="No bookmarks yet" body="Bookmark a note to keep it here." />} />
+          </section>
+        );
+      case "today":
+        return <TodayCard />;
+      case "tasks":
+        return (
+          <section aria-labelledby="home-tasks-title">
+            {head("home-tasks-title", "My tasks", "/tasks")}
+            <TasksPreview twoColumns={!paired} />
+          </section>
+        );
+      case "folders":
+        return (
+          <section aria-labelledby="home-folders-title">
+            {head("home-folders-title", "Recent folders", "/folders")}
+            {org && !org.total ? (
+              <div className="pt-4">
+                <EmptyState size="inline" title="No folders yet" body="Folders keep related notes together." />
+              </div>
+            ) : (
+              <div ref={folders.ref} className="mt-4">
+                <ul className="grid" style={{ gridTemplateColumns: `repeat(${Math.min(ROW_NOTES, folders.cols)}, minmax(0, 1fr))`, columnGap: sizes.gap, rowGap: sizes.rowGap }}>
+                  {(allCards ? recentFolders : []).map((f) => (
+                    <li key={f.id}>
+                      <FolderCard folder={f} parentName={f.parentName ?? undefined} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        );
+      case "dna":
+        return (
+          <section aria-labelledby="home-dna-title">
+            {head("home-dna-title", "Foli DNA · this week", "/graph", "Open Foli DNA")}
+            <div className="mt-4">
+              <DnaWeek load={allCards} />
+            </div>
+          </section>
+        );
+      case "shared":
+        return (
+          <section aria-labelledby="home-shared-title">
+            {head("home-shared-title", "Shared with me", "/shared")}
+            <SharedList />
+          </section>
+        );
+      case "templates":
+        return (
+          <section aria-labelledby="home-templates-title">
+            {head("home-templates-title", "Templates", "/templates")}
+            <TemplatesList />
+          </section>
+        );
+      case "pinned":
+        return <PinnedNote id={prefs?.pinnedNote ?? null} choices={recent} pin={(documentId) => setPinnedNote({ documentId })} />;
+    }
+  };
+
+  const frame = (block: HomeBlock, paired: boolean) => {
+    const i = shown.findIndex((r) => r.block.id === block.id);
+    return (
+      <HomeBlockFrame key={block.id} block={block} hidden={false} editing={editing} first={i === 0} last={i === shown.length - 1} saved={layout} saveLayout={saveLayout}>
+        {blockBody(block.id, paired)}
+      </HomeBlockFrame>
+    );
+  };
 
   return (
     <ViewChrome
       title={<h1 className="truncate text-subheadline font-semibold">Home</h1>}
       tabTitle="Home"
     >
-      <div className="mx-auto max-w-[1400px] px-4 pb-[max(2rem,var(--fab-clearance))] pt-2 sm:px-8">
-        {/* With Home from its first frame (it used to arrive a moment later and push everything below down). */}
-        {aiOn ? <CatchUp /> : null}
-        <TodaysReviews />
-        <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <EmptyState size="inline" title="No notes yet" body="Notes you open show up here." /> : undefined}>
-          <NoteCarousel docs={recent} label="Recent notes" recent allCards={allCards} />
-        </Section>
-
-        <Section shelf title="Bookmarks" icon={<Bookmark size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <EmptyState size="inline" title="No bookmarks yet" body="Bookmark a note to keep it here." /> : undefined}>
-          <NoteCarousel docs={starred?.page} label="Bookmarked notes" allCards={allCards} />
-        </Section>
-
-        <Section
-          title="Recent folders"
-          href="/folders"
-          icon={<Folder size={17} strokeWidth={1.9} />}
-          empty={org && !org.total ? <EmptyState size="inline" title="No folders yet" body="Folders keep related notes together." /> : undefined}
-        >
-          <div ref={folders.ref}>
-            <ul className="grid" style={{ gridTemplateColumns: `repeat(${folders.cols}, minmax(0, 1fr))`, columnGap: sizes.gap, rowGap: sizes.rowGap }}>
-              {(allCards ? recentFolders : []).map((f) => (
-                <li key={f.id}>
-                  <FolderCard folder={f} parentName={f.parentName ?? undefined} />
-                </li>
-              ))}
-            </ul>
+      <div className="@container mx-auto max-w-[1100px] px-4 pb-[max(4rem,var(--fab-clearance))] pt-3 sm:px-8 xl:px-11">
+        <HomeTopLine editing={editing} onToggle={() => setEditing((e) => !e)} />
+        {/* The opening, the page's full width: the greeting, the Foli AI summary (while Foli AI is on), the capture field. */}
+        <div className="mt-6 flex min-w-0 flex-col gap-6">
+          <HomeGreeting />
+          {aiOn ? <HomeSummary /> : null}
+          <CaptureField />
+          <TodaysReviews />
+        </div>
+        {/* This person's sections, in their order (lib/app/homeLayout.ts): one per row, except Today and My tasks beside
+            Foli DNA while they follow each other. Customize moves them, takes them off Home and adds them back, saved
+            per person (convex/homePrefs.ts). */}
+        <div className="mt-14 flex flex-col gap-14">
+          {homeRows(shown).map((row) =>
+            row.kind === "one" ? (
+              frame(row.item.block, false)
+            ) : (
+              <div key={row.main[0]!.block.id} className="grid grid-cols-1 items-start gap-10 @[860px]:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+                <div className="flex min-w-0 flex-col gap-10">{row.main.map((r) => frame(r.block, true))}</div>
+                <div className="flex min-w-0 flex-col gap-10">{row.side.map((r) => frame(r.block, true))}</div>
+              </div>
+            ),
+          )}
+          {editing ? <AddBlockTile blocks={rows.filter((r) => r.hidden).map((r) => r.block)} saved={layout} saveLayout={saveLayout} /> : null}
+        </div>
+        {editing ? (
+          <div className="mt-8 flex justify-end">
+            <button type="button" className="ui-btn ui-btn-quiet h-control px-3 text-callout" onClick={() => void setLayout({ layout: null })}>
+              Reset to the default Home
+            </button>
           </div>
-        </Section>
+        ) : null}
       </div>
     </ViewChrome>
   );

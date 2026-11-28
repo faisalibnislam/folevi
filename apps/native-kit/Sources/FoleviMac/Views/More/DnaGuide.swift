@@ -554,7 +554,7 @@ struct DnaCardHead<Glyph: View>: View {
             Text(verbatim: title).webText(.role(.subheadline, weight: on ? 550 : 400)).lineLimit(1)
                 .foregroundStyle(on ? moreVar("color-heading", scheme) : moreVar("color-ink-muted", scheme))
                 .frame(maxWidth: .infinity).frame(height: 26)
-                .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(on ? moreVar("color-surface", scheme) : .clear).shadow(color: .black.opacity(on ? 0.08 : 0), radius: 1, y: 0.5))
+                .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(on ? moreVar("color-surface", scheme) : .clear).nativeShadow(on ? .raised : nil))
                 .contentShape(Rectangle())
                 .dnaHover(radius: 6, selected: false)
         }

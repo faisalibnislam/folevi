@@ -1,5 +1,9 @@
 # Folevi for Android, native: plan (2026-11-23)
 
+> **Paused (2026-11-28, owner decision):** the Windows, Linux and Android apps are paused. folevi.com shows them as
+> coming soon, with no download links. Folevi is available on the Mac, iPhone and iPad (iPhone Duo too), the web and
+> Folevi Server. The technical notes below are kept as they are for when the work picks up again.
+
 The owner asked for a native Android app "just like iPhone", for phones, tablets and "Google Book". This plan
 replaces the Capacitor approach in `docs/ANDROID_PLAN.md` (2026-10-22) for the app's structure; that plan's
 service decisions (sign-in, local mode backends, push, no purchases) still hold unless this one says otherwise.

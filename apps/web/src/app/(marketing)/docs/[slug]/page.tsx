@@ -66,7 +66,7 @@ export default async function DocArticlePage({ params }: Params) {
 
             <nav aria-label="Previous and next articles" className="mt-14 grid gap-3 border-t mk-hair pt-8 sm:grid-cols-2">
               {prev ? (
-                <Link href={docPath(prev.slug)} className="mk-card flex min-h-[72px] flex-col justify-center gap-0.5 px-5 py-4 transition-shadow duration-150 hover:shadow-(--shadow-pop)" rel="prev">
+                <Link href={docPath(prev.slug)} className="mk-card flex min-h-[72px] flex-col justify-center gap-0.5 px-5 py-4 transition-shadow duration-150 hover:shadow-[var(--shadow-edge),var(--shadow-lifted)]" rel="prev">
                   <span className="flex items-center gap-1.5 text-[13px] text-muted">
                     <Icon name="chevron-left" size={13} /> Previous
                   </span>
@@ -76,7 +76,7 @@ export default async function DocArticlePage({ params }: Params) {
                 <span className="hidden sm:block" />
               )}
               {next ? (
-                <Link href={docPath(next.slug)} className="mk-card flex min-h-[72px] flex-col items-end justify-center gap-0.5 px-5 py-4 text-right transition-shadow duration-150 hover:shadow-(--shadow-pop)" rel="next">
+                <Link href={docPath(next.slug)} className="mk-card flex min-h-[72px] flex-col items-end justify-center gap-0.5 px-5 py-4 text-right transition-shadow duration-150 hover:shadow-[var(--shadow-edge),var(--shadow-lifted)]" rel="next">
                   <span className="flex items-center gap-1.5 text-[13px] text-muted">
                     Next <Icon name="chevron-right" size={13} />
                   </span>

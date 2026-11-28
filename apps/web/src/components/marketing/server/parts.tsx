@@ -39,7 +39,7 @@ export function DownloadRow({ manifest, platform, arch, product, kind }: { manif
         <div className="min-w-0">
           <p className="text-[15px] font-medium text-(--color-heading)">
             {label} <span className="font-normal text-muted">({arch})</span>
-            {/* Folevi Server is in beta (lib/beta.ts), so every download says so. */}
+            {/* Folevi Server is in Early Beta (lib/beta.ts), so every download says so. */}
             <BetaBadge className="ml-2 align-middle" />
           </p>
           {file ? (

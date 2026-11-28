@@ -14,6 +14,59 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "1.9.80",
+    name: "Free apps and your own AI key",
+    date: "2026-11-28",
+    label: "November 28, 2026",
+    intro: "Every Folevi app is free with every feature, and you pay only if you want Folevi Cloud. Foli AI can also run on your own OpenAI, Anthropic or Google key, on every plan.",
+    groups: [
+      {
+        title: "Plans",
+        items: [
+          "Every app is free, with every feature and no account: Mac, Windows, Linux (Beta), iPhone, iPad, Android and the web app",
+          "Folevi Cloud plans: Free with 500 MB and 30 AI credits a month, Core at $2 a month with 5 GB, Pro at $4 a month with 10 GB and 150 credits, and Pro AI at $10 a month with 25 GB and 450 credits",
+          "Yearly plans cost ten months, and credit packs of 500 or 1,000 credits work on every plan",
+          "No plan limits how many devices you use",
+          "Foli AI works on every plan, and you can turn it off for yourself, or for a whole workspace in its Privacy settings",
+        ],
+      },
+      {
+        title: "Foli AI on your own key",
+        items: [
+          "Settings > Foli AI takes your own OpenAI, Anthropic or Google key, with a Test key button, on the web, Mac, iPhone and iPad",
+          "Requests on your own key use no AI credits, and the usage card counts them as Your key",
+          "Your key stays in your device’s secure storage, and Folevi uses it only for the request it goes with, never storing or logging it",
+          "With end-to-end encryption on, your key syncs between your devices sealed, so Folevi’s servers can’t read it",
+          "On a public computer the key stays in the tab’s memory only",
+          "Works with your own Folevi Server too, even with the server’s AI turned off",
+        ],
+      },
+      {
+        title: "Everywhere",
+        items: ["Every app, email and store listing names Space Cherries LLC as the company that runs Folevi"],
+      },
+    ],
+  },
+  {
+    version: "1.8.80",
+    name: "Arrange your sidebar",
+    date: "2026-11-27",
+    label: "November 27, 2026",
+    intro: "The sidebar keeps the places you use most in view and the rest under More, and Customize sidebar lets you choose what goes where. On the web and the Mac.",
+    groups: [
+      {
+        title: "Web and Mac",
+        items: [
+          "Shared with Me, Changes and Templates start under a More section, which remembers whether you left it open and opens for the page you’re on",
+          "Right-click an item to move it into More or back onto the sidebar",
+          "Customize sidebar shows or hides each item, reorders them by dragging or with Move up and Move down, and resets to the default",
+          "Home and Drafts always stay on the sidebar",
+          "Your sidebar layout follows your account, so a change on the Mac shows on the web, Windows and Linux too",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.8.79",
     name: "Spell check that knows English, and Writing settings on the Mac",
     date: "2026-11-26",

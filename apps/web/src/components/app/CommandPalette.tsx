@@ -249,7 +249,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       className={
         iphone
           ? "fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-hidden bg-canvas p-0 pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-ink backdrop:bg-transparent open:animate-[iphone-fade-in_180ms_ease-out]"
-          : "m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop ui-modal ui-modal-light rounded-panel p-0 text-ink shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
+          : "m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop ui-modal ui-modal-light rounded-panel p-0 text-ink shadow-[var(--glass-edge),var(--shadow-overlay)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
       }
       style={folded}
     >

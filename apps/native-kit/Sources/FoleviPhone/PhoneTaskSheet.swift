@@ -429,7 +429,7 @@ public struct PhoneCapsuleSegmented: View {
                 Capsule().fill(inkMix(0.07, scheme))
                 Capsule()
                     .fill(C(scheme == .dark ? FoleviTokens.Chrome.surfaceRaised : FoleviTokens.Chrome.canvas, scheme))
-                    .shadow(color: .black.opacity(0.12), radius: 4, y: 3)
+                    .nativeShadow(.raised)
                     .overlay(Capsule().strokeBorder(.black.opacity(0.04), lineWidth: 0.5))
                     .frame(width: w, height: g.size.height - 4)
                     .offset(x: 2 + CGFloat(index) * w)

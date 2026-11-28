@@ -3366,6 +3366,20 @@ export default defineSchema({
   }).index("by_profile", ["profileId"]),
 
   /**
+   * One person's Home (convex/homePrefs.ts): the order of Home's blocks and which are hidden (block ids,
+   * apps/web/src/lib/app/homeLayout.ts), and the note their Pinned note block shows. The same on every device; no row = the default Home
+   * and no pinned note.
+   */
+  homePrefs: defineTable({
+    profileId: v.id("profiles"),
+    order: v.optional(v.array(v.string())),
+    hidden: v.optional(v.array(v.string())),
+    /** The note the Pinned note block shows (its public id). */
+    pinnedNote: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_profile", ["profileId"]),
+
+  /**
    * One person's spelling and prediction settings and their personal dictionary (convex/spelling.ts): the same
    * on every device they sign in on. Settings left unset mean on (spell check, prediction) and the browser's
    * English. Words from end-to-end encrypted notes never come here (the apps keep those on the device).

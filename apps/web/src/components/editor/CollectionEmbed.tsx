@@ -1456,7 +1456,7 @@ function GalleryCollection({ data, view, rows, visible }: { data: CollectionData
               <NewRowTitle rowId={row.id} className="h-7 w-full font-medium" />
             </div>
           ) : (
-            <RowLink row={row} className="block overflow-hidden ui-card rounded-control transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]">
+            <RowLink row={row} className="block overflow-hidden ui-card rounded-control transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-edge),var(--shadow-floating)]">
               {view.config.cardPreview !== "none" ? (
                 <GalleryCover cover={row.cover}>
                   {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-footnote text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={28} aria-hidden /></div>}

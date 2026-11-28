@@ -487,6 +487,8 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("sidebarOrders").withIndex("by_profile_scope", (q) => q.eq("profileId", profileId)).take(200),
     // Their sidebar layout.
     () => ctx.db.query("sidebarLayouts").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
+    // Their Home layout and pinned note.
+    () => ctx.db.query("homePrefs").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their spelling settings and personal dictionary.
     () => ctx.db.query("spelling").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their study schedules (the cards stay with the notes).

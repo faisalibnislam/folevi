@@ -1,10 +1,10 @@
-import { Globe, Laptop, Monitor, Smartphone, Tablet, type LucideIcon } from "lucide-react";
+import { Globe, Laptop, Smartphone, Tablet, type LucideIcon } from "lucide-react";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Checks } from "@/components/marketing/Checks";
 import { BetaBadge, BetaNote } from "@/components/marketing/Beta";
 import { Mark, Sticker } from "@/components/marketing/fun";
 import { pageMetadata } from "@/components/marketing/seo";
-import { APP_STORE_URL, MAC_DOWNLOAD_URL } from "@/components/marketing/site";
+import { APP_STORE_URL, COMING_SOON_NOTE, MAC_DOWNLOAD_URL } from "@/components/marketing/site";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
 import {
   SYNOLOGY_PACKAGE_SOURCE_URL,
@@ -17,7 +17,7 @@ import {
 import { ChipDownloads, ComingSoon, CopyLine, DownloadRow, PlatformTitle, Steps, WhichChip } from "@/components/marketing/server/parts";
 
 export const metadata = pageMetadata({
-  title: "Folevi Server (Beta): your notes on your own NAS or server",
+  title: "Folevi Server (Early Beta): your notes on your own NAS or server",
   description:
     "Run Folevi on your Synology, QNAP, Unraid or TrueNAS, or on a Linux server. Install it from your NAS’s app store and keep using the normal Folevi apps.",
   path: "/server",
@@ -33,8 +33,7 @@ const CRUMBS = [
 
 const APPS: Array<{ icon: LucideIcon; name: string }> = [
   { icon: Laptop, name: "Mac" },
-  { icon: Monitor, name: "Windows and Linux" },
-  { icon: Smartphone, name: "iPhone and Android" },
+  { icon: Smartphone, name: "iPhone" },
   { icon: Tablet, name: "iPad" },
   { icon: Globe, name: "Any browser" },
 ];
@@ -43,7 +42,7 @@ function Release({ manifest }: { manifest: ServerManifest | null }) {
   if (!manifest)
     return (
       <p className="text-[15px] leading-relaxed text-muted">
-        The first beta is almost ready. The downloads appear on this page as soon as it’s out.
+        The Early Beta is almost ready. The downloads appear on this page as soon as it’s out.
       </p>
     );
   return (
@@ -93,7 +92,7 @@ export default async function ServerPage() {
           <div className="mk-card relative p-6 pt-12 sm:p-7 sm:pt-14">
             <p className="absolute -top-5 left-5 sm:-left-4">
               <Sticker tone="violet" rotate={-8} className="px-5 py-2.5 text-[19px] sm:text-[22px]">
-                Beta
+                Early Beta
               </Sticker>
             </p>
             <Release manifest={manifest} />
@@ -322,9 +321,9 @@ export default async function ServerPage() {
               Everyone uses the normal <Mark kind="circle">Folevi</Mark> apps.
             </>
           }
-          lede="On the Mac, Windows, Linux, iPhone, iPad, Android or the web, choose Your own server and enter your server’s address. If you linked the server to your Folevi account, it appears there on its own."
+          lede={`On the Mac, iPhone, iPad or the web, choose Your own server and enter your server’s address. If you linked the server to your Folevi account, it appears there on its own. ${COMING_SOON_NOTE}`}
         />
-        <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {APPS.map(({ icon: AppIcon, name }) => (
             <li key={name} className="mk-card flex items-center gap-3.5 p-4 sm:p-5">
               <span className="mk-tile flex-none">
@@ -342,7 +341,7 @@ export default async function ServerPage() {
             Get it on the App Store
           </ButtonLink>
           <ButtonLink href="/downloads" variant="secondary">
-            Windows, Linux and more
+            All downloads
           </ButtonLink>
         </div>
       </Card>

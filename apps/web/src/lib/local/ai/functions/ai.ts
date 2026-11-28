@@ -1,7 +1,7 @@
 // ai.* in local mode (convex/ai.ts): live answers (startStream, stream, cancelStream), Ask AI, writing help,
 // Catch me up and flowcharts, run on the model active on this device (provider.ts) with the server's own
 // prompts and reply checks (@folevi/ai-prompts). No credits: the person's device or key does the work.
-import { briefRequest, BRIEF_EMPTY, citedIndexes, cleanToday, MAX_QUESTION } from "@folevi/ai-prompts/ask";
+import { briefRequest, BRIEF_EMPTY, citedIndexes, cleanToday, HOME_SUMMARY_EMPTY, homeSummaryRequest, MAX_QUESTION, parseHomeSummary } from "@folevi/ai-prompts/ask";
 import { PromptError } from "@folevi/ai-prompts";
 import { projectTask } from "@folevi/editor-schema";
 import { finishWriting, needsInstruction, needsSelection, readsNoteWith, taskSpec, textOrNote, usesFlashLite, writingRequest, writingTask } from "@folevi/ai-prompts/writing";
@@ -137,16 +137,22 @@ defineLocal(api.ai.flowchart, "action", async (ctx, args) => {
 });
 
 /** Recently edited notes and open tasks (convex/ai.ts recent), from the library. */
-async function recent(ctx: Parameters<Parameters<typeof read>[1]>[0], now: number, perNote: number) {
-  const since = now - 7 * 86_400_000;
+async function recent(ctx: Parameters<Parameters<typeof read>[1]>[0], now: number, perNote: number, from?: number) {
+  return (await recentEdited(ctx, now, perNote, from)).notes;
+}
+
+/** The notes edited since `from` (at most 7 days back), the latest 8 with their text, and how many there are (of 40). */
+async function recentEdited(ctx: Parameters<Parameters<typeof read>[1]>[0], now: number, perNote: number, from?: number) {
+  const since = Math.max(now - 7 * 86_400_000, from ?? 0);
   const docs = (await ctx.list("documents")).filter((d) => d.updatedAt > since).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 40);
   const notes: { id: string; title: string; text: string }[] = [];
+  let edited = 0;
   for (const d of docs) {
-    if (notes.length >= 8) break;
     if (d.inTrash || d.archivedAt || d.kind === "template" || d.pending) continue;
-    notes.push({ id: d.id, title: d.title || "Untitled", text: d.searchText.slice(0, perNote) });
+    edited++;
+    if (notes.length < 8) notes.push({ id: d.id, title: d.title || "Untitled", text: d.searchText.slice(0, perNote) });
   }
-  return notes;
+  return { notes, edited };
 }
 
 /** Open tasks, overdue and soon-due first, then undated (convex/ai.ts recent), with their note's title. */
@@ -184,4 +190,25 @@ defineLocal(api.ai.brief, "action", async (ctx, args) => {
   const { text: answer } = await streamInto(args.streamId ? streamSink(args.streamId, signal) : undefined, req, memory);
   const cited = citedIndexes(answer);
   return { answer, sources: notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => cited.has(n.i)).map(({ id, title }) => ({ id, title })) };
+});
+
+defineLocal(api.ai.homeSummary, "action", async (ctx, args) => {
+  checkScope(args.scope);
+  await read(ctx, (db) => requireAiProfile(db));
+  const active = await localAi.active("brief");
+  const today = cleanToday(args.today);
+  const perNote = active.provider === "on-device" ? Math.max(200, Math.floor(textBudget(active, { serverChars: 8 * 2_500, overheadChars: 2_400, answerTokens: 400 }) / 10)) : 2_500;
+  const { edits, memory, open } = await read(ctx, async (db) => ({ edits: await recentEdited(db, ctx.now(), perNote, args.since), memory: await memoryFor(db), open: await openTasks(db) }));
+  const { notes, edited } = edits;
+  if (!notes.length && !open.length) return { summary: HOME_SUMMARY_EMPTY, points: [], edited: 0 };
+  const { text } = await streamInto(undefined, homeSummaryRequest({ today, notes, tasks: open }), memory);
+  const { summary, points } = parseHomeSummary(text);
+  return {
+    summary,
+    points: points.map((p) => {
+      const n = p.note !== undefined ? notes[p.note] : undefined;
+      return { text: p.text, ...(n ? { note: { id: n.id, title: n.title } } : {}), ...(p.tasks ? { tasks: true } : {}) };
+    }),
+    edited,
+  };
 });

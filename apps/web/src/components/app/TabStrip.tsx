@@ -1,5 +1,6 @@
 "use client";
 
+import { useColumnsList } from "@/lib/app/useNoteColumns";
 import { memo, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, CalendarDays, SquareCheckBig, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Trash2, Waypoints, X, XCircle } from "lucide-react";
@@ -152,9 +153,13 @@ export function TabStrip() {
   // The first tab is always Home (the dashboard); every other view (Foli AI, Graph, Drafts, a folder…) gets a tab
   // of its own that stays until it's closed, like a note's.
   const onHome = route.name === "documents";
-  const inFolder = route.name === "folder";
+  // A note open in a folder's column counts as in the folder (docs/NOTE_COLUMNS.md).
+  const columnsList = useColumnsList();
+  const listRoute = columnsList?.route ?? route;
+  const inFolder = listRoute.name === "folder";
   // New folder shows next to New note on a folder's page (inside it). The Folders page has its own, in its title row.
-  const folderParent = route.name === "folder" ? route.id : undefined;
+  // (The Folders page in columns makes a folder at the top level, as its own page does.)
+  const folderParent = listRoute.name === "folder" ? listRoute.id : columnsList?.route.name === "folders" ? null : undefined;
 
   // Dragging a tab (with a mouse or pen; a finger scrolls the strip): it follows the pointer and trades
   // places with a neighbour once it passes that tab's middle, as tabs do in a browser.
@@ -552,7 +557,7 @@ export function TabStrip() {
             return createPortal(
               <div
                 aria-hidden
-                className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-pop)]"
+                className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-edge),var(--shadow-floating)]"
                 style={{ left: preview.left, top: preview.top }}
               >
                 {/* The tabs pictured lately stay drawn, one over another: switching shows a page already there. */}
@@ -622,8 +627,8 @@ function tabLook(ipad: boolean) {
   // open one comes forward: white, a firm dark outline, a soft shadow and bold text. On the iPad: no outline,
   // the open tab a raised capsule, the others plain text that tints under the finger.
   const tabOn = ipad
-    ? "bg-[var(--iphone-row)] font-semibold text-heading shadow-[0_1px_4px_rgb(0_0_0/0.08),0_0_0_0.5px_var(--iphone-separator)]"
-    : "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
+    ? "bg-[var(--iphone-row)] font-semibold text-heading shadow-[0_0_0_0.5px_var(--iphone-separator),var(--shadow-raised)]"
+    : "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent),var(--shadow-raised)]";
   const tabOff = ipad
     ? "text-muted active:bg-[var(--liquid-press)] [@media(hover:hover)]:hover:bg-[var(--liquid-active)] [@media(hover:hover)]:hover:text-heading"
     : "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
@@ -736,7 +741,7 @@ const TabRow = memo(function TabRow({
       data-tab-active={active ? "" : undefined}
       data-pinned={pinned ? "" : undefined}
       data-ipad-tab={ipad ? "" : undefined}
-      className={`${tabBase} ${overlay ? "ui-tab" : ""} ${width} ${pinned ? "!gap-1 !px-2" : ""} ${active ? tabOn : tabOff} ${dragging ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
+      className={`${tabBase} ${overlay ? "ui-tab" : ""} ${width} ${pinned ? "!gap-1 !px-2" : ""} ${active ? tabOn : tabOff} ${dragging ? "z-10 cursor-grabbing shadow-[var(--shadow-lifted)]" : ""}`}
       onPointerDown={(e) => act.current.pointerDown(e, id)}
       onPointerMove={(e) => act.current.dragMove(e)}
       onPointerUp={() => act.current.dragEnd()}

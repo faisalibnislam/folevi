@@ -218,7 +218,7 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
               onPointerUp={onCardUp}
               onPointerCancel={onCardUp}
               style={dx ? { transform: `translateX(${dx}px) rotate(${dx / 40}deg)`, transition: "none" } : undefined}
-              className={`relative rounded-container bg-[var(--glass-active)] p-6 shadow-[var(--glass-edge),var(--glass-shadow)] transition-transform duration-200 motion-reduce:transition-none sm:p-8 ${touch ? "touch-pan-y select-none" : ""}`}
+              className={`relative rounded-container bg-[var(--glass-active)] p-6 shadow-[var(--glass-edge),var(--shadow-resting)] transition-transform duration-200 motion-reduce:transition-none sm:p-8 ${touch ? "touch-pan-y select-none" : ""}`}
             >
               {dx ? (
                 <span aria-hidden className={`absolute top-4 rounded-chip px-2 py-0.5 text-footnote font-semibold ${dx > 0 ? "right-4 bg-[var(--color-moss-soft,var(--glass-hover))] text-heading" : "left-4 bg-[var(--glass-hover)] text-danger"}`} style={{ opacity: Math.min(1, Math.abs(dx) / SWIPE) }}>

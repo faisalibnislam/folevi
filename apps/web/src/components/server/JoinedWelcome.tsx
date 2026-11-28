@@ -1,7 +1,7 @@
 "use client";
 
 // A member's first screen after joining from an invite (`/join/welcome`): you're in, here's how to add the server
-// in the Mac, iPhone, iPad and Android apps, then on into Folevi.
+// in the Mac, iPhone and iPad apps, then on into Folevi.
 import { Check } from "lucide-react";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { AuthHeading } from "@/components/auth/fields";
@@ -20,7 +20,7 @@ export function JoinedWelcome({ serverName }: { serverName: string }) {
             <span className="mb-4 grid size-11 place-items-center rounded-container bg-heading text-canvas" aria-hidden>
               <Check size={22} strokeWidth={2.5} />
             </span>
-            <AuthHeading title={`You're in ${serverName}`} lede="Your notes live on this server. Use Folevi right here in the browser, or add the server in the app on your phone, tablet or computer." />
+            <AuthHeading title={`You're in ${serverName}`} lede="Your notes live on this server. Use Folevi right here in the browser, or add the server in the Folevi app on your Mac, iPhone or iPad." />
             <ConnectApps serverName={serverName} stacked />
             <a href="/documents" className="ui-btn ui-btn-primary mt-6 h-control w-full text-body">
               Open Folevi

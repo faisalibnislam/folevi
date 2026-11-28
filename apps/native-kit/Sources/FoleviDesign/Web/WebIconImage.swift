@@ -54,7 +54,8 @@ public extension WebIcon {
         ctx.translateBy(x: rect.midX - 12 * scale, y: rect.midY - 12 * scale)
         ctx.scaleBy(x: scale, y: scale)
         ctx.addPath(cgPath)
-        ctx.setLineWidth(strokeWidth)
+        // One line width for every icon, whatever its size (WebIconView.lineWidth; `strokeWidth` is no longer used).
+        ctx.setLineWidth(WebIconView.lineWidth / scale)
         ctx.setLineCap(.round)
         ctx.setLineJoin(.round)
         ctx.setStrokeColor(color)

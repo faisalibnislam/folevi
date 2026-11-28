@@ -26,7 +26,7 @@ test("the home page hero: title, theme picker and the apps", async ({ page }) =>
 
   // The apps are in the same card, with their buttons.
   const note = page.locator(".mk-hero-note");
-  await expect(note.getByRole("heading", { level: 2, name: /On your Mac, Windows, Linux, iPhone, iPad and Android/ })).toBeVisible();
+  await expect(note.getByRole("heading", { level: 2, name: /On your Mac, iPhone and iPad/ })).toBeVisible();
   await expect(note.getByRole("link", { name: "Download for Mac" })).toBeVisible();
   await expect(note.getByRole("link", { name: "Get it on the App Store" })).toBeVisible();
 

@@ -82,7 +82,7 @@ function currentHref(pathname: string): string | null {
 const ROW =
   "group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-[14px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
 const ROW_ON =
-  "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]";
+  "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),var(--shadow-raised)]";
 const ROW_OFF = "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading";
 
 /* Ambient light ------------------------------------------------------------------------------------ */
@@ -303,7 +303,7 @@ function useSiteTabs(pathname: string) {
 const TAB =
   "group relative flex h-9 min-w-0 items-center gap-2 rounded-control px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus";
 const TAB_ON =
-  "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
+  "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent),var(--shadow-raised)]";
 // Quiet tabs use a slightly stronger text than the app's muted grey: on Home they sit over the note's artwork.
 const TAB_OFF =
   "bg-[var(--glass-hover)] text-ink/65 hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";

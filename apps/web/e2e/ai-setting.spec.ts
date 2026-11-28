@@ -20,7 +20,8 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await expect(chat).toHaveCount(0);
   await expect(launcher).toBeFocused();
 
-  await page.goto("/settings/account");
+  // The switch lives in Settings > Foli AI (the owner removed the Account card, PR 190).
+  await page.goto("/settings/ai");
   const toggle = page.getByRole("switch", { name: "Foli AI", exact: true });
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await toggle.click();
@@ -52,7 +53,7 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await page.keyboard.press("Escape");
 
   // Back on.
-  await page.goto("/settings/account");
+  await page.goto("/settings/ai");
   await page.getByRole("switch", { name: "Foli AI", exact: true }).click();
   await expect(page.getByRole("switch", { name: "Foli AI", exact: true })).toHaveAttribute("aria-checked", "true");
   await page.goto("/documents");

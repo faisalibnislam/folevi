@@ -125,7 +125,7 @@ export function TabBar({ onNewFolder }: { onNewFolder: () => void }) {
     selectTab(tab.id);
   };
 
-  const plus = "grid h-10 w-10 place-items-center rounded-capsule bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.18)]";
+  const plus = "grid h-10 w-10 place-items-center rounded-capsule bg-heading text-canvas shadow-[var(--shadow-raised)]";
   return (
     <div
       ref={bar}

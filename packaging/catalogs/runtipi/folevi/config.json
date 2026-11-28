@@ -7,7 +7,7 @@
   "author": "Space Cherries LLC",
   "port": 8460,
   "categories": ["utilities"],
-  "description": "Your own Folevi server (Beta) for your family or team, used from the normal Folevi apps.",
+  "description": "Your own Folevi server (Early Beta) for your family or team, used from the normal Folevi apps.",
   "tipi_version": 1,
   "version": "1.5.73",
   "source": "https://folevi.com/server",

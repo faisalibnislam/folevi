@@ -1301,7 +1301,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                   // the foot is the sheet's own (globals.css), so its colour runs down under the bottom bar too.
                   "fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pt-[var(--native-inset-top,0px)]"
                 : `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+60px)]" : ""}`
-              : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
+              : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--shadow-resting)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
           }
           data-backdrop={pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
           data-font={style.font}
@@ -1864,8 +1864,8 @@ function DocumentHeader({
   useEffect(() => {
     if (focusedOnce.current || search.get("new") !== "1") return;
     focusedOnce.current = true;
-    freshTitle.current = true;
     titleRef.current?.focus();
+    freshTitle.current = true;
   }, [search]);
   // A new page from a template already has a title: it's selected (typing replaces it), also when it arrives
   // a moment after the page opens. Once the person types or moves the caret, it's theirs.
@@ -2153,7 +2153,7 @@ function ConflictBanner({ documentId, onResolvedAll }: { documentId: string; /**
           <p className="ui-caps">{c.reason === "deleted" ? "Deleted elsewhere" : c.reason === "edited" ? "Edited elsewhere" : "Version from elsewhere"}</p>
           <p className="mt-1 whitespace-pre-wrap text-subheadline">{c.reason === "deleted" ? "Someone deleted this block." : text(theirs)}</p>
         </div>
-        <div className="ui-card rounded-control p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
+        <div className="ui-card rounded-control p-3 shadow-[var(--shadow-edge),var(--shadow-resting),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
           <p className="ui-caps">{c.reason === "edited" ? "You deleted it" : "Your version"}</p>
           <p className={`mt-1 whitespace-pre-wrap text-subheadline ${c.reason === "edited" ? "text-muted line-through" : ""}`}>{text(c.client)}</p>
         </div>

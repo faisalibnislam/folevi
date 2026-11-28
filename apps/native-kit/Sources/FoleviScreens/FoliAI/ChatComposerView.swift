@@ -37,7 +37,7 @@ public struct FoliComposerView: View {
             }
             .background(RoundedRectangle(cornerRadius: compact ? FoleviTokens.Radius.sheet : FoleviTokens.Radius.panel, style: .continuous).fill(Folevi.color.surfaceRaised))
             .overlay(RoundedRectangle(cornerRadius: compact ? FoleviTokens.Radius.sheet : FoleviTokens.Radius.panel, style: .continuous).stroke(Folevi.color.line, lineWidth: 0.5))
-            .foleviShadow(.card, radius: compact ? FoleviTokens.Radius.sheet : FoleviTokens.Radius.panel)
+            .foleviShadow(.floating, radius: compact ? FoleviTokens.Radius.sheet : FoleviTokens.Radius.panel)
             Text(model.footnote)
                 .foleviFont(compact ? .footnote : .caption)
                 .foregroundStyle(Folevi.color.inkFaint)

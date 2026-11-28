@@ -89,7 +89,7 @@
   --control-gap: 8px;
   --control-icon: 16px;
   --control-compact-icon: 14px;
-  --control-icon-stroke: 1.5px;
+  --control-icon-stroke: 1.25px;
   --control-border: 1px;
   --control-segment-inset: 4px;
   --control-label-weight: 550;
@@ -149,13 +149,14 @@
   --color-highlight-pink: #FBDDE0;
   --color-scrim: rgba(29, 24, 20, 0.28);
   --shadow-hairline: 0px 0px 0px 1px rgba(74, 47, 44, 0.07);
+  --shadow-edge: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(0, 0, 0, 0.06);
   --shadow-control: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.27), 0px 0px 0px 1px rgba(74, 47, 44, 0.075), 0px 0px 1px 0px rgba(74, 47, 44, 0.018), 0px 1px 3px -1px rgba(74, 47, 44, 0.024);
   --shadow-primary: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.066), inset 0px -1px 0px 0px rgba(29, 24, 20, 0.075), 0px 0px 1px 0px rgba(29, 24, 20, 0.054), 0px 3px 7px -3px rgba(74, 47, 44, 0.165);
-  --shadow-card: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(74, 47, 44, 0.06), 0px 1px 2px 0px rgba(74, 47, 44, 0.05), 0px 14px 32px -14px rgba(74, 47, 44, 0.20);
-  --shadow-card-drop: 0px 1px 2px 0px rgba(74, 47, 44, 0.05), 0px 14px 32px -14px rgba(74, 47, 44, 0.20);
-  --shadow-sheet: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(74, 47, 44, 0.06), 0px 2px 4px 0px rgba(74, 47, 44, 0.04), 0px 28px 64px -28px rgba(74, 47, 44, 0.26);
-  --shadow-pop: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(74, 47, 44, 0.08), 0px 4px 10px -2px rgba(74, 47, 44, 0.08), 0px 24px 48px -12px rgba(74, 47, 44, 0.28);
-  --shadow-lift: 0px 0px 0px 1px rgba(74, 47, 44, 0.08), 0px 10px 24px -6px rgba(74, 47, 44, 0.25), 0px 30px 60px -20px rgba(74, 47, 44, 0.30);
+  --shadow-raised: 0px 1px 1px 0px rgba(0, 0, 0, 0.04), 0px 1px 3px 0px rgba(0, 0, 0, 0.08);
+  --shadow-resting: 0px 1px 2px 0px rgba(0, 0, 0, 0.04), 0px 4px 12px -6px rgba(0, 0, 0, 0.08);
+  --shadow-lifted: 0px 2px 4px 0px rgba(0, 0, 0, 0.05), 0px 8px 20px -8px rgba(0, 0, 0, 0.14);
+  --shadow-floating: 0px 2px 6px -2px rgba(0, 0, 0, 0.08), 0px 10px 28px -8px rgba(0, 0, 0, 0.16);
+  --shadow-overlay: 0px 4px 12px -4px rgba(0, 0, 0, 0.08), 0px 18px 44px -14px rgba(0, 0, 0, 0.2);
 }
 
 /* The iPhone and iPad apps (and Android's): Apple's default Dynamic Type sizes for the same roles. */
@@ -194,7 +195,7 @@
   --control-gap: 8px;
   --control-icon: 20px;
   --control-compact-icon: 18px;
-  --control-icon-stroke: 1.75px;
+  --control-icon-stroke: 1.5px;
   --control-border: 1px;
   --control-segment-inset: 4px;
   --control-label-weight: 550;
@@ -211,7 +212,7 @@
     --control-gap: 8px;
     --control-icon: 20px;
     --control-compact-icon: 18px;
-    --control-icon-stroke: 1.75px;
+    --control-icon-stroke: 1.5px;
     --control-border: 1px;
     --control-segment-inset: 4px;
     --control-label-weight: 550;
@@ -271,13 +272,14 @@
     --color-highlight-pink: #4A2A2E;
     --color-scrim: rgba(0, 0, 0, 0.55);
     --shadow-hairline: 0px 0px 0px 1px rgba(255, 240, 230, 0.07);
+    --shadow-edge: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.06), 0px 0px 0px 1px rgba(255, 255, 255, 0.08);
     --shadow-control: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.021), 0px 0px 0px 1px rgba(255, 240, 230, 0.068), 0px 1px 3px -1px rgba(0, 0, 0, 0.15);
     --shadow-primary: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.135), inset 0px -1px 0px 0px rgba(42, 23, 20, 0.075), 0px 3px 7px -3px rgba(0, 0, 0, 0.21);
-    --shadow-card: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.06), 0px 0px 0px 1px rgba(255, 240, 230, 0.07), 0px 14px 32px -14px rgba(0, 0, 0, 0.6);
-    --shadow-card-drop: 0px 14px 32px -14px rgba(0, 0, 0, 0.6);
-    --shadow-sheet: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.05), 0px 0px 0px 1px rgba(255, 240, 230, 0.07), 0px 28px 64px -24px rgba(0, 0, 0, 0.7);
-    --shadow-pop: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.07), 0px 0px 0px 1px rgba(255, 240, 230, 0.10), 0px 24px 48px -12px rgba(0, 0, 0, 0.7);
-    --shadow-lift: 0px 0px 0px 1px rgba(255, 240, 230, 0.10), 0px 10px 24px -6px rgba(0, 0, 0, 0.6), 0px 30px 60px -20px rgba(0, 0, 0, 0.6);
+    --shadow-raised: 0px 1px 1px 0px rgba(0, 0, 0, 0.2), 0px 1px 3px 0px rgba(0, 0, 0, 0.32);
+    --shadow-resting: 0px 1px 2px 0px rgba(0, 0, 0, 0.24), 0px 4px 12px -6px rgba(0, 0, 0, 0.36);
+    --shadow-lifted: 0px 2px 4px 0px rgba(0, 0, 0, 0.26), 0px 8px 20px -8px rgba(0, 0, 0, 0.46);
+    --shadow-floating: 0px 2px 6px -2px rgba(0, 0, 0, 0.3), 0px 10px 28px -8px rgba(0, 0, 0, 0.5);
+    --shadow-overlay: 0px 4px 12px -4px rgba(0, 0, 0, 0.32), 0px 18px 44px -14px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -332,13 +334,14 @@
   --color-highlight-pink: #4A2A2E;
   --color-scrim: rgba(0, 0, 0, 0.55);
   --shadow-hairline: 0px 0px 0px 1px rgba(255, 240, 230, 0.07);
+  --shadow-edge: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.06), 0px 0px 0px 1px rgba(255, 255, 255, 0.08);
   --shadow-control: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.021), 0px 0px 0px 1px rgba(255, 240, 230, 0.068), 0px 1px 3px -1px rgba(0, 0, 0, 0.15);
   --shadow-primary: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.135), inset 0px -1px 0px 0px rgba(42, 23, 20, 0.075), 0px 3px 7px -3px rgba(0, 0, 0, 0.21);
-  --shadow-card: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.06), 0px 0px 0px 1px rgba(255, 240, 230, 0.07), 0px 14px 32px -14px rgba(0, 0, 0, 0.6);
-  --shadow-card-drop: 0px 14px 32px -14px rgba(0, 0, 0, 0.6);
-  --shadow-sheet: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.05), 0px 0px 0px 1px rgba(255, 240, 230, 0.07), 0px 28px 64px -24px rgba(0, 0, 0, 0.7);
-  --shadow-pop: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.07), 0px 0px 0px 1px rgba(255, 240, 230, 0.10), 0px 24px 48px -12px rgba(0, 0, 0, 0.7);
-  --shadow-lift: 0px 0px 0px 1px rgba(255, 240, 230, 0.10), 0px 10px 24px -6px rgba(0, 0, 0, 0.6), 0px 30px 60px -20px rgba(0, 0, 0, 0.6);
+  --shadow-raised: 0px 1px 1px 0px rgba(0, 0, 0, 0.2), 0px 1px 3px 0px rgba(0, 0, 0, 0.32);
+  --shadow-resting: 0px 1px 2px 0px rgba(0, 0, 0, 0.24), 0px 4px 12px -6px rgba(0, 0, 0, 0.36);
+  --shadow-lifted: 0px 2px 4px 0px rgba(0, 0, 0, 0.26), 0px 8px 20px -8px rgba(0, 0, 0, 0.46);
+  --shadow-floating: 0px 2px 6px -2px rgba(0, 0, 0, 0.3), 0px 10px 28px -8px rgba(0, 0, 0, 0.5);
+  --shadow-overlay: 0px 4px 12px -4px rgba(0, 0, 0, 0.32), 0px 18px 44px -14px rgba(0, 0, 0, 0.6);
 }
 
 /* Neutral app chrome (tokens.chrome): inside the product. AccountGate and the admin console set
@@ -475,13 +478,14 @@
   --color-highlight-pink: #4A2A2E;
   --color-scrim: rgba(0, 0, 0, 0.55);
   --shadow-hairline: 0px 0px 0px 1px rgba(255, 240, 230, 0.07);
+  --shadow-edge: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.06), 0px 0px 0px 1px rgba(255, 255, 255, 0.08);
   --shadow-control: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.021), 0px 0px 0px 1px rgba(255, 240, 230, 0.068), 0px 1px 3px -1px rgba(0, 0, 0, 0.15);
   --shadow-primary: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.135), inset 0px -1px 0px 0px rgba(42, 23, 20, 0.075), 0px 3px 7px -3px rgba(0, 0, 0, 0.21);
-  --shadow-card: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.06), 0px 0px 0px 1px rgba(255, 240, 230, 0.07), 0px 14px 32px -14px rgba(0, 0, 0, 0.6);
-  --shadow-card-drop: 0px 14px 32px -14px rgba(0, 0, 0, 0.6);
-  --shadow-sheet: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.05), 0px 0px 0px 1px rgba(255, 240, 230, 0.07), 0px 28px 64px -24px rgba(0, 0, 0, 0.7);
-  --shadow-pop: inset 0px 1px 0px 0px rgba(255, 240, 230, 0.07), 0px 0px 0px 1px rgba(255, 240, 230, 0.10), 0px 24px 48px -12px rgba(0, 0, 0, 0.7);
-  --shadow-lift: 0px 0px 0px 1px rgba(255, 240, 230, 0.10), 0px 10px 24px -6px rgba(0, 0, 0, 0.6), 0px 30px 60px -20px rgba(0, 0, 0, 0.6);
+  --shadow-raised: 0px 1px 1px 0px rgba(0, 0, 0, 0.2), 0px 1px 3px 0px rgba(0, 0, 0, 0.32);
+  --shadow-resting: 0px 1px 2px 0px rgba(0, 0, 0, 0.24), 0px 4px 12px -6px rgba(0, 0, 0, 0.36);
+  --shadow-lifted: 0px 2px 4px 0px rgba(0, 0, 0, 0.26), 0px 8px 20px -8px rgba(0, 0, 0, 0.46);
+  --shadow-floating: 0px 2px 6px -2px rgba(0, 0, 0, 0.3), 0px 10px 28px -8px rgba(0, 0, 0, 0.5);
+  --shadow-overlay: 0px 4px 12px -4px rgba(0, 0, 0, 0.32), 0px 18px 44px -14px rgba(0, 0, 0, 0.6);
   --color-canvas: #101011;
   --color-sidebar: #18181A;
   --color-surface: #1C1C1E;
@@ -567,13 +571,14 @@
   --color-highlight-pink: #FBDDE0;
   --color-scrim: rgba(29, 24, 20, 0.28);
   --shadow-hairline: 0px 0px 0px 1px rgba(74, 47, 44, 0.07);
+  --shadow-edge: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(0, 0, 0, 0.06);
   --shadow-control: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.27), 0px 0px 0px 1px rgba(74, 47, 44, 0.075), 0px 0px 1px 0px rgba(74, 47, 44, 0.018), 0px 1px 3px -1px rgba(74, 47, 44, 0.024);
   --shadow-primary: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.066), inset 0px -1px 0px 0px rgba(29, 24, 20, 0.075), 0px 0px 1px 0px rgba(29, 24, 20, 0.054), 0px 3px 7px -3px rgba(74, 47, 44, 0.165);
-  --shadow-card: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(74, 47, 44, 0.06), 0px 1px 2px 0px rgba(74, 47, 44, 0.05), 0px 14px 32px -14px rgba(74, 47, 44, 0.20);
-  --shadow-card-drop: 0px 1px 2px 0px rgba(74, 47, 44, 0.05), 0px 14px 32px -14px rgba(74, 47, 44, 0.20);
-  --shadow-sheet: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(74, 47, 44, 0.06), 0px 2px 4px 0px rgba(74, 47, 44, 0.04), 0px 28px 64px -28px rgba(74, 47, 44, 0.26);
-  --shadow-pop: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(74, 47, 44, 0.08), 0px 4px 10px -2px rgba(74, 47, 44, 0.08), 0px 24px 48px -12px rgba(74, 47, 44, 0.28);
-  --shadow-lift: 0px 0px 0px 1px rgba(74, 47, 44, 0.08), 0px 10px 24px -6px rgba(74, 47, 44, 0.25), 0px 30px 60px -20px rgba(74, 47, 44, 0.30);
+  --shadow-raised: 0px 1px 1px 0px rgba(0, 0, 0, 0.04), 0px 1px 3px 0px rgba(0, 0, 0, 0.08);
+  --shadow-resting: 0px 1px 2px 0px rgba(0, 0, 0, 0.04), 0px 4px 12px -6px rgba(0, 0, 0, 0.08);
+  --shadow-lifted: 0px 2px 4px 0px rgba(0, 0, 0, 0.05), 0px 8px 20px -8px rgba(0, 0, 0, 0.14);
+  --shadow-floating: 0px 2px 6px -2px rgba(0, 0, 0, 0.08), 0px 10px 28px -8px rgba(0, 0, 0, 0.16);
+  --shadow-overlay: 0px 4px 12px -4px rgba(0, 0, 0, 0.08), 0px 18px 44px -14px rgba(0, 0, 0, 0.2);
   --color-canvas: #FFFFFF;
   --color-sidebar: #FFFFFF;
   --color-surface: #FFFFFF;
@@ -660,13 +665,14 @@
     --color-highlight-pink: #FBDDE0;
     --color-scrim: rgba(29, 24, 20, 0.28);
     --shadow-hairline: 0px 0px 0px 1px rgba(74, 47, 44, 0.07);
+    --shadow-edge: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(0, 0, 0, 0.06);
     --shadow-control: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.27), 0px 0px 0px 1px rgba(74, 47, 44, 0.075), 0px 0px 1px 0px rgba(74, 47, 44, 0.018), 0px 1px 3px -1px rgba(74, 47, 44, 0.024);
     --shadow-primary: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.066), inset 0px -1px 0px 0px rgba(29, 24, 20, 0.075), 0px 0px 1px 0px rgba(29, 24, 20, 0.054), 0px 3px 7px -3px rgba(74, 47, 44, 0.165);
-    --shadow-card: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(74, 47, 44, 0.06), 0px 1px 2px 0px rgba(74, 47, 44, 0.05), 0px 14px 32px -14px rgba(74, 47, 44, 0.20);
-    --shadow-card-drop: 0px 1px 2px 0px rgba(74, 47, 44, 0.05), 0px 14px 32px -14px rgba(74, 47, 44, 0.20);
-    --shadow-sheet: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(74, 47, 44, 0.06), 0px 2px 4px 0px rgba(74, 47, 44, 0.04), 0px 28px 64px -28px rgba(74, 47, 44, 0.26);
-    --shadow-pop: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.9), 0px 0px 0px 1px rgba(74, 47, 44, 0.08), 0px 4px 10px -2px rgba(74, 47, 44, 0.08), 0px 24px 48px -12px rgba(74, 47, 44, 0.28);
-    --shadow-lift: 0px 0px 0px 1px rgba(74, 47, 44, 0.08), 0px 10px 24px -6px rgba(74, 47, 44, 0.25), 0px 30px 60px -20px rgba(74, 47, 44, 0.30);
+    --shadow-raised: 0px 1px 1px 0px rgba(0, 0, 0, 0.04), 0px 1px 3px 0px rgba(0, 0, 0, 0.08);
+    --shadow-resting: 0px 1px 2px 0px rgba(0, 0, 0, 0.04), 0px 4px 12px -6px rgba(0, 0, 0, 0.08);
+    --shadow-lifted: 0px 2px 4px 0px rgba(0, 0, 0, 0.05), 0px 8px 20px -8px rgba(0, 0, 0, 0.14);
+    --shadow-floating: 0px 2px 6px -2px rgba(0, 0, 0, 0.08), 0px 10px 28px -8px rgba(0, 0, 0, 0.16);
+    --shadow-overlay: 0px 4px 12px -4px rgba(0, 0, 0, 0.08), 0px 18px 44px -14px rgba(0, 0, 0, 0.2);
     --color-canvas: #FFFFFF;
     --color-sidebar: #FFFFFF;
     --color-surface: #FFFFFF;

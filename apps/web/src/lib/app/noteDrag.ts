@@ -1,6 +1,7 @@
 "use client";
 
 import type { DragEvent } from "react";
+import { setCardDragImage } from "./dragImage";
 import { dragNotesOut } from "@/lib/desktop/capabilities";
 import { beginDrag } from "./dragSession";
 import { selectionNoun } from "./multiSelect";
@@ -46,41 +47,10 @@ export function startItemsDrag(e: DragEvent, items: { notes: string[]; folders: 
   setDragPicture(e, total > 1 ? selectionNoun(items.notes.length, items.folders.length) : null);
 }
 
-/** The drag's picture: the card or row it starts from, with `badgeText` (a count) painted in its corner. */
+/** The drag's picture: the card or row it starts from, with `badgeText` (a count) in its corner (lib/app/dragImage.ts). */
 function setDragPicture(e: DragEvent, badgeText: string | null) {
-  const image = previewOf(e.currentTarget);
-  if (!image) return;
-  const box = image.getBoundingClientRect();
-  let undo = () => {};
-  if (badgeText) {
-    // A count in the corner, painted into the drag image and removed straight after.
-    const badge = document.createElement("span");
-    badge.textContent = badgeText;
-    const dark = document.documentElement.dataset.theme === "dark" || (document.documentElement.dataset.theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    Object.assign(badge.style, {
-      position: "absolute",
-      top: "8px",
-      left: "8px",
-      zIndex: "30",
-      padding: "3px 9px",
-      borderRadius: "var(--radius-chip)",
-      font: "600 12px system-ui, sans-serif",
-      background: dark ? "#f4f4f5" : "#18181b",
-      color: dark ? "#18181b" : "#ffffff",
-      boxShadow: "0 2px 8px rgb(0 0 0 / 0.2)",
-    });
-    const position = image.style.position;
-    if (getComputedStyle(image).position === "static") image.style.position = "relative";
-    image.appendChild(badge);
-    undo = () => {
-      badge.remove();
-      image.style.position = position;
-    };
-  }
-  const x = Math.min(Math.max(e.clientX - box.left, 0), box.width);
-  const y = Math.min(Math.max(e.clientY - box.top, 0), box.height);
-  e.dataTransfer.setDragImage(image, x, y);
-  setTimeout(undo, 0);
+  const image = previewOf(e.currentTarget as EventTarget);
+  if (image) setCardDragImage(e, image, badgeText);
 }
 
 /** What the drag shows: a card's face (its link, without the hover buttons), else the row it starts from. */

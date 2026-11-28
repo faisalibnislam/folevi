@@ -1,13 +1,22 @@
-// /downloads: every platform has its real mark and a place in the bottom bar, the Mac, Windows and Linux rows
-// link to real files, and Folevi Server's rows come from its release manifest ("Coming soon" without one, never a
-// dead link). Linux and Folevi Server keep their Beta badges (lib/beta.ts).
+// /downloads: every platform has its real mark and a place in the bottom bar, the Mac row links to the real file,
+// and Folevi Server's rows come from its release manifest ("Coming soon" without one, never a dead link). The
+// paused Android, Windows and Linux apps (owner, 2026-11-28) come last, each "Coming soon" with no download.
+// Folevi Server keeps its Early Beta badge (lib/beta.ts); the Linux app has none now.
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import DownloadsPage from "@/app/(marketing)/downloads/page";
 import { DownloadsBar } from "@/components/marketing/DownloadsBar";
-import { ANDROID_DOWNLOAD_URL, LINUX_DOWNLOADS, MAC_DOWNLOAD_URL, WINDOWS_DOWNLOAD_ARM64_URL, WINDOWS_DOWNLOAD_X64_URL } from "@/components/marketing/site";
+import { ANDROID_DOWNLOAD_URL, APP_STORE_URL, LINUX_CHECKSUMS_URL, LINUX_DOWNLOADS, MAC_DOWNLOAD_URL, WINDOWS_DOWNLOAD_ARM64_URL, WINDOWS_DOWNLOAD_X64_URL } from "@/components/marketing/site";
 
-const PLATFORM_IDS = ["mac", "windows", "linux", "iphone-ipad", "android", "web", "server"];
+const PLATFORM_IDS = ["mac", "iphone-ipad", "web", "server", "windows", "linux", "android"];
+const PAUSED = ["windows", "linux", "android"];
+
+/** The section with this id, up to the next section. */
+function section(html: string, id: string): string {
+  const start = html.indexOf(`id="${id}"`);
+  const ends = ["<section", "<nav"].map((tag) => html.indexOf(tag, start + 1)).filter((i) => i !== -1);
+  return html.slice(start, ends.length ? Math.min(...ends) : undefined);
+}
 
 function serve(body: unknown, ok = true) {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok, status: ok ? 200 : 404, json: async () => body }) as Response));
@@ -32,22 +41,31 @@ describe("/downloads", () => {
     expect(html.match(/<svg/g)?.length ?? 0).toBeGreaterThanOrEqual(PLATFORM_IDS.length * 2);
   });
 
-  test("the Android row links to the APK and says how to install it", async () => {
+  test("the available platforms come first, the paused ones last", async () => {
     serve(null, false);
     const html = await render();
-    const android = html.slice(html.indexOf('id="android"'), html.indexOf('id="web"'));
-    expect(android).toContain(`href="${ANDROID_DOWNLOAD_URL}"`);
-    expect(android).toContain("Android 13 or later");
-    expect(android).toContain("allow installs from your browser");
-    expect(android).not.toContain("Coming soon");
+    const order = PLATFORM_IDS.map((id) => html.indexOf(`id="${id}"`));
+    expect([...order].sort((x, y) => x - y)).toEqual(order);
   });
 
-  test("the Mac, Windows and Linux rows link to the real files", async () => {
+  test("Android, Windows and Linux say Coming soon and link to no file", async () => {
     serve(null, false);
     const html = await render();
-    for (const url of [MAC_DOWNLOAD_URL, WINDOWS_DOWNLOAD_X64_URL, WINDOWS_DOWNLOAD_ARM64_URL, LINUX_DOWNLOADS.appimage.x64, LINUX_DOWNLOADS.deb.arm64, LINUX_DOWNLOADS.rpm.x64]) {
-      expect(html).toContain(`href="${url}"`);
+    for (const id of PAUSED) {
+      const part = section(html, id);
+      expect(part).toContain("Coming soon");
+      expect(part).not.toContain("<a ");
     }
+    const all = [ANDROID_DOWNLOAD_URL, WINDOWS_DOWNLOAD_X64_URL, WINDOWS_DOWNLOAD_ARM64_URL, LINUX_CHECKSUMS_URL, ...Object.values(LINUX_DOWNLOADS).flatMap((f) => Object.values(f))];
+    for (const url of all) expect(html).not.toContain(url);
+    expect(html).not.toContain("play.google.com");
+  });
+
+  test("the Mac and iPhone and iPad rows link to the real download and the App Store", async () => {
+    serve(null, false);
+    const html = await render();
+    expect(section(html, "mac")).toContain(`href="${MAC_DOWNLOAD_URL}"`);
+    expect(section(html, "iphone-ipad")).toContain(`href="${APP_STORE_URL}"`);
   });
 
   test("with no server release, Folevi Server says Coming soon and links to no package", async () => {
@@ -76,20 +94,19 @@ describe("/downloads", () => {
     expect(html).not.toContain("The first beta is almost ready");
   });
 
-  test("Linux and Folevi Server keep their Beta badges", async () => {
+  test("Folevi Server keeps its Early Beta badge; the paused Linux app has none", async () => {
     serve(null, false);
     const html = await render();
-    for (const id of ["linux", "server"]) {
-      const heading = html.slice(html.indexOf(`id="${id}-title"`), html.indexOf("</h2>", html.indexOf(`id="${id}-title"`)));
-      expect(heading).toContain("Beta");
-    }
+    const heading = (id: string) => html.slice(html.indexOf(`id="${id}-title"`), html.indexOf("</h2>", html.indexOf(`id="${id}-title"`)));
+    expect(heading("server")).toContain("Early Beta");
+    expect(heading("linux")).not.toContain("Beta");
   });
 
-  test("the bar says Beta to screen readers and marks nothing current before scrolling", () => {
+  test("the bar says Early Beta to screen readers and marks nothing current before scrolling", () => {
     const html = renderToStaticMarkup(
-      <DownloadsBar items={[{ id: "linux", title: "Linux", mark: "linux", beta: true }, { id: "mac", title: "Mac", mark: "apple" }]} />,
+      <DownloadsBar items={[{ id: "server", title: "Folevi Server", mark: "server", beta: true }, { id: "mac", title: "Mac", mark: "apple" }]} />,
     );
-    expect(html).toContain("(Beta)");
+    expect(html).toContain("(Early Beta)");
     expect(html).not.toContain("aria-current");
   });
 });

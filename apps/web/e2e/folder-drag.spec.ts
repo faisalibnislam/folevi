@@ -143,9 +143,9 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
   // Two notes picked by name, not place: the list is by last edited, and the moves above may still be reordering it.
   const rows = page.getByRole("main").getByRole("listitem");
   await expect(rows.nth(1)).toBeVisible();
-  // Each row's own link, its title (a row also links its folder and tags).
-  const title0 = (i: number) => rows.nth(i).getByRole("link").first().innerText();
-  const [first, second] = [(await title0(0)).trim(), (await title0(1)).trim()];
+  // Each row's own link: the whole row now (title, snippet, time and folder), so its first line is the title.
+  const title0 = async (i: number) => (await rows.nth(i).getByRole("link").first().innerText()).trim().split("\n")[0]!.trim();
+  const [first, second] = [await title0(0), await title0(1)];
   const note = (name: string) => rows.filter({ hasText: name }).first();
   await note(first).getByRole("link").first().click({ modifiers: [mod] });
   await note(second).getByRole("link").first().click({ modifiers: [mod] });

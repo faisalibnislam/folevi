@@ -88,9 +88,20 @@ public struct WebIconView: View {
         self.absoluteStrokeWidth = absoluteStrokeWidth
     }
 
+    /// Every icon's line width, whatever its size or the stroke it was given (the owner, 28 November 2026: all icons
+    /// consistent): the control token, 1.25 pt on the Mac and 1.5 pt on touch, as the web's svg.lucide rule
+    /// (globals.css, vector-effect: non-scaling-stroke).
+    public static var lineWidth: CGFloat {
+        #if os(macOS)
+        FoleviTokens.Control.Desktop.iconStroke
+        #else
+        FoleviTokens.Control.Touch.iconStroke
+        #endif
+    }
+
     public var body: some View {
         WebIconShape(icon: icon)
-            .stroke(style: StrokeStyle(lineWidth: absoluteStrokeWidth ? strokeWidth : strokeWidth * size / 24, lineCap: .round, lineJoin: .round))
+            .stroke(style: StrokeStyle(lineWidth: Self.lineWidth, lineCap: .round, lineJoin: .round))
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }

@@ -344,7 +344,7 @@ export function ConnectAppsDialog({ open, onClose, address, serverName }: { open
       open={open}
       onClose={onClose}
       title="Connect your apps"
-      description={`Add ${serverName ?? "this server"} in Folevi on a Mac, iPhone, iPad or Android. Send these steps to the people you invite, too.`}
+      description={`Add ${serverName ?? "this server"} in Folevi on a Mac, iPhone or iPad. Send these steps to the people you invite, too.`}
       size="md"
       footer={
         <>

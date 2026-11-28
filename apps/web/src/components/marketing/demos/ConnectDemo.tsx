@@ -168,7 +168,7 @@ export function ConnectDemo() {
               role="listbox"
               aria-label="Pages"
               hidden={!open}
-              className="mk-card mk-appear absolute left-0 z-10 mt-1.5 w-[min(260px,100%)] p-1.5 shadow-(--shadow-pop)"
+              className="mk-card mk-appear absolute left-0 z-10 mt-1.5 w-[min(260px,100%)] p-1.5 shadow-[var(--shadow-edge),var(--shadow-floating)]"
             >
               <li role="presentation" className="mk-caps px-2 pb-1 pt-0.5">
                 Link to page
@@ -202,7 +202,7 @@ export function ConnectDemo() {
           const linked = links.has(id);
           const count = page.staticBacklinks.length + (linked ? 1 : 0);
           return (
-            <li key={id} className={cx("mk-card px-4 py-3 transition-shadow duration-200", linked && "shadow-[var(--shadow-card),0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_30%,transparent)]")}>
+            <li key={id} className={cx("mk-card px-4 py-3 transition-shadow duration-200", linked && "shadow-[var(--shadow-edge),var(--shadow-resting),0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_30%,transparent)]")}>
               <p className="flex items-center gap-2 text-[14px] font-medium text-ink">
                 <FileText size={14} aria-hidden="true" className="shrink-0 text-muted" />
                 {page.title}

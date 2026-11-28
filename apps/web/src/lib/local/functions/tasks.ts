@@ -59,7 +59,7 @@ interface TaskRow {
  * blueprints, not tasks), in the order the server's task rows were made (when the block was made, then its
  * place in its note).
  */
-async function allTasks(db: LocalReader): Promise<TaskRow[]> {
+export async function allTasks(db: LocalReader): Promise<TaskRow[]> {
   const out: TaskRow[] = [];
   for (const doc of await db.list("documents")) {
     if (doc.kind === "template") continue;

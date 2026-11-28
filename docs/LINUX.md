@@ -1,5 +1,9 @@
 # Folevi for Linux
 
+> **Paused (2026-11-28, owner decision):** the Windows, Linux and Android apps are paused. folevi.com shows them as
+> coming soon, with no download links. Folevi is available on the Mac, iPhone and iPad (iPhone Duo too), the web and
+> Folevi Server. The technical notes below are kept as they are for when the work picks up again.
+
 Folevi for Linux is the shared Tauri 2 desktop shell (the same one Folevi for Windows uses) around the Folevi web
 app, shown in the system's own web view, WebKitGTK. Small download, low memory, no bundled browser.
 

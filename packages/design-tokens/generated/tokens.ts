@@ -312,8 +312,8 @@ export const tokens = {
       "touch": 18
     },
     "iconStroke": {
-      "desktop": 1.5,
-      "touch": 1.75
+      "desktop": 1.25,
+      "touch": 1.5
     },
     "border": {
       "desktop": 1,
@@ -497,6 +497,7 @@ export const tokens = {
     "easing": "cubic-bezier(0.2, 0.7, 0.2, 1)"
   },
   "shadow": {
+    "$description": "Shadows (docs/SHADOWS.md). Edges draw a surface outline and carry no elevation: hairline (a 1px ring), edge (a solid surface: top sheen and ring), control and primary (button skins). The elevation levels are drop shadows only, combined with an edge: flat (no drop), raised (a control lifted off its track), resting (a card on the page), lifted (a card under the pointer or dragged), floating (menus, popovers, toasts, toolbars), overlay (dialogs and sheets). CSS: --shadow-*; Swift: FoleviTokens.Shadow.",
     "light": {
       "hairline": [
         [
@@ -505,6 +506,23 @@ export const tokens = {
           0,
           1,
           "rgba(74, 47, 44, 0.07)"
+        ]
+      ],
+      "edge": [
+        [
+          0,
+          1,
+          0,
+          0,
+          "rgba(255, 255, 255, 0.9)",
+          "inset"
+        ],
+        [
+          0,
+          0,
+          0,
+          1,
+          "rgba(0, 0, 0, 0.06)"
         ]
       ],
       "control": [
@@ -570,136 +588,84 @@ export const tokens = {
           "rgba(74, 47, 44, 0.165)"
         ]
       ],
-      "card": [
+      "raised": [
         [
           0,
           1,
+          1,
           0,
-          0,
-          "rgba(255, 255, 255, 0.9)",
-          "inset"
+          "rgba(0, 0, 0, 0.04)"
         ],
         [
           0,
-          0,
-          0,
           1,
-          "rgba(74, 47, 44, 0.06)"
-        ],
+          3,
+          0,
+          "rgba(0, 0, 0, 0.08)"
+        ]
+      ],
+      "resting": [
         [
           0,
           1,
           2,
           0,
-          "rgba(74, 47, 44, 0.05)"
-        ],
-        [
-          0,
-          14,
-          32,
-          -14,
-          "rgba(74, 47, 44, 0.20)"
-        ]
-      ],
-      "cardDrop": [
-        [
-          0,
-          1,
-          2,
-          0,
-          "rgba(74, 47, 44, 0.05)"
-        ],
-        [
-          0,
-          14,
-          32,
-          -14,
-          "rgba(74, 47, 44, 0.20)"
-        ]
-      ],
-      "sheet": [
-        [
-          0,
-          1,
-          0,
-          0,
-          "rgba(255, 255, 255, 0.9)",
-          "inset"
-        ],
-        [
-          0,
-          0,
-          0,
-          1,
-          "rgba(74, 47, 44, 0.06)"
-        ],
-        [
-          0,
-          2,
-          4,
-          0,
-          "rgba(74, 47, 44, 0.04)"
-        ],
-        [
-          0,
-          28,
-          64,
-          -28,
-          "rgba(74, 47, 44, 0.26)"
-        ]
-      ],
-      "pop": [
-        [
-          0,
-          1,
-          0,
-          0,
-          "rgba(255, 255, 255, 0.9)",
-          "inset"
-        ],
-        [
-          0,
-          0,
-          0,
-          1,
-          "rgba(74, 47, 44, 0.08)"
+          "rgba(0, 0, 0, 0.04)"
         ],
         [
           0,
           4,
-          10,
-          -2,
-          "rgba(74, 47, 44, 0.08)"
-        ],
-        [
-          0,
-          24,
-          48,
-          -12,
-          "rgba(74, 47, 44, 0.28)"
-        ]
-      ],
-      "lift": [
-        [
-          0,
-          0,
-          0,
-          1,
-          "rgba(74, 47, 44, 0.08)"
-        ],
-        [
-          0,
-          10,
-          24,
+          12,
           -6,
-          "rgba(74, 47, 44, 0.25)"
+          "rgba(0, 0, 0, 0.08)"
+        ]
+      ],
+      "lifted": [
+        [
+          0,
+          2,
+          4,
+          0,
+          "rgba(0, 0, 0, 0.05)"
         ],
         [
           0,
-          30,
-          60,
-          -20,
-          "rgba(74, 47, 44, 0.30)"
+          8,
+          20,
+          -8,
+          "rgba(0, 0, 0, 0.14)"
+        ]
+      ],
+      "floating": [
+        [
+          0,
+          2,
+          6,
+          -2,
+          "rgba(0, 0, 0, 0.08)"
+        ],
+        [
+          0,
+          10,
+          28,
+          -8,
+          "rgba(0, 0, 0, 0.16)"
+        ]
+      ],
+      "overlay": [
+        [
+          0,
+          4,
+          12,
+          -4,
+          "rgba(0, 0, 0, 0.08)"
+        ],
+        [
+          0,
+          18,
+          44,
+          -14,
+          "rgba(0, 0, 0, 0.2)"
         ]
       ]
     },
@@ -711,6 +677,23 @@ export const tokens = {
           0,
           1,
           "rgba(255, 240, 230, 0.07)"
+        ]
+      ],
+      "edge": [
+        [
+          0,
+          1,
+          0,
+          0,
+          "rgba(255, 255, 255, 0.06)",
+          "inset"
+        ],
+        [
+          0,
+          0,
+          0,
+          1,
+          "rgba(255, 255, 255, 0.08)"
         ]
       ],
       "control": [
@@ -762,107 +745,83 @@ export const tokens = {
           "rgba(0, 0, 0, 0.21)"
         ]
       ],
-      "card": [
+      "raised": [
         [
           0,
           1,
+          1,
           0,
-          0,
-          "rgba(255, 240, 230, 0.06)",
-          "inset"
+          "rgba(0, 0, 0, 0.2)"
         ],
         [
-          0,
-          0,
           0,
           1,
-          "rgba(255, 240, 230, 0.07)"
-        ],
-        [
+          3,
           0,
-          14,
-          32,
-          -14,
-          "rgba(0, 0, 0, 0.6)"
+          "rgba(0, 0, 0, 0.32)"
         ]
       ],
-      "cardDrop": [
+      "resting": [
         [
           0,
-          14,
-          32,
-          -14,
-          "rgba(0, 0, 0, 0.6)"
+          1,
+          2,
+          0,
+          "rgba(0, 0, 0, 0.24)"
+        ],
+        [
+          0,
+          4,
+          12,
+          -6,
+          "rgba(0, 0, 0, 0.36)"
         ]
       ],
-      "sheet": [
+      "lifted": [
         [
           0,
-          1,
+          2,
+          4,
           0,
-          0,
-          "rgba(255, 240, 230, 0.05)",
-          "inset"
+          "rgba(0, 0, 0, 0.26)"
         ],
         [
           0,
-          0,
-          0,
-          1,
-          "rgba(255, 240, 230, 0.07)"
-        ],
-        [
-          0,
-          28,
-          64,
-          -24,
-          "rgba(0, 0, 0, 0.7)"
+          8,
+          20,
+          -8,
+          "rgba(0, 0, 0, 0.46)"
         ]
       ],
-      "pop": [
+      "floating": [
         [
           0,
-          1,
-          0,
-          0,
-          "rgba(255, 240, 230, 0.07)",
-          "inset"
-        ],
-        [
-          0,
-          0,
-          0,
-          1,
-          "rgba(255, 240, 230, 0.10)"
-        ],
-        [
-          0,
-          24,
-          48,
-          -12,
-          "rgba(0, 0, 0, 0.7)"
-        ]
-      ],
-      "lift": [
-        [
-          0,
-          0,
-          0,
-          1,
-          "rgba(255, 240, 230, 0.10)"
+          2,
+          6,
+          -2,
+          "rgba(0, 0, 0, 0.3)"
         ],
         [
           0,
           10,
-          24,
-          -6,
-          "rgba(0, 0, 0, 0.6)"
+          28,
+          -8,
+          "rgba(0, 0, 0, 0.5)"
+        ]
+      ],
+      "overlay": [
+        [
+          0,
+          4,
+          12,
+          -4,
+          "rgba(0, 0, 0, 0.32)"
         ],
         [
           0,
-          30,
-          60,
-          -20,
+          18,
+          44,
+          -14,
           "rgba(0, 0, 0, 0.6)"
         ]
       ]

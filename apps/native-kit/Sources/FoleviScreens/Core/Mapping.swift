@@ -48,7 +48,8 @@ public enum CardMapping {
     }
 
     public static func cardTimeText(_ row: NoteRow, inTrash: Bool, now: Date = ScreenClock.now()) -> String {
-        inTrash ? timeText(row, inTrash: true, now: now) : "Edited \(AgeText.relative(Date(timeIntervalSince1970: row.updatedAt / 1000), now: now))"
+        // The bare date, no "Edited" (format.ts editedText; the owner, 28 November 2026).
+        inTrash ? timeText(row, inTrash: true, now: now) : AgeText.relative(Date(timeIntervalSince1970: row.updatedAt / 1000), now: now)
     }
 
     public static func noteCard(_ row: NoteRow, starred: Bool? = nil, inTrash: Bool = false, now: Date = ScreenClock.now()) -> NoteCardModel {
@@ -93,7 +94,7 @@ public enum CardMapping {
             parentName: parentName,
             subfolders: f.childCount,
             subfolderColorIds: f.childColors,
-            editedText: f.updatedAt > 0 ? "Edited \(AgeText.relative(Date(timeIntervalSince1970: f.updatedAt / 1000), now: now))" : ""
+            editedText: f.updatedAt > 0 ? AgeText.relative(Date(timeIntervalSince1970: f.updatedAt / 1000), now: now) : ""
         )
     }
 

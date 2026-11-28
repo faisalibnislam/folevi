@@ -12,9 +12,113 @@ Owner feedback on 28 November 2026, made on the web and in the shared native car
 - A folder page's subfolder cards are 25% bigger (web --subfolder-card 114 to 143 px; Mac MacCards.s(152) to s(190)). Their name is 20% smaller than their other labels (--fc-name, SUBFOLDER_NAME = 0.8) and takes one line, cut by character, because at the 234/152 label scale two lines, the counts and the Edited date never fit and the date was cut off. FolderCardArt also drops to one line on any card under 144 px wide (a container query), as the Mac's nameLines does.
 - Note card spine 25% wider (6% to 7.5% of the cover; the folder card's small notes too) with the spiral holes centred in it. The web's holes are now one radial gradient each (dot and ring), so they are true circles; the old 2.6cqw box with a box-shadow ring rendered squashed at fractional pixel sizes.
 - List views (web): the Folders page's list and every note list's list view share one system in globals.css (.ui-list, .ui-list-head, .ui-list-row, .ui-list-name, .ui-list-meta, in @layer components so utilities still win). No card or shadow round them: rows sit on the page between hairlines. The name is in the serif at Headline size (15/20, semibold, as a folder card's name); counts, folder, tags and dates are Footnote (12/16) in the muted ink with tabular figures; a small caps header names the columns and lines up with them. The Mac app's own list rows were not changed.
-- A card's time is one size everywhere: the note card's footer (time and its folder or Draft chip) and the folder card's Edited date are Footnote (12px web and Mac, 13px iPhone/iPad), as the list views' dates; they were 3.8cqw (7px on Home) and clamp(10.5px, 4.3cqw, 16px). The note footer is at least 20px tall so the chip fits. Web and WebNoteCard.swift. The owner's rule is saved in docs/claude-context/memory/consistent-type-sizes-2026-11-28.md. A note card's "Created" line under the title still scales with the card (part of the page drawing).
+- A card's time is one size everywhere and has no "Edited" word: the note card's footer (time and its folder or Draft chip) and the folder card's date share --type-card-time (80.5% of Footnote: 9.66px on web and Mac, about 10.5px on iPhone/iPad; the owner asked for one size, then 30% smaller, then 15% bigger) and WebTextStyle.cardTime in Swift. They were 3.8cqw (7px on Home) and clamp(10.5px, 4.3cqw, 16px). format.ts editedText and the native Mapping.swift/FolderCard.swift now give the bare date ("5 mins ago"); Trash still says "Deleted ...", and the command palette and phone search keep "Edited". The QA audit F14 test now checks the bare date. The owner's rule is saved in docs/claude-context/memory/consistent-type-sizes-2026-11-28.md. A note card's "Created" line under the title still scales with the card.
+- The folder card's count ("No notes yet", "3 notes") is regular weight, not medium, on web and in the native card.
+- The folder card's front is opaque (the owner: "no transparency"): --fc-a/--fc-b mix each tint with the folder's own colour (what used to show through) instead of with transparency, so the colour is about as before but the notes no longer show through, and the blurred frost layer (data-fc="frost", and the native blur in WebFolderCard.art) is gone. Web and WebNoteCard.swift.
+- The small folder icon (FolderGlyph, sidebar and lists) has the card's depth: the back's diagonal gradient and the front's opaque top-to-bottom tint in the folder card's own colours (globals.css .fg-b1/b2/f1/f2), a hairline shadow above the front, a light top edge and a faint drop shadow (0.088 light, 0.2 dark, 60% lighter than first set); the native FolderGlyph.swift matches (its front corner now 15.6, as the web).
+- The folder card name's line height is 1.25 (was 1.15), web and native; a card under 150 px (was 144) keeps the name to one line so the date still fits.
+- Square top-right corner on some folder cards' backs (the owner's close-up, 28 November 2026): the back and the stacked subfolders were a CSS mask of BACK_PATH, and the owner's Chrome (the desktop app's preview pane) rasterised that mask so the body's rounded top-right corner came out square on cards at some pixel positions; headless Chrome didn't show it. They are inline SVG shapes now (FolderCardArt BackShape, gradient stops .fcb-1/.fcb-2 in globals.css), drawn as vectors. Native draws Paths and was never affected.
+- Earlier guess at the same report: clipped right edges on some folder cards (columns whose right edge falls at a fractional device pixel, at 2x): the front's overflow clip cut about a pixel off, taking its light edge and round corners. The front has no overflow clip now; the grain overlay is rounded on its own (rounded-[inherit]). Not yet confirmed by the owner on screen.
+- A card's "..." lifts with the card on hover (folder cards 4px, note and compact cards 2px), and the card's lift now follows hover anywhere on the card (group-hover), so the gap above the "..." equals the gap at its side.
+- Folder colours are 35% lighter in light mode (65% of the muted colour, 35% white), dark mode unchanged: the components set --fc-raw / --fs-raw / --fg-raw and globals.css derives --fc-tone / --fs / --fg-tone per theme ([data-fc="art"] is the card's root). Native: WebFolderCard.tone(_:dark:) and FolderGlyph.swift.
+- No Compact cards view: the note lists' switcher is Grid and List (web DocumentBrowser, Mac WebNoteBrowser); a saved "compact" shows the grid. The Mac's compact drawing code is unused now.
+- The notes list view is Apple Notes-style rows (web): the serif title over the note's first words on the left, the time over its folder (or Draft) and tags on the right, hairlines that start at the text and skip the last row, drag handle and "..." on hover; no column header or file icon. The Mac app's own list rows were not redesigned yet (gap).
+- Icons: every lucide icon on the web draws its lines at one screen width (--control-icon-stroke, now 1.25px desktop and 1.5px touch in packages/design-tokens; vector-effect: non-scaling-stroke), whatever its size or strokeWidth; they were 0.9 to 1.33px. The iPhone and Mac menu icon rules use the same token. Native WebIconView and WebIconImage stroke at WebIconView.lineWidth (the same token). After `pnpm tokens` the web dev server kept the old token CSS until apps/web/.next-3002 was cleared.
+- Dragging a note, folder or mixed selection: the picture is a copy of the card at rest in a transparent holder with 32 px of room for its shadow, without the hover buttons and selection marks (lib/app/dragImage.ts setCardDragImage, used by startNoteDrag, startItemsDrag and startFolderDrag). Handing the card itself to setDragImage cut its shadow off and brought a square of the hover or selection wash along.
+- Tasks page (web TaskItem, TasksView): no card round the list; rows between hairlines that start at the text; a round 20 px check (rounded-control) with a check on hover, moss when done; one quiet line with the due date (red when late), repeat and the note; priority as a small flag after the title; small caps group headings with counts (Overdue, Today, Upcoming, No date; Upcoming keeps its dates, Completed has none) instead of "Overdue ·" on every row; a quieter footer.
+- Column mode: the area behind the note list and round the open note ([data-note-columns]) is --glass-canvas moved 35% toward --color-surface, light and dark.
+- Generated icons refreshed (Icons.swift, WebIcons.kt) for the icons added today; CI's generated-files check was failing on them.
+- Settings > Account no longer shows the Foli AI on/off card (desktop and iPhone); it stays in Settings > Foli AI.
 - /dev/folder-states shows the subfolder row as a folder page draws it (143 px, labels scaled, one-line name).
 
 Not changed: the owner saw New folder in a folder close without making the folder (screen recording, right after signing in again). It did not reproduce from a fresh load on the dev deployment: short names and the parent's own name both made the folder at once, and nothing from the recorded attempts reached the server. Worth watching for after a session-ended sign-in.
 
 Not run: native snapshot tests (FoleviScreensTests); their reference images for folder and note cards will need refreshing.
+
+## Settings search (web and Mac)
+
+- One "Search settings" field above the Settings sections (`SettingsView.tsx`, `SettingsSearch`). Typing swaps the
+  section list for matching settings; a result opens its section at that card (`?find=<card title>`), which glows
+  briefly. Arrow keys, Return and Escape work.
+- The index is `apps/web/src/lib/app/settingsSearch.ts`: each card title with everyday words ("dark mode",
+  "cancel subscription", "2fa"). Filler words are dropped, so a question ("how do I turn on dark mode") finds the
+  same as a keyword. It runs locally, with no Foli AI call: the owner asked for a simple search.
+- Not yet: the iPhone and iPad Settings lists, the Windows/Linux app's own settings (recorded gap), and native
+  Mac Settings. Add new settings cards to the index when they're added.
+- Tests: `apps/web/test/settings-search.test.ts`.
+
+## The owner's type sizes (from the type sizes page, 28 November)
+
+The owner filled in sizes on https://claude.ai/artifact/TN7Mz8Q9SqVi5hWMMD3S9G. Applied on web and native:
+- Note card title 13 (6.9cqw), created line 10 (5.3cqw), preview 8 (4.25cqw, leading 5.9cqw), at a Home card.
+- Folder card name 15 (8.33cqw; subfolders keep 0.8 of it).
+- Card time and folder chip: `--type-card-time` is a flat 10px (leading 13.3); `WebTextStyle.cardTime` is 10 pt.
+- Editor body (serif) 17px, so headings land at 24.
+Files: `globals.css`, `editor.css`, `DocumentCard.tsx`, `FolderCardArt.tsx`, `WebNoteCard.swift`.
+
+## Home: PR 194 merged in, then polished, with an "At a glance" stats block
+
+- Merged PR 194's branch (`claude/dazzling-sanderson-1d2975`, Home design v19) into this branch.
+- Order now: opening, Recent notes, Bookmarks, Recent folders, then two-column rows: At a glance beside Foli DNA,
+  Today beside My tasks (`homeLayout.ts`: a left-hand block after a right-hand one starts a new row).
+- At a glance (`HomeStats.tsx`, `convex/homeStats.ts`, local mode `lib/local/functions/homeStats.ts`): notes (new
+  today), words (reading time at 238 wpm), images, folders, tasks done (still open), new notes over the last 7 days.
+  Read-only figures (the owner: not clickable). Counts stop at 5,000 rows a table. Same height as the DNA map (288px).
+  Pushed to the dev deployment with `npx convex dev --once` (never `--prod`).
+- Section heads: an icon in a small bordered tile and a serif title, no hairline; "See all →".
+- Today is a calendar day: a date tile, today's events as time rows with their calendar colour and the Up next tag,
+  and one line for the tasks due. My tasks uses the Tasks page's own `TaskItem` row.
+- Bookmarks empty state is one compact dashed row. The Foli AI summary's errors are muted, not red.
+- Not done: the Mac's native Home (gap in DESKTOP_PARITY.md); no calendar is connected on the test account, so the
+  event rows and Up next tag weren't seen with real events.
+- Home is at most 1,320px wide (was 1,100).
+- Recent notes, Bookmarks and Recent folders: six cards a row on a full-width Home (2, 3, 5, then 6 as it widens), 24px gaps.
+- Home: the Foli AI summary waits for a "Catch me up" button (with "A quick AI brief of this week's notes and what's due.") instead of running on its own; once written it shows in a card, "Your week, from Foli AI", with refresh and Ask a follow-up.
+
+## Editor suggestions box redesigned (`NoteSuggestions.tsx`)
+
+- A small Foli AI card: the AI icon, "Suggestions" and a count, then one row per suggestion: a tinted icon tile for
+  its kind (question indigo, action amber, related teal, duplicate clay), the line or note, and what it is
+  underneath. "Task" / "Link" and dismiss show on hover (always on touch). Same accessible names as before, so the
+  existing tests hold. The iPhone's paper mode uses the same rows.
+
+## Settings: AI contextual search, a Settings title, no section titles; sort hidden on empty lists
+
+- Settings search asks Foli AI when the words don't find it: "Ask Foli AI" under the matches (first, so Return asks,
+  when nothing matches). `ai.settingsSearch` (convex/ai.ts) sends the words and the settings this person has (id,
+  title, section) to the fast model; `packages/ai-prompts/src/settingsSearch.ts` builds the request and keeps only
+  ids from the list (at most 3) plus one sentence. The answer shows above the matches with the picked settings as
+  rows. Only while Foli AI is on. Not seen with a real answer: the dev server has no AI key (it shows "Foli AI isn't
+  set up on this server yet.").
+- Keyword matching is more forgiving: most words must match, plurals and more filler words ("stop", "about").
+- Settings has a "Settings" title above the search; the big section titles ("Account") are gone (kept for screen
+  readers).
+- A note list's Sort button is hidden while the list is empty (Archive, an empty folder).
+- Functions pushed to the dev deployment with `npx convex dev --once`.
+- Home capture field: the "Saves to" list uses the menu level (`ui-pop`, floating shadow) like every other menu, not `ui-raised`.
+
+## Sidebar filled icons, Home heading tiles, Reset in Customize
+
+- The sidebar's selected item shows its icon filled (`components/app/SidebarFilledIcons.tsx`, `NavItem` `activeIcon`):
+  Home, Foli DNA, Bookmarks, Drafts, All notes, Tasks, Calendar, Reviews, Shared with Me, Vault, Changes,
+  Templates. Details (the door, the check, calendar dots) are cut out in the row's colour. Not yet on the Mac's
+  native sidebar or the folder rows.
+- Home's section heading tiles: black background, white icon, no border or shadow.
+- Customize mode has Reset next to Done (puts Home back to the default sections and order); the old bottom button
+  is gone.
+- Sidebar More: it opens by itself once when you go to a page under it, then its toggle is yours. Before, it was forced open while that page was showing, so clicking More did nothing.
+- A folder page with folders and notes names both sections: "Folders" then "Notes". The folder row sits 16px closer to its heading (the cards keep room at the top for peeking notes).
+- Undone at the owner's word: the folder row keeps its original gap under "Folders" (room for peeking notes).
+- Settings: "You" is split into Account (Account, Plan & billing, Devices; Library in local mode), Security (Security, Privacy), App (Foli AI, Appearance, Writing, Notifications) and Data (Connected apps, Offline & sync, Import & export, Desktop app, This device). Create a workspace is a plain row under a Workspace heading instead of a boxed card.
+
+## Native snapshots re-recorded for PR 190's card and icon changes
+
+PR 190 changes shared native drawing (WebNoteCard type sizes and the time without "Edited", lighter opaque folder
+cards, one icon stroke width), so these references were re-recorded after checking each `.failed.png` against its
+reference; every difference was one of those intended changes, nothing else moved:
+- FoleviDesignTests: folder-cards and phone-folder-cards (light, dark): folder colours and the opaque front.
+- FoleviMacTests: list-header (all-notes, folder, folder-nested, folders; Mac and iPad; light and dark) and
+  home-picture (light, dark): card time and sizes, folder cards; dna-note-iphone-dark: icon stroke.
+Both suites pass on the merged tree (266 Mac, 36 design).
+- Coverage for the new server functions: E2EE routes `homePrefs:*` and `homeStats:get` pass through (ids and counts, no note text; a sealed note's words aren't counted); `ai:settingsSearch` is LOCAL_HIDDEN (aiServer) and Settings shows Ask Foli AI only with `caps.aiServer`, so a local library keeps the word search only.
+- Sidebar More: a page under More opened straight from its address opens More too (the e2e spec sidebar-more caught it); after that the toggle is yours.

@@ -88,7 +88,7 @@ function useFitLines(title: string) {
  * pale gap.
  */
 export const NOTE_CARD_LINK =
-  "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-small shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.08),-4px_18px_30px_-18px_rgb(20_20_30/0.07),0_2px_5px_rgb(20_20_30/0.015)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.09),-5px_24px_36px_-18px_rgb(20_20_30/0.09),0_3px_8px_rgb(20_20_30/0.02)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+  "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-small shadow-[var(--shadow-resting)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-lifted)] group-hover:-translate-y-0.5 group-hover:shadow-[var(--shadow-lifted)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 export { noteLook, type CardLook } from "@/lib/cardLook";
 import { noteLook } from "@/lib/cardLook";
@@ -158,8 +158,8 @@ export function NoteCardFace({
     <div className="relative h-full w-full [container-type:inline-size]">
       {look === "stack" ? (
         <>
-          <span aria-hidden className="note-card-r absolute inset-[2%_0_0_3%] rotate-[5deg] rounded-l-tiny rounded-r-small shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),0_4px_10px_-6px_rgb(20_20_30/0.25)]" style={{ background: tint(16) }} />
-          <span aria-hidden className="note-card-r absolute inset-[1%_3%_1%_0] -rotate-[3.5deg] rounded-l-tiny rounded-r-small shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),0_4px_10px_-6px_rgb(20_20_30/0.25)]" style={{ background: tint(9) }} />
+          <span aria-hidden className="note-card-r absolute inset-[2%_0_0_3%] rotate-[5deg] rounded-l-tiny rounded-r-small shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),var(--shadow-resting)]" style={{ background: tint(16) }} />
+          <span aria-hidden className="note-card-r absolute inset-[1%_3%_1%_0] -rotate-[3.5deg] rounded-l-tiny rounded-r-small shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),var(--shadow-resting)]" style={{ background: tint(9) }} />
         </>
       ) : null}
       {look === "tabs" ? (
@@ -198,15 +198,15 @@ export function NoteCardFace({
         {look === "memo" ? (
           <h3 data-card="memo" className="line-clamp-2 self-start text-ellipsis break-words rounded-tiny bg-heading px-[2.4cqw] py-[1.2cqw] font-mono text-[4cqw] font-medium uppercase leading-[1.3] tracking-[0.06em] text-surface">{title || "Untitled"}</h3>
         ) : (
-          <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
+          <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.9cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
         )}
         {look === "index" ? <span aria-hidden className="mt-[2.4cqw] block h-[0.5cqw] bg-[#e88e8e]" /> : null}
-        <p data-card="created" className="mt-[1cqw] truncate text-[4.5cqw] leading-[1.3] text-faint">
+        <p data-card="created" className="mt-[1cqw] truncate text-[5.3cqw] leading-[1.3] text-faint">
           {createdText(createdAt)}
         </p>
         <div
           ref={body.ref}
-          className="mt-[4.6cqw] min-h-0 flex-1 overflow-hidden text-[3.6cqw] leading-[5cqw]"
+          className="mt-[4.6cqw] min-h-0 flex-1 overflow-hidden text-[4.25cqw] leading-[5.9cqw]"
           // An index card's blue lines under each line of text.
           style={look === "index" ? { backgroundImage: "repeating-linear-gradient(transparent 0 calc(5cqw - 1px), rgb(120 160 210 / 0.35) calc(5cqw - 1px) 5cqw)" } : undefined}
         >
@@ -218,13 +218,13 @@ export function NoteCardFace({
           // A sleeve over the lower part of the page, the note peeking out of it.
           <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[44%] border-t border-[color-mix(in_oklab,var(--color-heading)_14%,transparent)]" style={{ background: tint(7) }} />
         ) : null}
-        {/* The footer's words at Footnote, as a folder card's Edited date and the list views' dates: one size for a
-            card's time everywhere (the owner, 28 November 2026). */}
-        <div className={`relative mt-[3.5cqw] flex flex-none items-center gap-[2cqw] ${miniature ? "h-[8.6cqw] text-[3.8cqw]" : "h-[max(8.6cqw,20px)] text-footnote"}`}>
+        {/* The footer's words at the card-time size, as a folder card's Edited date: one size for a card's time
+            everywhere (globals.css --type-card-time; the owner, 28 November 2026). */}
+        <div className={`relative mt-[3.5cqw] flex flex-none items-center gap-[2cqw] ${miniature ? "h-[8.6cqw] text-[3.8cqw]" : "h-[max(8.6cqw,14px)] text-[length:var(--type-card-time)] leading-[var(--type-card-time-leading)]"}`}>
           {extra}
           <span className="min-w-0 flex-1 truncate text-muted">{time}</span>
           {showFolder ? (
-            <span className={`inline-flex h-full min-w-0 max-w-[62%] flex-none items-center gap-[1.8cqw] rounded-tiny ${miniature ? "px-[3cqw]" : "px-1.5"} font-semibold text-heading ${chip}`}>
+            <span className={`inline-flex h-full min-w-0 max-w-[62%] flex-none items-center gap-[1.8cqw] rounded-tiny ${miniature ? "px-[3cqw]" : "px-1"} font-semibold text-heading ${chip}`}>
               {folder ? <FolderGlyph color={folder.color} className="h-[1.15em] w-auto" /> : <PencilLine aria-hidden className="h-[1em] w-[1em] flex-none" strokeWidth={2} />}
               <span className="truncate">
                 {folder ? (

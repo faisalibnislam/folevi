@@ -191,7 +191,7 @@ function StylesPicture() {
           style={{ left: `${6 + i * 24}px`, zIndex: i, backgroundImage: `url("/marketing/mini/${art.id}.webp")`, transform: `rotate(${(i - 2) * 5}deg)` }}
         />
       ))}
-      <span className="mk-note absolute bottom-2 right-0 z-10 w-[104px] overflow-hidden rounded-control shadow-(--shadow-card)" style={artVars(note)}>
+      <span className="mk-note absolute bottom-2 right-0 z-10 w-[104px] overflow-hidden rounded-control shadow-[var(--shadow-edge),var(--shadow-resting)]" style={artVars(note)}>
         <span className="block h-7 bg-cover bg-center" style={{ backgroundImage: `url("/marketing/mini/${note.id}.webp")` }} />
         <span className="block px-2.5 pb-2.5 pt-1.5">
           <span className="mk-note-h block text-[11px]">Trip sketch</span>

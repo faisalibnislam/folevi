@@ -1,5 +1,8 @@
 # Desktop feature parity: Mac vs Windows and Linux
 
+> **Paused 2026-11-28 (owner):** the Windows and Linux app is paused and shown as "Coming soon". Nothing here is being ported until it resumes; this list is kept for then.
+
+
 Owner rule (2026-11-25): features added to the web or Mac app also go to Windows and Linux when they make sense
 there. See `docs/claude-context/memory/desktop-feature-parity.md`.
 
@@ -24,11 +27,14 @@ Yes = built, Partial = built with less, No = missing.
 
 | Feature | Mac | Windows | Linux | Notes |
 |---|---|---|---|---|
+| Customizable Home (design version 19: greeting, Foli AI summary, capture field with Saves to; sections Recent notes, Bookmarks, Today and My tasks beside Foli DNA, Recent folders, and Shared with me, Pinned note, Templates to add; Customize to move, remove and add blocks, saved per person in `convex/homePrefs.ts`; 2026-11-28) | No | Yes | Yes | Web `HomeDashboard` + `HomeBlocks`. The Mac's native Home (`apps/native-kit`) still shows the old Home; port it there (it can read the same `homePrefs.get` / `setLayout` / `setPinnedNote` and `ai.homeSummary`) |
 | Control scale (one control height, corner, edge, weight and icon: docs/DESIGN_SYSTEM.md, Controls; 2026-11-26) | Yes | Yes | Yes | The same web CSS in all three; the Mac look's 28 pt buttons are gone. Checked headlessly by `e2e/control-scale.spec.ts` in the Mac look and the Windows look (with `--win-caption-inset`), Chromium and WebKit, light and dark; Linux draws the web look. Not checked in the running apps |
+| Columns layout (sidebar, note list, note: docs/NOTE_COLUMNS.md; 2026-11-28) | No | Yes | Yes | Web code, so Windows and Linux have it with the web app. The Mac's native chrome keeps today's layout until the native column is built (plan in `handoff/state/web.md`). Not tried in the running Windows or Linux app |
 | Menus and keyboard shortcuts | Yes | Partial | Partial | No menu bar; `host.js` `keyAction` has tabs, windows, print, settings, zoom, F11, Alt+arrows, and since PR 125 Ctrl+N, Ctrl+Shift+F, Ctrl+/, Ctrl+Shift+] and [, Ctrl+Alt+C, Ctrl+Alt+\\, Ctrl+Alt+Shift+N, Ctrl+Q (Linux). Export, Move, Trash, Copy Link and Find Next have no Ctrl key yet (the page doesn't handle them off the Mac) |
 | Text menu (spelling, Learn Word, Look Up) | Yes | Partial | Partial | Spelling in the note is Folevi's own in all three since 2026-11-26 (docs/SPELLING_PLAN.md); Look Up is Mac-only |
 | Spell check, suggestions, next-word prediction | Yes | Yes | Yes | Same web code everywhere (docs/SPELLING_PLAN.md). Settings > Writing: the Mac's native Settings, and the Windows and Linux app's web Settings |
 | Quick Add shortcut and panel | Yes | Yes | Yes | Wayland uses the GlobalShortcuts portal (not tested on real Wayland) |
+| Menu bar note (a real note in Folevi's editor under the menu bar icon, Drafts by default; 2026-11-28) | Yes | No | No | Mac only, by the owner's decision (2026-11-28): `apps/native-kit/Sources/FoleviMenuBarNote`, `apps/mac/Folevi/Chrome/MenuBarNoteHost.swift`, the float page's panel mode (`apps/web/src/components/app/MenuBarNote.tsx`). On the Mac the global shortcut (⌥Space) opens it; Windows and Linux keep it for Quick Add |
 | Tray / menu bar icon | Yes | Yes | Yes | Tray lacks Search and a place switcher |
 | Dock menu / Jump List / launcher actions | Yes | Yes | Yes | Windows Jump List (`jumplist.rs`, PR 120); Linux .desktop actions. New Note, Quick Add, Today's Tasks |
 | Notifications | Yes | Yes | Partial | `notify.rs` (PR 123): Reply, Mark as Read, Open, Complete, three Snoozes; Windows groups by note. Linux has no typed Reply (D-Bus has none) |
@@ -84,3 +90,5 @@ PR 128). Left:
 Spotlight, Shortcuts and Siri, the Services menu, Quick Look's panel, Look Up, spelling learning, Apple's
 on-device model, iCloud Drive, the Dock menu as such, traffic-light placement, the clipboard workaround for
 WebKit, Electron migration.
+
+- Settings search (web, 2026-11-28): a search field above the Settings sections. Not in the Windows and Linux app yet.

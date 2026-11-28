@@ -25,6 +25,7 @@ let package = Package(
         .library(name: "FoleviMac", targets: ["FoleviMac"]),
         .library(name: "FoleviPhone", targets: ["FoleviPhone"]),
         .library(name: "FoleviEngineDemo", targets: ["FoleviEngineDemo"]),
+        .library(name: "FoleviMenuBarNote", targets: ["FoleviMenuBarNote"]),
     ],
     targets: [
         .target(
@@ -64,6 +65,20 @@ let package = Package(
         .target(
             name: "FoleviPhone",
             dependencies: ["FoleviEngine", "FoleviDesign", "FoleviScreens"],
+            swiftSettings: strict
+        ),
+        // The Mac menu bar note (a panel after the owner's app Notlet: glass chrome, pin, window mode, screenshots,
+        // around Folevi's own editor on a real note): AppKit and SwiftUI, Mac only; the Mac app hands it the note's
+        // page, its place and its menus (MenuBarNoteHost).
+        .target(
+            name: "FoleviMenuBarNote",
+            dependencies: ["FoleviDesign"],
+            swiftSettings: strict
+        ),
+        .testTarget(
+            name: "FoleviMenuBarNoteTests",
+            dependencies: ["FoleviMenuBarNote"],
+            exclude: ["__Snapshots__"],
             swiftSettings: strict
         ),
         .testTarget(

@@ -10,6 +10,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import { closeHistory } from "@tiptap/pm/history";
 import { Copy, HelpCircle, Link2, ListChecks, ListTodo, X } from "lucide-react";
 import { ulid, type WireBlock } from "@folevi/editor-schema";
+import { AiIcon } from "@/components/ai/AiIcon";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -79,16 +80,26 @@ export function groupSuggestions(items: NoteSuggestion[]): SuggestionChip[] {
   });
 }
 
-const CHIP_BUTTON =
-  "grid h-6 w-6 flex-none place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-active)] hover:text-heading";
-/** On the note's paper (the iPhone): finger-sized, in the theme's colours. */
-const PAPER_BUTTON =
-  "grid h-8 w-8 flex-none place-items-center rounded-chip text-muted active:bg-[color-mix(in_oklab,var(--color-heading)_10%,transparent)]";
+/** Each kind's colour: a tinted tile behind its icon (light and dark read the same mix). */
+const TINT: Record<NoteSuggestion["kind"], string> = {
+  question: "#6d7fd1",
+  action: "#c98a2e",
+  connection: "#4f9a8c",
+  duplicate: "#c4664f",
+};
+/** Short words for the row's main action (its accessible name stays the full one). */
+const ACTION_BUTTON =
+  "ui-btn h-control-sm flex-none gap-1 rounded-small px-2 text-footnote font-medium text-ink opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100 bg-[var(--glass-hover)] hover:bg-[var(--glass-active)] hover:text-heading";
+const DISMISS_BUTTON =
+  "grid size-control-sm flex-none place-items-center rounded-small text-faint opacity-0 transition-[opacity,color] group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100 hover:bg-[var(--glass-hover)] hover:text-heading";
 
 /**
- * A note's suggestions as quiet chips (data in, actions out), so they can be shown and tested without a
- * server: open (the line, or the other note), link the other note here, turn a line into a task, dismiss.
- * Changing the note needs `canEdit`.
+ * A note's suggestions (data in, actions out), so they can be shown and tested without a server: open (the line,
+ * or the other note), link the other note here, turn a line into a task, dismiss. Changing the note needs `canEdit`.
+ *
+ * The owner, 28 November 2026 ("vastly improve the design of the suggestion area"): a small Foli AI card with a
+ * header and a count, then one row per suggestion: a tinted icon tile for its kind, the line or note, and what it is
+ * underneath; the row's action ("Task", "Link") and dismiss appear on hover (always on touch).
  */
 export function SuggestionChips({
   items,
@@ -109,76 +120,63 @@ export function SuggestionChips({
   paper?: boolean;
 }) {
   if (!items.length) return null;
-  const button = paper ? PAPER_BUTTON : CHIP_BUTTON;
-  const icon = paper ? 15 : 13;
+  const chips = groupSuggestions(items);
   return (
-    // A frosted card under the note, so it reads on any theme's background (light or dark). 8px inside its
-    // 14px corners, so the 6px chips run parallel.
     <section
       aria-label="Suggestions"
       className={paper ? "relative mt-10 w-full" : "relative mx-auto mt-4 w-full"}
       style={paper ? undefined : { maxWidth: "calc(var(--editor-width) + 8rem)" }}
     >
-      <div className={paper ? "" : "ui-pop p-2"}>
-        <h2 className={paper ? "ui-caps pb-2.5 text-muted" : "ui-caps px-1.5 pb-1.5 pt-1"}>Suggestions</h2>
-        <ul className="flex flex-wrap gap-1.5">
-          {groupSuggestions(items).map((chip) => {
+      <div className={paper ? "" : "ui-pop p-1.5"}>
+        <h2 className={`flex items-center gap-1.5 ${paper ? "pb-2" : "px-2 pb-1 pt-1"}`}>
+          <AiIcon size={13} aria-hidden />
+          <span className="text-footnote font-semibold text-heading">Suggestions</span>
+          <span className="text-footnote tabular-nums text-faint">{chips.length}</span>
+        </h2>
+        <ul className="flex flex-col">
+          {chips.map((chip) => {
             const s = chip.lead;
             const kind = KIND[s.kind];
-            // A suggested note names its reason on the chip (two notes with the same title, or one note for
-            // two reasons, read apart before either is opened).
             const aboutNote = NOTE_KINDS.has(s.kind);
+            const tint = TINT[s.kind];
             return (
               <li
                 key={s.key}
                 aria-label={`${chip.reason}: ${s.label}`}
-                className={
-                  paper
-                    ? "flex max-w-full items-center gap-0.5 rounded-control bg-[color-mix(in_oklab,var(--color-heading)_7%,transparent)] py-0.5 pl-3 pr-0.5 text-subheadline text-ink"
-                    : "flex max-w-full items-center gap-0.5 rounded-chip bg-[var(--glass-hover)] py-0.5 pl-2.5 pr-1 text-subheadline text-ink"
-                }
+                className={`group flex items-center gap-1 rounded-control pr-1 transition-colors ${paper ? "py-0.5 active:bg-[color-mix(in_oklab,var(--color-heading)_7%,transparent)]" : "pl-1 hover:bg-[var(--glass-hover)]"}`}
               >
                 <button
                   type="button"
                   onClick={() => onOpen(s)}
                   title={chip.all.map((x) => ("reason" in x && x.reason) || "").find(Boolean) ?? chip.reason}
-                  className="flex min-w-0 items-center gap-1.5 rounded-chip py-0.5 pr-1 text-left hover:text-heading"
+                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-control py-1.5 text-left outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                  <span className="flex-none text-muted">{kind.icon}</span>
-                  {aboutNote ? null : <span className="sr-only">{chip.reason}: </span>}
-                  <span className="truncate">{s.label}</span>
-                  {aboutNote ? <span className="flex-none text-footnote text-muted">{chip.reason}</span> : null}
+                  <span
+                    aria-hidden
+                    className="grid size-7 flex-none place-items-center rounded-small"
+                    style={{ background: `color-mix(in oklab, ${tint} 16%, transparent)`, color: `color-mix(in oklab, ${tint} 85%, var(--color-heading))` }}
+                  >
+                    {kind.icon}
+                  </span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-subheadline text-ink group-hover:text-heading">{s.label}</span>
+                    <span className="truncate text-caption-1 text-muted">{aboutNote ? chip.reason : kind.label}</span>
+                  </span>
                 </button>
                 {canEdit && (s.kind === "connection" || s.kind === "duplicate") ? (
-                  <button
-                    type="button"
-                    aria-label="Link it here"
-                    title="Link it here"
-                    onClick={() => onLink(s)}
-                    className={button}
-                  >
-                    <Link2 size={icon} aria-hidden />
+                  <button type="button" aria-label="Link it here" title="Link it here" onClick={() => onLink(s)} className={ACTION_BUTTON}>
+                    <Link2 size={13} aria-hidden />
+                    Link
                   </button>
                 ) : null}
                 {canEdit && s.kind === "action" ? (
-                  <button
-                    type="button"
-                    aria-label="Turn into a task"
-                    title="Turn into a task"
-                    onClick={() => onTask(s)}
-                    className={button}
-                  >
-                    <ListChecks size={icon} aria-hidden />
+                  <button type="button" aria-label="Turn into a task" title="Turn into a task" onClick={() => onTask(s)} className={ACTION_BUTTON}>
+                    <ListChecks size={13} aria-hidden />
+                    Task
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  aria-label="Dismiss"
-                  title="Dismiss"
-                  onClick={() => chip.all.forEach((x) => onDismiss(x))}
-                  className={button}
-                >
-                  <X size={icon} aria-hidden />
+                <button type="button" aria-label="Dismiss" title="Dismiss" onClick={() => chip.all.forEach((x) => onDismiss(x))} className={DISMISS_BUTTON}>
+                  <X size={14} aria-hidden />
                 </button>
               </li>
             );

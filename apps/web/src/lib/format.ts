@@ -49,14 +49,15 @@ export function ageText(ts: number, now = Date.now()): string {
 }
 
 /**
- * A note card's two times, each named so they can't be confused: "Created 3 days ago" under the title, "Edited
- * 5 mins ago" in the footer (the time the Last edited sort uses).
+ * A note card's two times: "Created 3 days ago" under the title, and the last edit in the footer, the bare date
+ * ("5 mins ago", the time the Last edited sort uses). A card's footer time has no "Edited" word, on note cards and
+ * folder cards alike (the owner, 28 November 2026).
  */
 export function createdText(ts: number, now = Date.now()): string {
   return `Created ${formatRelative(ts, now)}`;
 }
 export function editedText(ts: number, now = Date.now()): string {
-  return `Edited ${formatRelative(ts, now)}`;
+  return formatRelative(ts, now);
 }
 
 /**

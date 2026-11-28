@@ -14,7 +14,7 @@
 - [Roadmap 2026-10-14](roadmap-2026-10-14.md): user approved building the whole roadmap (phases 0-4 + P2); MCP for everyone r/w; owner decisions recorded
 - [Email on Resend](email-provider-resend.md): Resend only, one domain folevi.com; sending blocked since 2026-10-15 by pending "send" SPF records (revisit)
 - [iOS app](ios-app.md): 2026-10-15 Capacitor shell loading app.folevi.com, iPhone+iPad, iOS 17+, no in-app buying, Developer Program since 2026-10-22
-- [Platforms](platforms-mac-ios-web-only.md): web, Mac, iOS and (since 2026-10-22) Android; Windows dropped 2026-10-16, back 2026-11-24 (see windows-app-decisions)
+- [Platforms](platforms-mac-ios-web-only.md): web, Mac, iOS and (since 2026-10-22) Android; Windows dropped 2026-10-16, back 2026-11-24 (see windows-app-decisions); since 2026-11-28 Android, Windows and Linux are paused (see platforms-paused-2026-11-28)
 - [Local mode decisions](local-mode-decisions.md): 2026-10-20 free "Keep notes on my devices" mode for Mac/iPhone/iPad: folder of files, iCloud or any folder, on-device AI + own key, built-in UI
 - [E2EE decisions](e2ee-decisions.md): 2026-10-21 opt-in levels + per-feature switches + per-folder lock, titles encrypted, Personal and workspaces, 2 recovery methods, every plan
 - [Multi-account decisions](multi-account-decisions.md): 2026-10-21 one Mac library + many accounts (web too), switcher in sidebar bottom account menu, ask move/keep after sign-in, takeout file, all places sync
@@ -56,6 +56,7 @@
 - [Web everywhere rules](web-everywhere-layout-rules-2026-11-24.md): 2026-11-24, width decides (under ~700 px = phone + bottom bar, open Duo = tablet); Instrument Sans everywhere; springs kept except Mac; Android light touches
 - [Foli AI multi-provider decisions](foli-ai-multi-provider-decisions.md): 2026-11-25, encrypted admin keys, provider per feature, Fast/Main/Heavy, cheap-first defaults, no fallback, real-cost credits
 - [native-apps-today-ui-2026-11-25.md](native-apps-today-ui-2026-11-25.md): iOS and Android go native except the writing area, matching today's UI with Liquid Glass / Material 3, iOS 26+, one big switch
-- [Desktop feature parity](desktop-feature-parity.md): 2026-11-25, web and Mac features also go to Windows and Linux when relevant; keep docs/DESKTOP_PARITY.md current
+- [Desktop feature parity](desktop-feature-parity.md): ON HOLD since 2026-11-28 (desktop app paused); 2026-11-25, web and Mac features also go to Windows and Linux when relevant; keep docs/DESKTOP_PARITY.md current
 - [Control scale](control-scale-2026-11-26.md): 2026-11-26, one control height (36, 44 on touch), corner, edge, weight and icon for every field, button, dropdown and switch on every platform; All notes is the reference
-- [Consistent type sizes](consistent-type-sizes-2026-11-28.md): 2026-11-28, the same role is the same size everywhere; a card's time is Footnote on note cards, folder cards and lists
+- [Consistent type sizes](consistent-type-sizes-2026-11-28.md): 2026-11-28, the same role is the same size everywhere; a card's time is one size (--type-card-time) on note and folder cards, no "Edited" word
+- [Platforms paused 2026-11-28](platforms-paused-2026-11-28.md): Android, Windows and Linux apps paused and shown as Coming soon; Mac, iOS (iPhone, iPad, Duo), Folevi Server and web stay; desktop parity on hold

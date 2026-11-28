@@ -109,7 +109,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
         <button
           type="button"
           onClick={() => void run()}
-          className="inline-flex h-10 items-center gap-2 rounded-control bg-[var(--glass-active)] px-4 text-body font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--glass-edge),0_3px_8px_rgb(0_0_0/0.08)]"
+          className="inline-flex h-10 items-center gap-2 rounded-control bg-[var(--glass-active)] px-4 text-body font-semibold text-heading shadow-[var(--glass-edge),var(--shadow-raised)] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--glass-edge),var(--shadow-lifted)]"
         >
           <AiIcon size={15} aria-hidden /> Catch me up
         </button>
@@ -120,7 +120,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   }
 
   return (
-    <section aria-label="Catch-up brief" className={`${row ? "mx-4" : "mt-6"} rounded-container bg-[var(--glass-active)] p-5 shadow-[var(--glass-edge),var(--glass-shadow)]`}>
+    <section aria-label="Catch-up brief" className={`${row ? "mx-4" : "mt-6"} rounded-container bg-[var(--glass-active)] p-5 shadow-[var(--glass-edge),var(--shadow-resting)]`}>
       <div className="mb-2 flex items-center gap-2">
         <AiIcon size={15} aria-hidden className="text-[#7c6cf0]" />
         <h2 className="ui-display flex-1 text-title-3">Your week</h2>

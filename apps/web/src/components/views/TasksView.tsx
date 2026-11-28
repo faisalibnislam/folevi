@@ -5,7 +5,7 @@ import { useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { useCachedQuery, useOfflineQuery } from "@/lib/sync/queryCache";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowRightLeft, CalendarDays, Check, FileText, Funnel, Plus, Repeat, RotateCcw, SlidersHorizontal, SquareCheckBig, X } from "lucide-react";
+import { ArrowRightLeft, CalendarDays, Check, FileText, Flag, Funnel, Minus, Plus, Repeat, RotateCcw, SlidersHorizontal, SquareCheckBig, X } from "lucide-react";
 import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -90,8 +90,11 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
   const [moving, setMoving] = useState(false);
   const noteHref = `/d/${task.documentId}#block-${task.blockId}`;
   return (
+    // A row as Reminders draws it (the owner, 28 November 2026: "vastly improve"): a round check, the task, then one
+    // quiet line with its due date (red when late), repeat and the note it lives in; priority is a small flag.
+    // Hairlines start at the text, like the note lists; no card round the list.
     <li
-      className="group flex items-start gap-3 px-4 py-2.5 hover:bg-surface"
+      className="group flex items-start gap-3 rounded-chip px-3 transition-colors hover:bg-[var(--glass-hover)] [&:last-child_[data-task-body]]:border-b-transparent"
       draggable={draggable}
       onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-task", task.blockId)}
       onContextMenu={(e) => {
@@ -124,19 +127,44 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
         aria-label={task.status === "done" ? `Mark “${task.title}” as not done` : task.status === "canceled" ? `Reopen canceled task “${task.title}”` : `Mark “${task.title}” as done`}
         title={task.status === "done" ? "Mark as not done" : task.status === "canceled" ? "Reopen" : "Mark as done"}
         onClick={() => onToggle(task)}
-        className={`relative mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-chip border-[1.5px] transition-colors before:absolute before:-inset-1 before:content-[''] ${
+        className={`group/check relative mt-3 grid size-5 flex-none place-items-center rounded-control border-[1.5px] transition-colors before:absolute before:-inset-1.5 before:content-[''] ${
           task.status === "done"
-            ? "border-transparent bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-moss)_82%,white),var(--color-moss))] text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.35)]"
+            ? "border-transparent bg-[var(--color-moss)] text-white"
             : task.status === "canceled"
               ? "border-line-strong bg-sunken text-faint"
-              : "border-line-strong bg-surface hover:border-moss"
+              : `bg-surface hover:border-[var(--color-moss)] ${overdue ? "border-[color-mix(in_oklab,var(--color-danger)_55%,var(--color-line-strong))]" : "border-line-strong"}`
         }`}
       >
-        {task.status === "done" ? <span className="text-footnote leading-none">✓</span> : task.status === "canceled" ? <span className="text-footnote leading-none">–</span> : null}
+        {task.status === "done" ? (
+          <Check size={12} strokeWidth={3} aria-hidden />
+        ) : task.status === "canceled" ? (
+          <Minus size={12} aria-hidden />
+        ) : (
+          <Check size={12} aria-hidden className="text-[var(--color-moss)] opacity-0 transition-opacity group-hover/check:opacity-100" />
+        )}
       </button>
+      <div data-task-body="" className="flex min-w-0 flex-1 items-start gap-3 border-b border-[var(--color-line)] py-2.5">
       <div className="min-w-0 flex-1">
-        <p className={`text-body leading-snug ${closed ? "text-muted line-through" : ""}`}>{task.title || "Untitled task"}</p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-footnote text-muted">
+        <p className={`text-body leading-[22px] text-ink ${closed ? "text-muted line-through" : ""}`}>
+          {task.title || "Untitled task"}
+          {task.priority !== "none" ? (
+            <Flag
+              size={12}
+              role="img"
+              aria-label={`${PRIORITY_LABEL[task.priority as Priority] ?? task.priority} priority`}
+              className={`ml-2 inline-block -translate-y-px fill-current ${task.priority === "high" ? "text-[var(--color-coral-ink)]" : task.priority === "medium" ? "text-[var(--color-marigold-ink)]" : "text-faint"}`}
+            />
+          ) : null}
+        </p>
+        <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-footnote text-muted">
+          {task.dueDate ? (
+            <span className={`whitespace-nowrap tabular-nums ${overdue ? "font-medium text-danger" : ""}`}>
+              {dueLabel(task.dueDate, today)}
+              {task.dueTime ? ` ${task.dueTime}` : ""}
+            </span>
+          ) : null}
+          {task.repeat ? <Repeat size={11} aria-label={task.repeat} className="flex-none" /> : null}
+          {task.dueDate || task.repeat ? <span aria-hidden className="text-faint">·</span> : null}
           <AppLink href={noteHref} className="-my-1 inline-flex min-w-0 items-center gap-1 py-1 hover:text-ink hover:underline">
             <FileText size={12} aria-hidden className="flex-none" />
             <span className="truncate">{task.documentTitle || "Untitled"}</span>
@@ -157,21 +185,6 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
         </p>
         {action ? <div className="mt-1.5">{action}</div> : null}
       </div>
-      {task.priority !== "none" ? (
-        <span className={`mt-0.5 rounded-chip px-2 text-footnote font-medium ${task.priority === "high" ? "bg-coral-soft text-coral-ink" : task.priority === "medium" ? "bg-marigold-soft text-marigold-ink" : "bg-sunken text-muted"}`}>{PRIORITY_LABEL[task.priority as Priority] ?? task.priority}</span>
-      ) : null}
-      {task.repeat ? (
-        <span className="mt-0.5 text-muted" title={task.repeat}>
-          <Repeat size={12} aria-label={task.repeat} />
-        </span>
-      ) : null}
-      {task.dueDate ? (
-        <span className={`mt-0.5 whitespace-nowrap text-footnote ${overdue ? "font-medium text-danger" : "text-muted"}`}>
-          {overdue ? "Overdue · " : ""}
-          {dueLabel(task.dueDate, today)}
-          {task.dueTime ? ` ${task.dueTime}` : ""}
-        </span>
-      ) : null}
       {onEdit ? (
         <button
           type="button"
@@ -183,6 +196,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
           <SlidersHorizontal size={14} aria-hidden />
         </button>
       ) : null}
+      </div>
     </li>
   );
 }
@@ -363,14 +377,19 @@ export function TasksView({ view }: { view: View }) {
     const q = query.toLowerCase();
     return (tasks ?? []).filter((t) => !q || t.title.toLowerCase().includes(q) || t.documentTitle.toLowerCase().includes(q));
   }, [tasks, query]);
-  const groups = useMemo(() => (view === "upcoming" ? groupByDate(shown) : [{ key: "all", label: null as string | null, items: shown }]), [view, shown]);
+  const groups = useMemo(() => (view === "upcoming" ? groupByDate(shown) : view === "completed" ? [{ key: "all", label: null as string | null, items: shown }] : groupByWhen(shown, today)), [view, shown, today]);
   // The same elements while the rows haven't changed, so a keystroke in the filter doesn't re-render them all.
   const list = useMemo(
     () =>
       groups.map((g) => (
         <section key={g.key} className="mt-6" aria-label={g.label ?? meta.label}>
-          {g.label ? <h3 className="mb-2 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">{g.label}</h3> : null}
-          <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
+          {g.label ? (
+            <h3 className={`mb-1 flex items-baseline gap-2 px-3 text-caption-1 font-semibold uppercase tracking-[0.06em] ${g.key === "overdue" ? "text-danger" : "text-faint"}`}>
+              {g.label}
+              <span className="font-medium tabular-nums opacity-80">{g.items.length}</span>
+            </h3>
+          ) : null}
+          <ul className="-mx-3">
             {g.items.map((t) => (
               <TaskItem key={t.blockId} task={t} today={today} onToggle={onToggle} onEdit={setEditing} />
             ))}
@@ -473,11 +492,27 @@ export function TasksView({ view }: { view: View }) {
         ) : (
           list
         )}
-        {tasks !== undefined && shown.length ? <p className="mt-6 text-footnote text-muted">Every task lives in a note. Open its page to see the context it was written in.</p> : null}
+        {tasks !== undefined && shown.length ? <p className="mt-8 text-center text-caption-1 text-faint">Every task lives in a note. Open its page to see the context it was written in.</p> : null}
       </div>
       <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
     </ViewChrome>
   );
+}
+
+/** Overdue, Today, Upcoming and No date, in that order (empty groups left out); a view that holds one kind shows its heading too. */
+function groupByWhen(tasks: TaskRow[], today: string) {
+  const order = [
+    { key: "overdue", label: "Overdue" },
+    { key: "today", label: "Today" },
+    { key: "later", label: "Upcoming" },
+    { key: "none", label: "No date" },
+  ];
+  const by = new Map<string, TaskRow[]>(order.map((o) => [o.key, []]));
+  for (const t of tasks) {
+    const key = !t.dueDate ? "none" : t.status === "open" && t.dueDate < today ? "overdue" : t.dueDate === today ? "today" : t.dueDate < today ? "today" : "later";
+    by.get(key)!.push(t);
+  }
+  return order.filter((o) => by.get(o.key)!.length).map((o) => ({ key: o.key, label: o.label as string | null, items: by.get(o.key)! }));
 }
 
 function groupByDate(tasks: TaskRow[]) {

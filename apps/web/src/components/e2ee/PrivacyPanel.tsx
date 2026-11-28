@@ -66,7 +66,7 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
                 disabled={!canChange}
                 onClick={() => setPicked(level)}
                 className={`flex items-start gap-3 rounded-control border p-4 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default ${
-                  on ? "border-heading bg-[var(--glass-active)] shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]" : "border-line hover:bg-[var(--glass-hover)] disabled:hover:bg-transparent"
+                  on ? "border-heading bg-[var(--glass-active)] shadow-[var(--glass-edge),var(--shadow-raised)]" : "border-line hover:bg-[var(--glass-hover)] disabled:hover:bg-transparent"
                 }`}
               >
                 <span aria-hidden className={`mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-tiny ${on ? "bg-heading" : "shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-ink)_35%,transparent)]"}`}>

@@ -363,8 +363,8 @@ function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt
   const themes = pickableThemes();
   return (
     <div className="space-y-4 px-1 text-[13px]">
-      <div aria-hidden className="relative block h-28 w-full overflow-hidden rounded-chip bg-cover bg-center shadow-[var(--shadow-card)]" style={{ backgroundImage: `url("${coverArtThumbUrl(art.id)}")` }}>
-        <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-chip px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: art.paper, color: art.ink }}>
+      <div aria-hidden className="relative block h-28 w-full overflow-hidden rounded-chip bg-cover bg-center shadow-[var(--shadow-edge),var(--shadow-resting)]" style={{ backgroundImage: `url("${coverArtThumbUrl(art.id)}")` }}>
+        <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-chip px-2 pt-2 text-left shadow-[var(--shadow-resting)]" style={{ background: art.paper, color: art.ink }}>
           <span className="block text-[11px] font-semibold leading-tight">{art.name}</span>
           <span className="mt-1.5 block h-1 w-4/5 rounded-tiny opacity-25" style={{ background: art.ink }} />
           <span className="mt-1 block h-1 w-3/5 rounded-tiny opacity-25" style={{ background: art.ink }} />
@@ -389,7 +389,7 @@ function StylePanel({ art, onPick }: { art: CoverArt; styles?: readonly CoverArt
                 aria-checked={on}
                 aria-label={`Note theme: ${t.name}`}
                 onClick={() => onPick(t)}
-                className={`group flex flex-col overflow-hidden rounded-control bg-surface text-left outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-heading)]" : "shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)]"}`}
+                className={`group flex flex-col overflow-hidden rounded-control bg-surface text-left outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-heading)]" : "shadow-[var(--shadow-edge),var(--shadow-resting)] hover:shadow-[var(--shadow-edge),var(--shadow-floating)]"}`}
               >
                 <span aria-hidden className="relative block aspect-[4/3] bg-cover bg-center" style={{ backgroundImage: `url("${coverArtThumbUrl(t.id)}")` }}>
                   <span className="absolute bottom-0 left-1/2 top-3 w-[62%] -translate-x-1/2 rounded-t-tiny px-1.5 pt-1" style={{ background: t.paper, color: t.ink }}>

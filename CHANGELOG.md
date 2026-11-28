@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.9.81: Small update
+
+Released 2026-11-28 11:48:26+06:00 (build 112, tag v1.9.81)
+
+The Mac app gets a menu bar note: a real Folevi note you open from the menu bar or with ⌥Space.
+
+### Added
+
+- Menu bar note on the Mac: the menu bar icon or ⌥Space opens a small panel with a real note in Folevi's editor. New notes go to Drafts, or to a folder you pick.
+- In the panel you can send the note to the main window (⌘Return), paste in a screenshot (⇧⌘5), pin the panel on top, or open it as a window.
+
+### Improved
+
+- Settings > General on the Mac calls the shortcut Menu bar note. Right-click the menu bar icon for the menu it had before.
+
 ## Version 1.9.80: Big update
 
 Released 2026-11-28 06:10:42+06:00 (build 111, tag v1.9.80)

@@ -80,10 +80,12 @@
   --shadow-hairline: var(--shadow-hairline);
   --shadow-control: var(--shadow-control);
   --shadow-primary: var(--shadow-primary);
-  --shadow-card: var(--shadow-card);
-  --shadow-sheet: var(--shadow-sheet);
-  --shadow-pop: var(--shadow-pop);
-  --shadow-lift: var(--shadow-lift);
+  --shadow-edge: var(--shadow-edge);
+  --shadow-raised: var(--shadow-raised);
+  --shadow-resting: var(--shadow-resting);
+  --shadow-lifted: var(--shadow-lifted);
+  --shadow-floating: var(--shadow-floating);
+  --shadow-overlay: var(--shadow-overlay);
 
   --ease-folio: var(--motion-easing);
 
@@ -236,16 +238,15 @@
  * --------------------------------------------------------------------------------------------- */
 :root[data-chrome="neutral"],
 :root:has(.ui-neutral-chrome) {
-  /* Colours: tokens.chrome (packages/design-tokens). Shadows stay here. */
+  /* Colours: tokens.chrome (packages/design-tokens). The neutral edges stay here; the elevation levels
+     (--shadow-raised ... --shadow-overlay) are neutral already (docs/SHADOWS.md). */
   --shadow-hairline: 0 0 0 1px rgba(0, 0, 0, 0.07);
   --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
-  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 14px 32px -14px rgba(0, 0, 0, 0.18);
 }
 :root[data-chrome="neutral"][data-theme="dark"],
 :root[data-theme="dark"]:has(.ui-neutral-chrome) {
   --shadow-hairline: 0 0 0 1px rgba(255, 255, 255, 0.07);
   --shadow-control: inset 0 1px 0 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
-  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 32px -14px rgba(0, 0, 0, 0.7);
 }
 
 
@@ -259,7 +260,6 @@
      --control-border (1px) line in --color-line, drawn inside the box so a control is exactly its height. */
   --control-line: var(--color-line);
   --control-ring: inset 0 0 0 var(--control-border) var(--control-line);
-  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(20 20 40 / 0.14);
   --ambient-veil: var(--glass-veil);
 }
 /* A note whose theme reads dark, in light mode, would darken the light glass under dark text (and a light
@@ -274,7 +274,6 @@
 }
 :root[data-theme="dark"] {
   --glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.4);
-  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -14px rgb(0 0 0 / 0.6);
 }
 
 /* ------------------------------------------------------------------------------------------------
@@ -400,14 +399,14 @@
   .ui-btn-primary {
     color: var(--color-accent-ink);
     background: var(--color-accent);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.12), 0 4px 12px -4px rgb(0 0 0 / 0.25);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), var(--shadow-raised);
   }
   .ui-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
   .ui-btn-primary:active:not(:disabled) { filter: brightness(0.96); }
   .ui-btn-secondary {
     color: var(--color-ink);
     background: color-mix(in oklab, var(--color-surface-raised) 72%, transparent);
-    box-shadow: var(--control-ring), 0 1px 2px rgb(0 0 0 / 0.06);
+    box-shadow: var(--control-ring), var(--shadow-raised);
   }
   /* Secondary buttons, select pills and switches share one visible hover (on a white page the old one, white on
      72% white, didn't show): a faint ink tint, and for fields a firmer outline. */
@@ -446,7 +445,7 @@
   }
   /* Focused or open: the same soft outline as the active tab (16.5% ink), never a dark ring. */
   button.ui-input:hover:not(:disabled):not([aria-expanded="true"]) { box-shadow: inset 0 0 0 var(--control-border) var(--color-line-strong), inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent); background: color-mix(in oklab, var(--color-surface), var(--color-ink) 3%); }
-  .ui-input:focus, .ui-input:focus-within, .ui-input[aria-expanded="true"] { outline: none; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent); }
+  .ui-input:focus, .ui-input:focus-within, .ui-input[aria-expanded="true"] { outline: none; box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent), var(--shadow-raised); }
   /* With a mouse or keyboard (2026-11-19, from the Mac's fields): a firmer edge on hover, and the field being typed in
      is unmistakable: a lifted fill, a crisp 1.5px ink edge and a soft halo outside it, so it never changes size. Touch
      keeps the soft outline above (the owner's iPhone note: no dark ring on tap). */
@@ -459,8 +458,8 @@
   }
 
   /* Surfaces */
-  .ui-card { background: var(--color-surface); border-radius: var(--radius-container); box-shadow: var(--control-ring), var(--shadow-card-drop); }
-  .ui-sheet { border-radius: var(--radius-container); box-shadow: var(--shadow-sheet); }
+  .ui-card { background: var(--color-surface); border-radius: var(--radius-container); box-shadow: var(--control-ring), var(--shadow-resting); }
+  .ui-sheet { border-radius: var(--radius-container); box-shadow: var(--shadow-edge), var(--shadow-overlay); }
   /* Pictures (note images, avatars, workspace marks): a 1px edge inside the picture, pure black at 10% in light and
      pure white at 10% in dark. A grey border picked up the page's tint and drew a halo on the picture's edge. */
   .ui-img-outline { outline: 1px solid oklch(0 0 0 / 0.1); outline-offset: -1px; }
@@ -475,8 +474,10 @@
     backdrop-filter: blur(28px) saturate(1.15);
     /* Menus, dropdowns, popovers: panel corners with 6px padding, so their 8px items run parallel. */
     border-radius: var(--radius-panel);
-    box-shadow: var(--glass-edge), var(--shadow-pop);
+    box-shadow: var(--glass-edge), var(--shadow-floating);
   }
+  /* Dialogs are the overlay level, a step above menus. */
+  dialog.ui-pop { box-shadow: var(--glass-edge), var(--shadow-overlay); }
   /* Dialogs and menus opened in an inverted part of the page (the Vault) sit over the uninverted app around it,
      so they're solid: see-through, the light sidebar showed through a dark dialog. */
   .ui-invert .ui-pop {
@@ -495,13 +496,13 @@
   dialog.ui-modal.ui-modal-light::backdrop { background: color-mix(in oklab, var(--color-scrim) 50%, transparent); }
   /* A disabled primary button reads as off (a sunken well, faint text), not as a broken grey primary. */
   .ui-btn-primary:disabled { opacity: 1; color: var(--color-ink-faint); background: var(--color-surface-sunken); box-shadow: inset 0 0 0 1px var(--color-line); }
-  .ui-raised { background: var(--color-surface-raised); box-shadow: var(--shadow-control); }
+  .ui-raised { background: var(--color-surface-raised); box-shadow: var(--shadow-control), var(--shadow-raised); }
   /* Panels (sidebar, tab bar, dock): frosted glass with a fine light edge. */
   .ui-glass {
     background: var(--glass-panel);
     -webkit-backdrop-filter: blur(30px) saturate(1.8);
     backdrop-filter: blur(30px) saturate(1.8);
-    box-shadow: var(--glass-edge), var(--glass-shadow);
+    box-shadow: var(--glass-edge), var(--shadow-resting);
   }
   /* The sidebar and the tab bar: the same lighter glass, so more of the ambient light comes through. */
   .ui-glass.ui-glass-sidebar { background: var(--glass-sidebar); }
@@ -514,7 +515,7 @@
      surface in the window, with the tab bar's own blur nested inside it (docs/perf/feel-results.md). */
   .ui-content {
     background: var(--glass-content);
-    box-shadow: var(--glass-edge), var(--glass-shadow);
+    box-shadow: var(--glass-edge), var(--shadow-resting);
   }
   @media (prefers-reduced-transparency: reduce) {
     .ui-glass, .ui-pop, .ui-content { background: var(--color-surface-raised); backdrop-filter: none; -webkit-backdrop-filter: none; }
@@ -544,7 +545,7 @@
   }
   .ui-seg > *:hover { color: var(--color-heading); }
   .ui-seg > [data-active="true"], .ui-seg > [aria-selected="true"], .ui-seg > [aria-pressed="true"] {
-    background: var(--glass-active); color: var(--color-heading); box-shadow: var(--glass-edge), 0 1px 3px rgb(0 0 0 / 0.08);
+    background: var(--glass-active); color: var(--color-heading); box-shadow: var(--glass-edge), var(--shadow-raised);
   }
 
   /* A section's header (the type scale's section-header role): small caps on the desktop; in the iPhone and iPad
@@ -594,10 +595,10 @@
   .ui-slider::-moz-range-track { height: 4px; border-radius: var(--radius-tiny); background: var(--slider-track); box-shadow: inset 0 0 0 1px var(--glass-border); }
   .ui-slider::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: var(--radius-small);
-    background: var(--color-surface-raised); box-shadow: 0 0 0 1px var(--color-line-strong), 0 1px 3px rgb(0 0 0 / 0.18);
+    background: var(--color-surface-raised); box-shadow: 0 0 0 1px var(--color-line-strong), var(--shadow-raised);
     transition: transform 140ms var(--motion-easing);
   }
-  .ui-slider::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: var(--radius-small); background: var(--color-surface-raised); box-shadow: 0 0 0 1px var(--color-line-strong), 0 1px 3px rgb(0 0 0 / 0.18); }
+  .ui-slider::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: var(--radius-small); background: var(--color-surface-raised); box-shadow: 0 0 0 1px var(--color-line-strong), var(--shadow-raised); }
   .ui-slider:hover::-webkit-slider-thumb { transform: scale(1.08); }
   .ui-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-focus); }
   .ui-slider:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-focus); }
@@ -757,7 +758,6 @@
   --liquid-rim: linear-gradient(135deg, rgb(255 255 255 / 1) 0%, rgb(255 255 255 / 0.4) 20%, rgb(255 255 255 / 0.05) 46%, rgb(255 255 255 / 0.2) 76%, rgb(255 255 255 / 0.9) 100%);
   --liquid-sheen: radial-gradient(130% 80% at 28% 0%, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 58%), linear-gradient(to top, rgb(0 0 0 / 0.025), rgb(0 0 0 / 0) 45%);
   --liquid-lens: rgb(0 0 0 / 0.06);
-  --liquid-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.2), 0 2px 8px -2px rgb(0 0 0 / 0.08);
   --liquid-active: rgb(0 0 0 / 0.075);
   --liquid-press: rgb(0 0 0 / 0.1);
   --iphone-grouped: #f2f2f4;
@@ -776,7 +776,6 @@
   --liquid-rim: linear-gradient(135deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.12) 22%, rgb(255 255 255 / 0.02) 48%, rgb(255 255 255 / 0.06) 76%, rgb(255 255 255 / 0.3) 100%);
   --liquid-sheen: radial-gradient(130% 80% at 28% 0%, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 58%);
   --liquid-lens: rgb(255 255 255 / 0.1);
-  --liquid-shadow: 0 12px 34px -10px rgb(0 0 0 / 0.65), 0 2px 8px -2px rgb(0 0 0 / 0.4);
   --liquid-active: rgb(255 255 255 / 0.12);
   --liquid-press: rgb(255 255 255 / 0.16);
   --iphone-grouped: #000000;
@@ -791,13 +790,13 @@
     background: var(--liquid-fill);
     -webkit-backdrop-filter: blur(9px) saturate(1.8) brightness(1.03);
     backdrop-filter: blur(9px) saturate(1.8) brightness(1.03);
-    box-shadow: var(--liquid-edge), var(--liquid-shadow);
+    box-shadow: var(--liquid-edge), var(--shadow-floating);
   }
   .ui-liquid-strong {
     background: var(--liquid-fill-strong);
     -webkit-backdrop-filter: blur(30px) saturate(1.8);
     backdrop-filter: blur(30px) saturate(1.8);
-    box-shadow: var(--liquid-edge), var(--liquid-shadow);
+    box-shadow: var(--liquid-edge), var(--shadow-floating);
   }
   /* The glass's light: a positioned box (unless it's fixed or absolute already) holds a rim and a sheen
      drawn over its fill and under what's on it. */
@@ -856,7 +855,7 @@
   :root[data-native="android"] [data-iphone-bar-fade] { background: var(--bar-solid, var(--color-canvas)) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   :root[data-native="android"] .ui-glass-press:active { transform: none; filter: brightness(0.94); }
   /* Increase Contrast: the glass is nearly opaque and its edge a visible line. */
-  :root[data-increase-contrast] :is(.ui-liquid, .ui-liquid-strong) { background: var(--iphone-solid); box-shadow: 0 0 0 1px var(--color-line-strong), var(--liquid-shadow); }
+  :root[data-increase-contrast] :is(.ui-liquid, .ui-liquid-strong) { background: var(--iphone-solid); box-shadow: 0 0 0 1px var(--color-line-strong), var(--shadow-floating); }
   :root[data-increase-contrast] :is(.ui-liquid, .ui-liquid-strong)::after { display: none; }
   /* A large title (Spectral, like the app's other titles) and the small one it becomes in the bar. */
   .ui-large-title { font-family: var(--font-display); font-weight: 600; font-size: var(--type-large-title); line-height: 1.12; letter-spacing: -0.02em; color: var(--color-heading); }
@@ -1097,7 +1096,6 @@
   --liquid-rim: linear-gradient(135deg, rgb(255 255 255 / 1) 0%, rgb(255 255 255 / 0.4) 20%, rgb(255 255 255 / 0.05) 46%, rgb(255 255 255 / 0.2) 76%, rgb(255 255 255 / 0.9) 100%);
   --liquid-sheen: radial-gradient(130% 80% at 28% 0%, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 58%), linear-gradient(to top, rgb(0 0 0 / 0.025), rgb(0 0 0 / 0) 45%);
   --liquid-lens: rgb(0 0 0 / 0.06);
-  --liquid-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.2), 0 2px 8px -2px rgb(0 0 0 / 0.08);
   --liquid-active: rgb(0 0 0 / 0.075);
   --liquid-press: rgb(0 0 0 / 0.1);
   --iphone-solid: #f7f7f8;
@@ -1113,7 +1111,6 @@
   --liquid-rim: linear-gradient(135deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.12) 22%, rgb(255 255 255 / 0.02) 48%, rgb(255 255 255 / 0.06) 76%, rgb(255 255 255 / 0.3) 100%);
   --liquid-sheen: radial-gradient(130% 80% at 28% 0%, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 58%);
   --liquid-lens: rgb(255 255 255 / 0.1);
-  --liquid-shadow: 0 12px 34px -10px rgb(0 0 0 / 0.65), 0 2px 8px -2px rgb(0 0 0 / 0.4);
   --liquid-active: rgb(255 255 255 / 0.12);
   --liquid-press: rgb(255 255 255 / 0.16);
   --iphone-solid: #2c2c2e;
@@ -1126,10 +1123,21 @@
 @media (prefers-reduced-motion: reduce) { .iphone-small-title { transform: none; } }
 /* Caption caps: grouped list headers, the place above Home's title (§2.2). */
 .ui-caption-caps { font-size: var(--type-footnote); line-height: var(--type-footnote-leading); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-muted); }
+/* Column mode (NoteColumns): the area behind the note list and round the open note is the shell's grey moved 35%
+   toward the page surface, lighter than the sidebar beside it, in light and dark (the owner, 28 November 2026). */
+[data-note-columns] { background: color-mix(in oklab, var(--glass-canvas) 65%, var(--color-surface)); }
+/* Icons: every line icon (lucide) draws its lines at one width on screen (--control-icon-stroke: 1.25 px, 1.5 px on touch), whatever its size or the stroke width it was
+   given, so no icon looks heavier or lighter than its neighbours (the owner, 28 November 2026). Before, each icon's
+   2 (or 1.5) unit stroke was scaled with its size and came out anywhere from 0.9 to 1.33 px. */
+svg.lucide { stroke-width: var(--control-icon-stroke); }
+svg.lucide :is(path, line, polyline, polygon, rect, circle, ellipse) { vector-effect: non-scaling-stroke; }
 /* Lists: the list view of the Folders page and of every note list (the owner, 28 November 2026). No card round
    them: the rows sit on the page between hairlines. One hierarchy: the name in the serif at Headline size
    (as a folder card's name), everything else at Footnote in the muted ink with even figures, and a small caps
    header naming the columns. A row lights up on hover, as a sidebar row does. */
+/* A card's time ("Oct 20", no "Edited"): one size on note cards and folder cards, 10px (the owner's type sizes page,
+   28 November 2026). WebNoteCard.swift's cardTime matches. */
+:root { --type-card-time: 10px; --type-card-time-leading: calc(10px * 4 / 3); }
 @layer components {
   .ui-list-head { display: flex; align-items: center; gap: 12px; padding: 0 12px 8px; font-size: var(--type-caption-2); line-height: var(--type-caption-2-leading); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); }
   .ui-list { border-top: 1px solid var(--color-line); }
@@ -1138,6 +1146,15 @@
   .ui-list-row:hover { background: var(--glass-hover); }
   .ui-list-name { font-family: var(--font-serif); font-size: var(--type-headline); line-height: var(--type-headline-leading); font-weight: 600; color: var(--color-heading); }
   .ui-list-meta { font-size: var(--type-footnote); line-height: var(--type-footnote-leading); font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
+  /* The columns layout's note rows (docs/NOTE_COLUMNS.md): the list's type (.ui-list-name, .ui-list-meta) between
+     hairlines, inset like sidebar rows. A row lights up on hover; the open note's comes forward as the open tab does;
+     notes picked for a multi-selection take the selection's fill. */
+  .ui-note-rows > li + li::before { content: ""; position: absolute; top: 0; left: 12px; right: 12px; border-top: 1px solid var(--color-line); }
+  .ui-note-row { position: relative; border-radius: var(--radius-chip); transition: background-color 120ms; }
+  .ui-note-row:hover { background: var(--glass-hover); }
+  .ui-note-row[data-selected] { background: var(--glass-active); }
+  .ui-note-row[data-current] { background: var(--color-surface-raised); box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent), var(--shadow-raised); }
+  .ui-note-row[data-current]::before, .ui-note-row[data-current] + li::before, .ui-note-row:hover::before, .ui-note-row:hover + li::before, .ui-note-row[data-selected]::before, .ui-note-row[data-selected] + li::before { opacity: 0; }
 }
 /* Nothing fades the content out above the floating tab bar: it scrolls under the bar at full strength, and the
    bar's capsules are glass a little more opaque than the rest (the page's colour at 72 %) so they read over it. */
@@ -1146,7 +1163,7 @@
 /* No focus ring after a touch, anywhere (§2.3): rings only while a hardware keyboard moves focus (chrome.tsx marks
    <html data-input="key">), 2 points in the focus colour, 2 points out. */
 :root[data-iphone]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
-:root[data-iphone]:not([data-input="key"]) :is(.ui-liquid, .ui-liquid-strong):focus-visible { box-shadow: var(--liquid-edge), var(--liquid-shadow) !important; }
+:root[data-iphone]:not([data-input="key"]) :is(.ui-liquid, .ui-liquid-strong):focus-visible { box-shadow: var(--liquid-edge), var(--shadow-floating) !important; }
 :root[data-iphone][data-input="key"] :focus-visible { --tw-ring-color: var(--color-focus); }
 /* A row's focus tint, only for keyboard focus (a tapped row keeps none). */
 :root:not([data-native]) .ui-key-focus:focus-visible,
@@ -1169,7 +1186,7 @@
   background: var(--liquid-fill-strong);
   -webkit-backdrop-filter: blur(30px) saturate(1.8);
   backdrop-filter: blur(30px) saturate(1.8);
-  box-shadow: var(--liquid-edge), 0 18px 50px -12px rgb(0 0 0 / 0.3), 0 2px 10px rgb(0 0 0 / 0.08);
+  box-shadow: var(--liquid-edge), var(--shadow-floating);
   font-family: var(--font-sans);
   animation: none;
 }
@@ -1191,13 +1208,13 @@
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-caps { padding: 10px var(--menu-pad) 6px; font-size: var(--type-footnote); line-height: 18px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--color-ink-muted); }
 /* The icon at the end, in the words' colour, 20 pt; the checkmark in a column at the start. */
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="icon"] { order: 5; display: inline-flex; flex: none; width: 22px; justify-content: center; color: inherit; }
-:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="icon"] svg { width: 20px; height: 20px; stroke-width: 1.9; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="icon"] svg { width: 20px; height: 20px; stroke-width: var(--control-icon-stroke); }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] { order: -1; display: inline-flex; flex: none; width: 16px; margin-right: -2px; justify-content: center; color: var(--color-ink); }
-:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] svg { width: 16px; height: 16px; stroke-width: 2.6; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] svg { width: 16px; height: 16px; stroke-width: var(--control-icon-stroke); }
 /* A check asked for at the end of its row (ui/Menu.tsx `checkAt`), and a submenu's chevron: after the icon. */
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) :is([data-menu-part="check-end"], [data-menu-part="chevron"]) { order: 6; display: inline-flex; flex: none; color: var(--color-ink-muted); }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] { color: var(--color-ink); }
-:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] svg { width: 16px; height: 16px; stroke-width: 2.6; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] svg { width: 16px; height: 16px; stroke-width: var(--control-icon-stroke); }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item[aria-expanded="true"] { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="label"] { min-width: 0; }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="description"] { margin-top: 1px; font-size: var(--type-subheadline); line-height: 20px; color: var(--color-ink-muted); }
@@ -1222,14 +1239,25 @@
 :root[data-iphone] [data-card="memo"] { font-size: var(--type-caption-1); line-height: var(--type-caption-1-leading); padding: 4px 8px; }
 :root[data-iphone][data-theme="dark"] [data-card="edge"] { box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08); }
 /* The folder glyph (components/ui/FolderGlyph.tsx): the folder card in miniature, in the folder's muted colour. */
-.fg .fg-back { fill: color-mix(in oklab, var(--fg-tone) 55%, #ffffff); }
-.fg .fg-sub { fill: color-mix(in oklab, var(--fg-tone) 62%, #ffffff); }
+/* The small folder (FolderGlyph.tsx) in the folder card's colours and depth (the owner, 28 November 2026): the
+   back's gradient as [data-fc="back"], the front's as [data-fc="front"] (opaque), a hairline shadow above the front,
+   a light top edge on it and a small drop shadow under the whole folder. */
+.fg { filter: drop-shadow(0 0.5px 0.75px rgb(30 30 50 / 0.088)); } /* 60% lighter than first set (the owner, 28 November 2026) */
+.fg .fg-b1 { stop-color: color-mix(in oklab, var(--fg-tone) 84%, #2c2c3a); }
+.fg .fg-b2 { stop-color: color-mix(in oklab, var(--fg-tone) 86%, #ffffff); }
+.fg .fg-f1 { stop-color: color-mix(in oklab, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 50%, #ffffff) 62%, var(--fg-tone)) 60%, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 92%, #3a3a48) 66%, var(--fg-tone))); }
+.fg .fg-f2 { stop-color: color-mix(in oklab, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 50%, #ffffff) 62%, var(--fg-tone)) 40%, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 92%, #3a3a48) 66%, var(--fg-tone))); }
 .fg .fg-page { fill: #ffffff; stroke: rgb(0 0 0 / 0.08); stroke-width: 4; }
-.fg .fg-front { fill: color-mix(in oklab, var(--fg-tone) 86%, #ffffff); }
-:root[data-theme="dark"] .fg .fg-back { fill: color-mix(in oklab, var(--fg-tone) 45%, #2a2a2e); }
-:root[data-theme="dark"] .fg .fg-sub { fill: color-mix(in oklab, var(--fg-tone) 55%, #3a3a40); }
+.fg .fg-lip { fill: rgb(30 30 50 / 0.16); }
+.fg .fg-edge { stroke: rgb(255 255 255 / 0.55); stroke-width: 7; stroke-linecap: round; fill: none; }
+:root[data-theme="dark"] .fg { filter: drop-shadow(0 0.5px 0.75px rgb(0 0 0 / 0.2)); }
+:root[data-theme="dark"] .fg .fg-b1 { stop-color: color-mix(in oklab, var(--fg-tone) 44%, #1a1a1e); }
+:root[data-theme="dark"] .fg .fg-b2 { stop-color: color-mix(in oklab, var(--fg-tone) 56%, #2a2a2f); }
+:root[data-theme="dark"] .fg .fg-f1 { stop-color: color-mix(in oklab, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 48%, #3a3a42) 82%, color-mix(in oklab, var(--fg-tone) 50%, #222227)) 60%, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 40%, #1f1f24) 78%, color-mix(in oklab, var(--fg-tone) 50%, #222227))); }
+:root[data-theme="dark"] .fg .fg-f2 { stop-color: color-mix(in oklab, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 48%, #3a3a42) 82%, color-mix(in oklab, var(--fg-tone) 50%, #222227)) 40%, color-mix(in oklab, color-mix(in oklab, var(--fg-tone) 40%, #1f1f24) 78%, color-mix(in oklab, var(--fg-tone) 50%, #222227))); }
 :root[data-theme="dark"] .fg .fg-page { fill: #d9d9de; stroke: none; }
-:root[data-theme="dark"] .fg .fg-front { fill: color-mix(in oklab, var(--fg-tone) 75%, #2a2a2e); }
+:root[data-theme="dark"] .fg .fg-lip { fill: rgb(0 0 0 / 0.35); }
+:root[data-theme="dark"] .fg .fg-edge { stroke: rgb(255 255 255 / 0.12); }
 /* Card sizes in the grids (lib/cardSize.ts has the same for Home): on the web and the Mac folder and note cards are
    25% smaller than they were, so more fit in a row (the owner, 20 November 2026); the iPad and the iPhone keep the
    full size. A folder page's subfolder cards are 25% bigger again, 143 px (the owner, 28 November 2026). */
@@ -1239,16 +1267,27 @@
    behind in the folder's muted colour, a little darker at the top-left; a see-through front with its words in the
    colour's darkest tone (white in dark). The whole front is fully frosted (the owner, 21 November 2026): a strong
    tint and a 7 px blur from top to bottom, so the folder's name reads cleanly over the notes. The blur is its own
-   layer, data-fc="frost", under the front. On the phone the name is set at Headline size, 17/22. */
-[data-fc="back"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fc-tone) 84%, #2c2c3a), color-mix(in oklab, var(--fc-tone) 86%, #ffffff)); }
-[data-fc="sub"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fs) 80%, #2c2c3a), color-mix(in oklab, var(--fs) 80%, #ffffff)); }
-[data-fc="frost"] {
-  -webkit-backdrop-filter: blur(7px) saturate(1.1);
-  backdrop-filter: blur(7px) saturate(1.1);
-}
+   layer, data-fc="frost", under the front. On the phone the name is set at Headline size, 17/22.
+   Since 28 November 2026 the front is opaque (the owner: "no transparency"): its tint is mixed with the folder's own
+   colour, what used to show through, instead of with transparency, so it looks as before with nothing behind it
+   showing, and the frost layer is gone. */
+/* A folder's colour in light mode is 35% lighter (65% of the muted colour, 35% white; the owner, 28 November 2026);
+   dark mode keeps it. The components set the muted colour (--fc-raw, --fs-raw, --fg-raw), these derive the tone the
+   drawing uses. WebNoteCard.swift's tone and FolderGlyph.swift match. */
+[data-fc="art"] { --fc-tone: color-mix(in oklab, var(--fc-raw) 65%, #ffffff); }
+[data-fc="sub"] { --fs: color-mix(in oklab, var(--fs-raw) 65%, #ffffff); }
+.fg { --fg-tone: color-mix(in oklab, var(--fg-raw) 65%, #ffffff); }
+:root[data-theme="dark"] [data-fc="art"] { --fc-tone: var(--fc-raw); }
+:root[data-theme="dark"] [data-fc="sub"] { --fs: var(--fs-raw); }
+:root[data-theme="dark"] .fg { --fg-tone: var(--fg-raw); }
+/* The back and the subfolders are inline SVG shapes (FolderCardArt BackShape); these are their gradient stops. */
+[data-fc="back"] .fcb-1 { stop-color: color-mix(in oklab, var(--fc-tone) 84%, #2c2c3a); }
+[data-fc="back"] .fcb-2 { stop-color: color-mix(in oklab, var(--fc-tone) 86%, #ffffff); }
+[data-fc="sub"] .fcb-1 { stop-color: color-mix(in oklab, var(--fs) 80%, #2c2c3a); }
+[data-fc="sub"] .fcb-2 { stop-color: color-mix(in oklab, var(--fs) 80%, #ffffff); }
 [data-fc="front"] {
-  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 50%, #ffffff) 62%, transparent);
-  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 92%, #3a3a48) 66%, transparent);
+  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 50%, #ffffff) 62%, var(--fc-tone));
+  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 92%, #3a3a48) 66%, var(--fc-tone));
   /* The top-to-bottom shift is a fifth of its first strength (the owner, 28 November 2026): each end is moved
      toward the middle, so the front keeps its colour and only the gradient is softer. */
   --fc-f1: color-mix(in oklab, var(--fc-a) 60%, var(--fc-b));
@@ -1258,15 +1297,17 @@
   color: color-mix(in oklab, var(--fc-tone) 24%, #1b1b1f);
 }
 :root[data-iphone] [data-fc="name"] { font-size: var(--type-headline); line-height: 22px; }
-:root[data-theme="dark"] [data-fc="back"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fc-tone) 44%, #1a1a1e), color-mix(in oklab, var(--fc-tone) 56%, #2a2a2f)); }
-:root[data-theme="dark"] [data-fc="sub"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fs) 40%, #1a1a1e), color-mix(in oklab, var(--fs) 52%, #2a2a2f)); }
+:root[data-theme="dark"] [data-fc="back"] .fcb-1 { stop-color: color-mix(in oklab, var(--fc-tone) 44%, #1a1a1e); }
+:root[data-theme="dark"] [data-fc="back"] .fcb-2 { stop-color: color-mix(in oklab, var(--fc-tone) 56%, #2a2a2f); }
+:root[data-theme="dark"] [data-fc="sub"] .fcb-1 { stop-color: color-mix(in oklab, var(--fs) 40%, #1a1a1e); }
+:root[data-theme="dark"] [data-fc="sub"] .fcb-2 { stop-color: color-mix(in oklab, var(--fs) 52%, #2a2a2f); }
 :root[data-theme="dark"] [data-fc="front"] {
-  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 48%, #3a3a42) 82%, transparent);
-  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 40%, #1f1f24) 78%, transparent);
+  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 48%, #3a3a42) 82%, color-mix(in oklab, var(--fc-tone) 50%, #222227));
+  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 40%, #1f1f24) 78%, color-mix(in oklab, var(--fc-tone) 50%, #222227));
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1.2px 0 rgb(255 255 255 / 0.175), 0 -2px 10px -6px rgb(0 0 0 / 0.5);
   color: #f6f6f8;
 }
-:root[data-theme="dark"] [data-fc="shadow"] { box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04), 0 14px 26px -14px rgb(0 0 0 / 0.45); }
+:root[data-theme="dark"] [data-fc="shadow"] { box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04), var(--shadow-resting); }
 :root[data-theme="dark"] [data-fc="note"] { --fc-paper: #2d2d32; --fc-ink-note: #efeff2; }
 /* The iPad app: a card's or folder's "…" stays out of sight on touch, as on the iPhone (a long press or a
    right-click opens the same menu), and out of sight takes no taps (a finger or Pencil tapping the middle of a
@@ -1278,7 +1319,7 @@
 }
 /* Reduce Transparency, Increase Contrast, and Android (no iOS glass there): a solid menu. */
 :root:is([data-reduce-transparency], [data-increase-contrast], [data-native="android"]):is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
-:root[data-increase-contrast]:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop { box-shadow: 0 0 0 1px var(--color-line-strong), 0 18px 50px -12px rgb(0 0 0 / 0.3); }
+:root[data-increase-contrast]:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop { box-shadow: 0 0 0 1px var(--color-line-strong), var(--shadow-floating); }
 @media (prefers-reduced-transparency: reduce) {
   :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]).ui-pop { background: var(--iphone-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
@@ -1332,7 +1373,7 @@
 :root[data-tablet] [role="toolbar"][aria-label="Page tools"] {
   border-radius: var(--radius-capsule); padding: 4px; gap: 2px;
   background: var(--liquid-fill-strong); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8);
-  box-shadow: var(--liquid-edge), var(--liquid-shadow);
+  box-shadow: var(--liquid-edge), var(--shadow-floating);
 }
 :root[data-tablet] [role="toolbar"][aria-label="Page tools"] button { min-height: 44px; min-width: 44px; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); }
 :root[data-tablet] [role="toolbar"][aria-label="Page tools"] button svg { width: 20px; height: 20px; }
@@ -1370,8 +1411,8 @@
   --mac-highlight: color-mix(in oklab, var(--color-ink) 9%, transparent);
   --mac-pop: rgb(255 255 255 / 0.82);
   --mac-pop-edge: rgb(0 0 0 / 0.12);
-  --mac-pop-shadow: 0 10px 30px rgb(0 0 0 / 0.16), 0 0 0 0.5px rgb(0 0 0 / 0.08);
-  --mac-sheet-shadow: 0 18px 50px rgb(0 0 0 / 0.2), 0 0 0 0.5px rgb(0 0 0 / 0.1);
+  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08), var(--shadow-floating);
+  --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.1), var(--shadow-overlay);
   --glass-hover: var(--mac-hover);
 }
 :root[data-desktop="mac"][data-theme="dark"] {
@@ -1382,8 +1423,8 @@
   --mac-highlight: rgb(255 255 255 / 0.12);
   --mac-pop: rgb(40 40 44 / 0.86);
   --mac-pop-edge: rgb(255 255 255 / 0.1);
-  --mac-pop-shadow: 0 10px 30px rgb(0 0 0 / 0.5), 0 0 0 0.5px rgb(0 0 0 / 0.6);
-  --mac-sheet-shadow: 0 18px 50px rgb(0 0 0 / 0.55), 0 0 0 0.5px rgb(0 0 0 / 0.7);
+  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.6), var(--shadow-floating);
+  --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), var(--shadow-overlay);
 }
 
 /* §2.4 Pointer: the arrow on every control in the chrome, as AppKit draws it; the pointing hand only for links in
@@ -1436,7 +1477,7 @@
 /* §2.1 The tab strip: 32 tall tabs with 8 corners; the open tab in the content's colour with a 1 point edge. */
 :root[data-desktop="mac"] nav[aria-label="Open pages"] > :is(a, [data-tab]) { height: 32px; border-radius: var(--radius-small); }
 :root[data-desktop="mac"] nav[aria-label="Open pages"] > :is(a, [data-tab])[aria-current="page"],
-:root[data-desktop="mac"] nav[aria-label="Open pages"] > [data-tab]:has(> a[aria-current="page"]) { box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), inset 0 0 0 1px var(--color-line-strong); }
+:root[data-desktop="mac"] nav[aria-label="Open pages"] > [data-tab]:has(> a[aria-current="page"]) { box-shadow: inset 0 0 0 1px var(--color-line-strong), var(--shadow-raised); }
 :root[data-desktop="mac"] [data-tab] button[aria-label^="Close "] { width: 16px; height: 16px; border-radius: var(--radius-tiny); }
 
 /* §3.14 Buttons and fields follow the one control scale on the Mac too (the owner, 2026-11-26: the All notes
@@ -1471,13 +1512,13 @@
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item:is(:hover, [data-highlighted="true"]) [data-menu-part="icon"] { color: inherit; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="shortcut"] { padding-left: 16px; font-size: var(--type-subheadline); color: var(--color-ink-muted); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] { order: -1; display: inline-flex; width: 16px; flex: none; justify-content: center; margin-right: -2px; color: var(--color-heading); }
-:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] svg { width: 12px; height: 12px; stroke-width: 3; }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] svg { width: 12px; height: 12px; stroke-width: var(--control-icon-stroke); }
 /* A check at the end of its row (ui/Menu.tsx `checkAt`: no column kept before the icons), a submenu's chevron, and
    its row lit while the submenu is open beside it. */
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] { display: inline-flex; width: 16px; flex: none; justify-content: center; color: var(--color-heading); }
-:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] svg { width: 12px; height: 12px; stroke-width: 3; }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] svg { width: 12px; height: 12px; stroke-width: var(--control-icon-stroke); }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="chevron"] { display: inline-flex; flex: none; margin-right: -4px; color: var(--color-ink-muted); }
-:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="chevron"] svg { width: 12px; height: 12px; stroke-width: 2.5; }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="chevron"] svg { width: 12px; height: 12px; stroke-width: var(--control-icon-stroke); }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item[aria-expanded="true"] { background: var(--mac-highlight); color: var(--color-heading); }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item:is(:hover, [data-highlighted="true"], [aria-expanded="true"]) [data-menu-part="chevron"] { color: inherit; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { height: 1px; margin: 6px 10px; background: color-mix(in srgb, var(--color-ink) 14%, transparent); }
@@ -1506,7 +1547,7 @@
   position: fixed; inset: auto; margin: 0; z-index: 2147483646; max-width: 320px; padding: 3px 8px; border: 0; border-radius: var(--radius-chip);
   font: 400 var(--type-footnote)/16px var(--font-sans); color: var(--color-ink); background: var(--mac-pop, var(--glass-pop));
   -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
-  box-shadow: inset 0 0 0 0.5px var(--mac-pop-edge, var(--color-line)), 0 4px 14px rgb(0 0 0 / 0.14);
+  box-shadow: inset 0 0 0 0.5px var(--mac-pop-edge, var(--color-line)), var(--shadow-floating);
   pointer-events: none; animation: mac-fade-in 100ms ease-out;
 }
 [data-mac-tooltip][data-shortcut-only] { padding: 3px 4px; }
@@ -1545,7 +1586,7 @@
   :root[data-desktop="mac"] .ui-pop, [data-mac-tooltip] { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 @media (prefers-contrast: more) {
-  :root[data-desktop="mac"] .ui-pop, [data-mac-tooltip] { box-shadow: inset 0 0 0 1px var(--color-line-strong), var(--mac-pop-shadow, 0 4px 14px rgb(0 0 0 / 0.14)); }
+  :root[data-desktop="mac"] .ui-pop, [data-mac-tooltip] { box-shadow: inset 0 0 0 1px var(--color-line-strong), var(--mac-pop-shadow, var(--shadow-floating)); }
 }
 
 /* §3.12 Scrolling: only the region that scrolls bounces, never the window; Home's rows of cards keep their arrows
@@ -1606,10 +1647,7 @@
 :root:is([data-mac-native], [data-ipad-native]) [data-note-panel]:has(~ aside[aria-label="Page tools"]:not(.ui-pop)) { margin-bottom: 8px; }
 :root:is([data-mac-native], [data-ipad-native]) .fb-page:not([data-iphone-scroll]) { padding-top: max(var(--native-inset-top, 0px), clamp(16px, 5.5cqi, 72px)); }
 .fb-page:not([data-iphone-scroll]) > .fb-sheet {
-  box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--color-heading) 7%, transparent),
-    0 1px 2px rgb(0 0 0 / 0.04),
-    0 12px 32px -20px rgb(0 0 0 / 0.16);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-heading) 7%, transparent), var(--shadow-resting);
 }
 
 /* Plain, no page breaks: flat. (The page's own padding goes; the sheet keeps the room at its top and foot.) */
@@ -1658,10 +1696,7 @@
 
 /* The note's floating bar (Foli AI, Insert, Format, Style, Share): a larger, softer, lighter shadow than a
    popover's in light mode (the owner, 2026-11-18: it read as dark on white); dark mode keeps the popover's. */
-:root { --shadow-dock: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(74, 47, 44, 0.06), 0 2px 6px -2px rgba(74, 47, 44, 0.05), 0 22px 60px -18px rgba(74, 47, 44, 0.13); }
-:root[data-theme="dark"] { --shadow-dock: var(--shadow-pop); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --shadow-dock: var(--shadow-pop); } }
-[role="toolbar"][aria-label="Page tools"].ui-pop { box-shadow: var(--shadow-dock); }
+[role="toolbar"][aria-label="Page tools"].ui-pop { box-shadow: var(--shadow-edge), var(--shadow-floating); }
 
 /* Folevi for Mac: the page's tools panel is as wide as the window's sidebar (the owner, 2026-11-18: the two columns
    the same width): MacLook.sidebarWidth (288 pt) is this 8px gap and the 280px panel. Its width doesn't drag here. */
@@ -1691,14 +1726,14 @@
   --mac-pop: rgb(242 242 245 / 0.66);
   --mac-glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.12) 46%, rgb(255 255 255 / 0) 100%);
   --mac-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 0 0 0.5px rgb(255 255 255 / 0.7);
-  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14), 0 9px 20px rgb(0 0 0 / 0.13);
+  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14), var(--shadow-floating);
   --mac-highlight: rgb(0 0 0 / 0.075);
 }
 :root:is([data-mac-native], [data-ipad-native])[data-theme="dark"] {
   --mac-pop: rgb(52 52 56 / 0.62);
   --mac-glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02) 46%, rgb(255 255 255 / 0) 100%);
   --mac-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.2), inset 0 0 0 0.5px rgb(255 255 255 / 0.11);
-  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
+  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), var(--shadow-floating);
   --mac-highlight: rgb(255 255 255 / 0.13);
 }
 @media (prefers-color-scheme: dark) {
@@ -1706,7 +1741,7 @@
     --mac-pop: rgb(52 52 56 / 0.62);
     --mac-glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02) 46%, rgb(255 255 255 / 0) 100%);
     --mac-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.2), inset 0 0 0 0.5px rgb(255 255 255 / 0.11);
-    --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
+    --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), var(--shadow-floating);
     --mac-highlight: rgb(255 255 255 / 0.13);
   }
 }
@@ -1749,32 +1784,29 @@
 :root:is([data-mac-native], [data-ipad-native]) .ui-seg > * { min-height: 28px !important; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); font-weight: 400; color: var(--color-ink-muted); }
 :root:is([data-mac-native], [data-ipad-native]) .ui-seg > *:hover:not([data-active="true"], [aria-selected="true"], [aria-pressed="true"]) { background: color-mix(in srgb, var(--color-ink) 6%, transparent); }
 :root:is([data-mac-native], [data-ipad-native]) .ui-seg > :is([data-active="true"], [aria-selected="true"], [aria-pressed="true"]) {
-  background: var(--mac-seg-raised, #fff); color: var(--color-heading); font-weight: 600; box-shadow: 0 0.5px 1.5px rgb(0 0 0 / 0.12);
+  background: var(--mac-seg-raised, #fff); color: var(--color-heading); font-weight: 600; box-shadow: var(--shadow-raised);
 }
 :root:is([data-mac-native], [data-ipad-native])[data-theme="dark"] { --mac-seg-raised: rgb(255 255 255 / 0.16); }
 @media (prefers-color-scheme: dark) { :root:is([data-mac-native], [data-ipad-native]):not([data-theme="light"]) { --mac-seg-raised: rgb(255 255 255 / 0.16); } }
 
-/* Folevi for Mac's native look: one light shadow scale (the owner, 2026-11-18: "shadows are inconsistent ... I
-   prefer less shadows"), the same four levels as the native side's NativeShadow: raised (a pill in its track),
-   card (content on the page), floating (a control over content), overlay (a menu, popover or dialog). The page's
-   menus and popovers are the overlay (--mac-pop-shadow above); these are the rest. */
+/* Folevi for Mac's native look keeps its 0.5px hairlines (the owner, 2026-11-18: "I prefer less shadows"), and since
+   2026-11-28 its drops are the app's one elevation scale (docs/SHADOWS.md), as the native side's NativeShadow is:
+   resting (content on the page), floating (a menu, popover or the note's bar), overlay (a dialog). */
 :root:is([data-mac-native], [data-ipad-native]) {
-  --mac-shadow-card: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 1.5px 4px rgb(0 0 0 / 0.05);
-  --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.12), 0 4px 9px rgb(0 0 0 / 0.09);
-  --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14), 0 9px 20px rgb(0 0 0 / 0.13);
-  --shadow-card: var(--mac-shadow-card);
-  --glass-shadow: var(--mac-shadow-card);
+  --shadow-edge: 0 0 0 0.5px rgb(0 0 0 / 0.08);
+  --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.12), var(--shadow-floating);
+  --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14), var(--shadow-overlay);
 }
 :root:is([data-mac-native], [data-ipad-native])[data-theme="dark"] {
-  --mac-shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1.5px 4px rgb(0 0 0 / 0.12);
-  --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.6), 0 4px 9px rgb(0 0 0 / 0.22);
-  --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
+  --shadow-edge: 0 0 0 0.5px rgb(255 255 255 / 0.08);
+  --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.6), var(--shadow-floating);
+  --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), var(--shadow-overlay);
 }
 @media (prefers-color-scheme: dark) {
   :root:is([data-mac-native], [data-ipad-native]):not([data-theme="light"]) {
-    --mac-shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1.5px 4px rgb(0 0 0 / 0.12);
-    --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.6), 0 4px 9px rgb(0 0 0 / 0.22);
-    --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
+    --shadow-edge: 0 0 0 0.5px rgb(255 255 255 / 0.08);
+    --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.6), var(--shadow-floating);
+    --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), var(--shadow-overlay);
   }
 }
 /* The note's floating bar is a control over the page, not an overlay: the floating level. */
@@ -1814,10 +1846,7 @@
   margin: 12px clamp(10px, 3.2cqi, 24px) calc(var(--native-inset-bottom, 0px) + 24px);
   padding-top: 8px; /* the header keeps its own 40 px above the title */
   border-radius: var(--radius-container);
-  box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--color-heading) 7%, transparent),
-    0 1px 2px rgb(0 0 0 / 0.04),
-    0 12px 32px -20px rgb(0 0 0 / 0.16);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-heading) 7%, transparent), var(--shadow-resting);
 }
 :root[data-iphone] [data-iphone-scroll][data-native-chrome][data-iphone-plain] > .fb-sheet[data-pages],
 :root[data-iphone][data-iphone-keyboard] [data-iphone-scroll][data-native-chrome][data-iphone-plain] > .fb-sheet[data-pages] { padding-bottom: 3rem; }
@@ -1871,3 +1900,7 @@
 :root[data-float][data-desktop] [data-float-bar] {
   padding-left: 12px;
 }
+
+/* Settings search: the card a result opened on glows briefly (SettingsView.tsx, SettingsSearch). */
+#main section.ui-card[data-found] { box-shadow: 0 0 0 2px var(--color-focus); transition: box-shadow 0.4s ease; }
+#main section.ui-card { transition: box-shadow 0.6s ease; }

@@ -110,7 +110,18 @@ function folderRow(f: LocalFolder, byFolder: Map<string, LocalDocument[]>, live:
     previews: [...inside]
       .sort((a, b) => b.updatedAt - a.updatedAt || a.createdAt - b.createdAt || a.ordinal - b.ordinal)
       .slice(0, 5)
-      .map((d) => ({ cover: d.cover, title: d.title, createdAt: d.createdAt, excerpt: d.excerpt.slice(0, 280) })),
+      // What each note's own card shows, as convex/organization.ts sends it (the folder card draws them as that card).
+      .map((d) => ({
+        cover: d.cover,
+        title: d.title,
+        createdAt: d.createdAt,
+        updatedAt: d.updatedAt,
+        excerpt: d.excerpt.slice(0, 280),
+        style: d.style,
+        ...(d.preview ? { preview: d.preview } : {}),
+        ...(d.shape ? { shape: d.shape } : {}),
+        kind: d.kind,
+      })),
   };
 }
 

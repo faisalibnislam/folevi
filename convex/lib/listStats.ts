@@ -82,6 +82,11 @@ export function previewEntry(d: Doc<"documents">): PreviewEntry {
     title: d.title,
     cover: d.cover,
     excerpt: d.excerpt.slice(0, 280),
+    // What the note's own card shows (FolderCardArt draws the notes in a folder as that card).
+    style: d.style,
+    ...(d.preview ? { preview: d.preview } : {}),
+    ...(d.shape ? { shape: d.shape } : {}),
+    kind: d.kind,
     restricted: d.accessMode === "restricted" || undefined,
     ...(sealed ? { sealed } : {}),
   };

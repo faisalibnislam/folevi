@@ -1,8 +1,12 @@
-import type { DocumentCover } from "@folevi/editor-schema";
+import {
+  DEFAULT_DOCUMENT_STYLE,
+  type DocumentCover,
+  type DocumentStyle,
+} from "@folevi/editor-schema";
 import { MoreHorizontal } from "lucide-react";
 import { folderHex } from "@/lib/folderColors";
-import { coverArtOf, coverArtThumbUrl, styleColorsOf } from "@/lib/cover";
-import { createdText } from "@/lib/format";
+import { editedText } from "@/lib/format";
+import { NOTE_CARD_ASPECT, NoteCardFace, type PreviewLine } from "./DocumentCard";
 
 /*
  * How a folder card looks, shared by the app's FolderCard (the Folders page, Home's Recent folders and a folder
@@ -10,7 +14,7 @@ import { createdText } from "@/lib/format";
  * no data: the app wraps it in its link and menu, the site in plain decorative elements.
  *
  * The "Frosted" folder (the owner, 20 November 2026): a back with a soft S-curved tab in the folder's muted
- * colour, 85% opaque; up to five of the notes inside, drawn as today's note cards and fanned a little to both
+ * colour, 85% opaque; up to five of the notes inside, drawn as their own note cards and fanned a little to both
  * sides, standing well above the back; up to two subfolders as whole folders stacked straight up behind it,
  * each a step higher and narrower, with no names; and a see-through front over the notes' lower half with the
  * name, the counts and the last change, fully frosted so the name reads cleanly (21 November).
@@ -19,7 +23,21 @@ import { createdText } from "@/lib/format";
  * (300 ms), both on the app's easing. The global prefers-reduced-motion rule in globals.css makes both instant.
  */
 
-export type FolderPreview = { cover: DocumentCover; title?: string; excerpt?: string; createdAt?: number };
+/**
+ * A note peeking out of a folder, with what its own card shows (organization.index's previews): it is drawn as
+ * that card. Everything but the cover is optional (the site's replica and older previews leave some out).
+ */
+export type FolderPreview = {
+  cover: DocumentCover;
+  title?: string;
+  excerpt?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  style?: DocumentStyle | null;
+  preview?: PreviewLine[] | null;
+  shape?: string | null;
+  kind?: string;
+};
 
 /**
  * The card's box: square (the notes stand above the folder, which makes the whole drawing about square), and the
@@ -27,7 +45,8 @@ export type FolderPreview = { cover: DocumentCover; title?: string; excerpt?: st
  * keeps a bigger card's name and counts). `group` drives the hover; it isn't text to select (a held finger opens
  * its menu).
  */
-export const FOLDER_CARD_BOX = "group relative aspect-square select-none [container-type:inline-size]";
+export const FOLDER_CARD_BOX =
+  "group relative aspect-square select-none [container-type:inline-size]";
 /** What lifts on hover: the whole drawing. */
 export const FOLDER_CARD_FRAME =
   "absolute inset-0 block rounded-folder outline-none transition-transform duration-200 ease-[var(--ease-folio)] hover:-translate-y-1";
@@ -82,43 +101,40 @@ function stackOf(subfolders: number) {
 const TILT = [-1.6, 3, -3.4, 2.4, -2.6];
 const STEP = [0, 3, -2.5, 2, -1.5];
 
-/** One note inside a folder, drawn as today's note card, small: its page colour, its art down the spine (or a plain note's punched holes), title, created date and opening text. */
+/**
+ * One note inside a folder, drawn as exactly its own note card (DocumentCard.tsx NoteCardFace, the owner,
+ * 28 November 2026): its look, title, created date, first blocks and last edit, at the card's 25:27 shape and
+ * scaled to 70% of the folder's width (everything on a note card is sized against its own width). No folder chip:
+ * it is in this folder. Notes whose preview came without a style (stored before then) use the default look.
+ */
 function FolderNote({ note, depth, top }: { note: FolderPreview; depth: number; top: number }) {
-  const colors = styleColorsOf(note.cover);
-  const art = coverArtOf(note.cover);
-  const ink = colors?.ink ?? "var(--fc-ink-note, #1f1f23)";
-  const paper = colors?.paper ?? "var(--fc-paper, #ffffff)";
-  const rise = ["group-hover:-translate-y-[5%]", "group-hover:-translate-y-[3.5%]", "group-hover:-translate-y-[2.5%]", "group-hover:-translate-y-[1.5%]", "group-hover:-translate-y-[1%]"][depth];
+  const rise = [
+    "group-hover:-translate-y-[5%]",
+    "group-hover:-translate-y-[3.5%]",
+    "group-hover:-translate-y-[2.5%]",
+    "group-hover:-translate-y-[1.5%]",
+    "group-hover:-translate-y-[1%]",
+  ][depth];
   const at = top + depth * 1.4;
   return (
     <div
       aria-hidden
       data-fc="note"
-      className={`absolute w-[70%] origin-bottom overflow-hidden rounded-l-tiny rounded-r-small shadow-[0_0_0_0.5px_rgb(40_40_60/0.16),0_1cqw_2cqw_-1cqw_rgb(0_0_0/0.25)] transition-transform duration-300 ease-[var(--ease-folio)] ${rise}`}
-      style={{ left: `${15 + STEP[depth]!}%`, top: `${at}%`, height: `${Math.min(top > 3 ? 76 : 70, 95 - at)}%`, rotate: `${TILT[depth]}deg`, background: paper }}
+      className={`note-card-r absolute w-[70%] ${NOTE_CARD_ASPECT} origin-bottom rounded-l-tiny rounded-r-small shadow-[0_0_0_0.5px_rgb(40_40_60/0.16),0_1cqw_2cqw_-1cqw_rgb(0_0_0/0.25)] transition-transform duration-300 ease-[var(--ease-folio)] ${rise}`}
+      style={{ left: `${15 + STEP[depth]!}%`, top: `${at}%`, rotate: `${TILT[depth]}deg` }}
     >
-      {art ? (
-        <div className="absolute inset-y-0 left-0 w-[7.5%]" style={{ background: `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` }} />
-      ) : (
-        <div className="absolute inset-y-[7%] left-[3.3%] flex flex-col justify-between">
-          {Array.from({ length: 8 }, (_, i) => (
-            <span key={i} className="block size-[1.8cqw]" style={{ background: `radial-gradient(circle closest-side, color-mix(in oklab, ${ink} 80%, transparent) 92%, transparent)` }} />
-          ))}
-        </div>
-      )}
-      <div className={`absolute inset-0 overflow-hidden pr-[7.7%] pt-[7.7%] ${art ? "pl-[13.4%]" : "pl-[12.6%]"}`}>
-        <p className="line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[5.1cqw] font-medium leading-[1.2]" style={{ color: ink }}>
-          {note.title || "Untitled"}
-        </p>
-        {note.createdAt ? (
-          <p className="mt-[0.8cqw] truncate text-[3.2cqw] leading-[1.3]" style={{ color: `color-mix(in oklab, ${ink} 68%, ${paper})` }}>
-            {createdText(note.createdAt)}
-          </p>
-        ) : null}
-        <p className="mt-[2.6cqw] whitespace-pre-line break-words text-[2.9cqw] leading-[4.2cqw]" style={{ color: `color-mix(in oklab, ${ink} 72%, ${paper})` }}>
-          {note.excerpt || ""}
-        </p>
-      </div>
+      <NoteCardFace
+        title={note.title ?? ""}
+        excerpt={note.excerpt ?? ""}
+        preview={note.preview ?? null}
+        cover={note.cover}
+        style={note.style ?? DEFAULT_DOCUMENT_STYLE}
+        createdAt={note.createdAt ?? 0}
+        time={note.updatedAt ? editedText(note.updatedAt) : ""}
+        shape={note.shape ?? null}
+        kind={note.kind}
+        showFolder={false}
+      />
     </div>
   );
 }
@@ -126,7 +142,8 @@ function FolderNote({ note, depth, top }: { note: FolderPreview; depth: number; 
 /** The counts on the front: "3 notes", "1 folder · 2 notes", "3 folders", or "No notes yet". */
 export function folderCountText(notes: number, subfolders = 0) {
   const parts: string[] = [];
-  if (subfolders > 0) parts.push(`${subfolders.toLocaleString()} ${subfolders === 1 ? "folder" : "folders"}`);
+  if (subfolders > 0)
+    parts.push(`${subfolders.toLocaleString()} ${subfolders === 1 ? "folder" : "folders"}`);
   if (notes > 0) parts.push(`${notes.toLocaleString()} ${notes === 1 ? "note" : "notes"}`);
   return parts.length ? parts.join(" · ") : "No notes yet";
 }
@@ -170,12 +187,22 @@ export function FolderCardArt({
   // Notes in a folder with subfolders start a little lower, so the stacked tabs stay in sight.
   const noteTop = subfolders > 0 ? 7 : 3;
   // The two most recent subfolders, the farther one first (it is drawn first, so it sits behind).
-  const kids = stack.tops.map((_, i) => folderHex(subfolderColors[stack.tops.length - 1 - i] ?? color)).reverse();
+  const kids = stack.tops
+    .map((_, i) => folderHex(subfolderColors[stack.tops.length - 1 - i] ?? color))
+    .reverse();
   return (
-    <div aria-hidden className="absolute inset-0" style={{ ["--fc" as string]: base, ["--fc-tone" as string]: tone }}>
+    <div
+      aria-hidden
+      className="absolute inset-0"
+      style={{ ["--fc" as string]: base, ["--fc-tone" as string]: tone }}
+    >
       {/* the folder's soft shadow, under its back (half its first strength: the owner, 28 November 2026). It starts where the back's body does (BACK_PATH's 16 of 100), so its
           edge never shows in the gap beside the tab. */}
-      <div className="absolute inset-x-0 bottom-0 rounded-folder shadow-[0_1px_2px_rgb(0_0_0/0.03),0_14px_26px_-14px_rgb(30_30_50/0.21)]" data-fc="shadow" style={{ top: `${stack.back + (100 - stack.back) * BACK_BODY_TOP}%` }} />
+      <div
+        className="absolute inset-x-0 bottom-0 rounded-folder shadow-[0_1px_2px_rgb(0_0_0/0.03),0_14px_26px_-14px_rgb(30_30_50/0.21)]"
+        data-fc="shadow"
+        style={{ top: `${stack.back + (100 - stack.back) * BACK_BODY_TOP}%` }}
+      />
       {/* subfolders stacked behind, and the back with its tab: one 85% layer, so a subfolder's outline doesn't show through the back */}
       <div className="absolute inset-0 opacity-85">
         {kids.map((hex, i) => (
@@ -183,28 +210,60 @@ export function FolderCardArt({
             key={i}
             data-fc="sub"
             className={BACK_BOX}
-            style={{ top: `${stack.tops[i]}%`, left: `${stack.insets[i]}%`, right: `${stack.insets[i]}%`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fs" as string]: toneOf(hex) }}
+            style={{
+              top: `${stack.tops[i]}%`,
+              left: `${stack.insets[i]}%`,
+              right: `${stack.insets[i]}%`,
+              mask: BACK_MASK,
+              WebkitMask: BACK_MASK,
+              ["--fs" as string]: toneOf(hex),
+            }}
           />
         ))}
-        <div data-fc="back" className={`${BACK_BOX} inset-x-0`} style={{ top: `${stack.back}%`, mask: BACK_MASK, WebkitMask: BACK_MASK }} />
+        <div
+          data-fc="back"
+          className={`${BACK_BOX} inset-x-0`}
+          style={{ top: `${stack.back}%`, mask: BACK_MASK, WebkitMask: BACK_MASK }}
+        />
       </div>
       {/* the notes inside, the newest in front */}
       {[...shown].reverse().map((p, i) => (
         <FolderNote key={i} note={p} depth={shown.length - 1 - i} top={noteTop} />
       ))}
       {/* the frost: the notes blurred behind the whole front (globals.css) */}
-      <div data-fc="frost" className="pointer-events-none absolute inset-x-0 bottom-0 rounded-folder" style={{ top: `${FOLDER_FRONT_TOP}%` }} />
+      <div
+        data-fc="frost"
+        className="pointer-events-none absolute inset-x-0 bottom-0 rounded-folder"
+        style={{ top: `${FOLDER_FRONT_TOP}%` }}
+      />
       {/* the front, with the name, the counts and the last change */}
-      <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-folder px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
-        <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.1] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
-        <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} ${nameLines === 1 ? "block truncate" : nameLines === 2 ? "line-clamp-2" : "line-clamp-2 @max-[144px]:block @max-[144px]:truncate"} text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)*var(--fc-name,1)),30px)] font-semibold leading-[1.15]`}>
+      <div
+        data-fc="front"
+        className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-folder px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]"
+        style={{ top: `${FOLDER_FRONT_TOP}%` }}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.1] mix-blend-soft-light"
+          style={{ backgroundImage: GRAIN }}
+        />
+        <span
+          data-fc="name"
+          className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} ${nameLines === 1 ? "block truncate" : nameLines === 2 ? "line-clamp-2" : "line-clamp-2 @max-[144px]:block @max-[144px]:truncate"} text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)*var(--fc-name,1)),30px)] font-semibold leading-[1.15]`}
+        >
           {name}
         </span>
         <span data-fc="age" className="relative flex min-h-0 flex-1 flex-col tabular-nums">
-          <span data-fc="count" className="mt-[1cqw] truncate text-[clamp(11px,calc(4.9cqw*var(--fc-text,1)),18px)] font-medium leading-[1.3] opacity-90">
+          <span
+            data-fc="count"
+            className="mt-[1cqw] truncate text-[clamp(11px,calc(4.9cqw*var(--fc-text,1)),18px)] font-medium leading-[1.3] opacity-90"
+          >
             {folderCountText(count, subfolders)}
           </span>
-          <span data-fc="edited" className="mt-auto truncate text-[clamp(10.5px,calc(4.3cqw*var(--fc-text,1)),16px)] leading-[1.3] opacity-85">
+          <span
+            data-fc="edited"
+            className="mt-auto truncate text-[clamp(10.5px,calc(4.3cqw*var(--fc-text,1)),16px)] leading-[1.3] opacity-85"
+          >
             Edited {age}
           </span>
         </span>

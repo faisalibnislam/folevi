@@ -27,7 +27,34 @@
               "kind": "theme",
               "value": "art-03"
             },
-            "createdAt": 1792573200000
+            "createdAt": 1792573200000,
+            "updatedAt": 1792832400000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "heading",
+                "x": "Kyoto in November",
+                "l": 1
+              },
+              {
+                "t": "todo",
+                "x": "Book the ryokan",
+                "c": true
+              },
+              {
+                "t": "todo",
+                "x": "Rail pass",
+                "c": false
+              }
+            ],
+            "shape": "list",
+            "kind": "document"
           },
           {
             "title": "Q4 planning",
@@ -35,7 +62,23 @@
             "cover": {
               "kind": "none"
             },
-            "createdAt": 1792573200000
+            "createdAt": 1792573200000,
+            "updatedAt": 1792828800000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Q4 planning. First lines of the note."
+              }
+            ],
+            "shape": "page",
+            "kind": "document"
           },
           {
             "title": "Reading list",
@@ -44,7 +87,23 @@
               "kind": "theme",
               "value": "art-27"
             },
-            "createdAt": 1792573200000
+            "createdAt": 1792573200000,
+            "updatedAt": 1792825200000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Reading list. First lines of the note."
+              }
+            ],
+            "shape": "page",
+            "kind": "document"
           }
         ],
         "encrypted": false,
@@ -69,7 +128,23 @@
             "cover": {
               "kind": "none"
             },
-            "createdAt": 1792486800000
+            "createdAt": 1792486800000,
+            "updatedAt": 1792821600000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Sourdough notes. First lines of the note."
+              }
+            ],
+            "shape": "page",
+            "kind": "document"
           },
           {
             "title": "Interview loop",
@@ -78,7 +153,23 @@
               "kind": "theme",
               "value": "art-55"
             },
-            "createdAt": 1792486800000
+            "createdAt": 1792486800000,
+            "updatedAt": 1792818000000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Interview loop. First lines of the note."
+              }
+            ],
+            "shape": "page",
+            "kind": "document"
           },
           {
             "title": "Garden plan",
@@ -86,7 +177,34 @@
             "cover": {
               "kind": "none"
             },
-            "createdAt": 1792486800000
+            "createdAt": 1792486800000,
+            "updatedAt": 1792814400000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "heading",
+                "x": "Garden plan",
+                "l": 1
+              },
+              {
+                "t": "todo",
+                "x": "Book the ryokan",
+                "c": true
+              },
+              {
+                "t": "todo",
+                "x": "Rail pass",
+                "c": false
+              }
+            ],
+            "shape": "list",
+            "kind": "document"
           }
         ],
         "encrypted": false,
@@ -112,7 +230,23 @@
               "kind": "theme",
               "value": "art-12"
             },
-            "createdAt": 1792400400000
+            "createdAt": 1792400400000,
+            "updatedAt": 1792810800000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Weekly review. First lines of the note."
+              }
+            ],
+            "shape": "page",
+            "kind": "document"
           },
           {
             "title": "Book club: The Overstory",
@@ -120,7 +254,23 @@
             "cover": {
               "kind": "none"
             },
-            "createdAt": 1792400400000
+            "createdAt": 1792400400000,
+            "updatedAt": 1792807200000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Book club: The Overstory. First lines of the note."
+              }
+            ],
+            "shape": "page",
+            "kind": "document"
           },
           {
             "title": "Note 9",
@@ -129,7 +279,23 @@
               "kind": "theme",
               "value": "art-41"
             },
-            "createdAt": 1792400400000
+            "createdAt": 1792400400000,
+            "updatedAt": 1792803600000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Note 9. First lines of the note."
+              }
+            ],
+            "shape": "page",
+            "kind": "document"
           }
         ],
         "encrypted": false,

@@ -333,7 +333,34 @@
               "kind": "theme",
               "value": "art-03"
             },
-            "createdAt": 1792573200000
+            "createdAt": 1792573200000,
+            "updatedAt": 1792832400000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "heading",
+                "x": "Kyoto in November",
+                "l": 1
+              },
+              {
+                "t": "todo",
+                "x": "Book the ryokan",
+                "c": true
+              },
+              {
+                "t": "todo",
+                "x": "Rail pass",
+                "c": false
+              }
+            ],
+            "shape": "list",
+            "kind": "document"
           },
           {
             "title": "Q4 planning",
@@ -341,7 +368,23 @@
             "cover": {
               "kind": "none"
             },
-            "createdAt": 1792573200000
+            "createdAt": 1792573200000,
+            "updatedAt": 1792828800000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Q4 planning. First lines of the note."
+              }
+            ],
+            "shape": "page",
+            "kind": "document"
           },
           {
             "title": "Reading list",
@@ -350,7 +393,23 @@
               "kind": "theme",
               "value": "art-27"
             },
-            "createdAt": 1792573200000
+            "createdAt": 1792573200000,
+            "updatedAt": 1792825200000,
+            "style": {
+              "font": "modern",
+              "width": "normal",
+              "background": "paper",
+              "accent": "ember",
+              "card": "plain"
+            },
+            "preview": [
+              {
+                "t": "paragraph",
+                "x": "Reading list. First lines of the note."
+              }
+            ],
+            "shape": "page",
+            "kind": "document"
           }
         ],
         "encrypted": false,

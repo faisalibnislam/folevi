@@ -59,7 +59,7 @@ afterEach(() => {
 describe("views", () => {
   it("folders.cards: a folder's subfolders with their counts and previews", async () => {
     const v = (await query("folders.cards", { parentId: "f1" })) as FolderCardsValue;
-    expect(v.folders).toEqual([expect.objectContaining({ id: "f2", noteCount: 5, childCount: 1, previews: [{ title: "Kyoto", excerpt: "Temples", cover: { kind: "none" }, createdAt: 0 }] })]);
+    expect(v.folders).toEqual([expect.objectContaining({ id: "f2", noteCount: 5, childCount: 1, previews: [{ title: "Kyoto", excerpt: "Temples", cover: { kind: "none" }, createdAt: 0, updatedAt: 0, style: null, preview: null, shape: null, kind: "document" }] })]);
     const top = (await query("folders.cards", {})) as FolderCardsValue;
     expect(top.folders.map((f) => f.id)).toEqual(["f1"]);
   });

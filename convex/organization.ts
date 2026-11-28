@@ -131,7 +131,39 @@ function folderBase(f: Doc<"folders">, idToPublic: Map<Id<"folders">, string>, k
   };
 }
 
-type FolderPreview = { cover: Doc<"documents">["cover"]; title: string; createdAt: number; excerpt: string; sealed?: ReturnType<typeof sealedFieldsOf> };
+/**
+ * A note peeking out of a folder card, with what its own card shows (FolderCardArt.tsx draws it as that card):
+ * style, first blocks, page shape, kind and last edit. An entry stored before 28 November 2026 has no style,
+ * preview, shape or kind until the note is next saved (the card then uses the default look).
+ */
+type FolderPreview = {
+  cover: Doc<"documents">["cover"];
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  excerpt: string;
+  style?: Doc<"documents">["style"];
+  preview?: Doc<"documents">["preview"];
+  shape?: string;
+  kind?: string;
+  sealed?: ReturnType<typeof sealedFieldsOf>;
+};
+
+/** A note as its folder card's preview (from a stats entry or the note itself). */
+function previewOf(e: { cover: FolderPreview["cover"]; title: string; createdAt: number; updatedAt: number; excerpt: string; style?: FolderPreview["style"]; preview?: FolderPreview["preview"]; shape?: string; kind?: string }, sealed: unknown): FolderPreview {
+  return {
+    cover: e.cover,
+    title: e.title,
+    createdAt: e.createdAt,
+    updatedAt: e.updatedAt,
+    excerpt: e.excerpt.slice(0, 280),
+    ...(e.style ? { style: e.style } : {}),
+    ...(e.preview ? { preview: e.preview } : {}),
+    ...(e.shape ? { shape: e.shape } : {}),
+    ...(e.kind ? { kind: e.kind } : {}),
+    ...(sealed ? { sealed: sealed as FolderPreview["sealed"] } : {}),
+  };
+}
 
 /**
  * Folders (by id, "" for Drafts) whose stats this person can't use: they hold a listed page that is restricted
@@ -173,7 +205,7 @@ async function folderRow(
 ) {
   const base = folderBase(f, idToPublic, kids);
   if (stats) {
-    const previews: FolderPreview[] = stats.previews.map((e) => ({ cover: e.cover, title: e.title, createdAt: e.createdAt, excerpt: e.excerpt, ...(e.sealed ? { sealed: e.sealed } : {}) }));
+    const previews: FolderPreview[] = stats.previews.map((e) => previewOf(e, e.sealed));
     return { ...base, updatedAt: Math.max(f.updatedAt, stats.lastEditedAt ?? 0), documentCount: stats.count, previews };
   }
   const docs = await reader.filter((await folderPages(ctx, f._id).take(2000)).filter((d) => d.kind !== "template"));
@@ -186,10 +218,7 @@ async function folderRow(
     previews: [...docs]
       .sort((a, b) => b.updatedAt - a.updatedAt || a._creationTime - b._creationTime)
       .slice(0, PREVIEWS)
-      .map((d): FolderPreview => {
-        const sealed = sealedFieldsOf(d);
-        return { cover: d.cover, title: d.title, createdAt: d.createdAt, excerpt: d.excerpt.slice(0, 280), ...(sealed ? { sealed } : {}) };
-      }),
+      .map((d): FolderPreview => previewOf({ ...d, shape: d.shape ?? undefined, preview: d.preview ?? undefined }, sealedFieldsOf(d))),
   };
 }
 

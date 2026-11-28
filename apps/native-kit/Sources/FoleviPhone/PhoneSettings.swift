@@ -150,12 +150,15 @@ public struct PhoneSettingsHost {
 
 // MARK: The list
 
-/// The list of sections: You (and the open workspace's), Support, the version.
+/// The list of sections: Account, Security, App, Data (and the open workspace's, or Create a workspace), Support,
+/// the version.
 public struct PhoneSettingsList: View {
     let model: PhoneSettingsModel
     let host: PhoneSettingsHost
     /// What's typed in Settings' search: the sections it matches, by name or by what's in them.
     let query: String
+    /// Foli AI's answer to the search's words (Ask Foli AI).
+    @State private var ask = SettingsAsk()
     @Environment(\.colorScheme) private var scheme
 
     public init(model: PhoneSettingsModel, host: PhoneSettingsHost, query: String = "") {
@@ -164,20 +167,33 @@ public struct PhoneSettingsList: View {
         self.query = query
     }
 
-    /// The sections matching `q`: by name, or by what they hold (the rows and choices in them).
-    static func matches(_ s: PhoneSettingsSection, _ q: String) -> Bool {
-        let words = s.label + " " + s.heading + " " + s.keywords
-        return q.split(separator: " ").allSatisfy { words.localizedCaseInsensitiveContains($0) }
+    /// How well `q` finds a section, by name or by what it holds (the rows and choices in it); nil when it doesn't.
+    /// As the web's search: most words must match, filler words ("how", "do", "i", "my") left out.
+    static func score(_ s: PhoneSettingsSection, _ q: String) -> Int? {
+        SettingsMatch.score(SettingsMatch.terms(q), title: SettingsMatch.words(s.label + " " + s.heading), other: SettingsMatch.words(s.keywords))
     }
+
+    static func matches(_ s: PhoneSettingsSection, _ q: String) -> Bool { score(s, q) != nil }
+
+    /// How "You" is grouped (SettingsView.tsx YOU_GROUPS), in this order (the owner, 28 November 2026: "divide
+    /// you into more categories").
+    static let youGroups: [(label: String, ids: Set<PhoneSettingsSection>)] = [
+        ("Account", [.library, .account, .billing, .devices]),
+        ("Security", [.security, .privacy]),
+        ("App", [.ai, .appearance, .writing, .notifications]),
+        ("Data", [.connectedApps, .sync, .data, .thisDevice]),
+    ]
 
     /// The sections in their groups, as SettingsView.tsx lists them on the iPhone for this mode and role.
     public static func groups(_ model: PhoneSettingsModel) -> [(label: String, items: [PhoneSettingsSection])] {
-        // (The owner, 2026-11-20: named for what they hold, and kept together. App lock sits with Security; a library
-        // on this iPhone has its lock in Library already, so it isn't listed twice.)
+        // (A library on this iPhone has its lock in Library already, so This device isn't listed twice.)
         let you: [PhoneSettingsSection] = model.isLocal
             ? [.library, .ai, .appearance, .writing, .data]
-            : [.account, .ai, .billing, .security, .thisDevice, .privacy, .devices, .connectedApps, .appearance, .writing, .notifications, .sync, .data]
-        var out: [(String, [PhoneSettingsSection])] = [("You", you)]
+            : [.account, .billing, .devices, .security, .privacy, .ai, .appearance, .writing, .notifications, .connectedApps, .sync, .data, .thisDevice]
+        var out: [(String, [PhoneSettingsSection])] = youGroups.compactMap { g in
+            let items = you.filter { g.ids.contains($0) }
+            return items.isEmpty ? nil : (g.label, items)
+        }
         if let w = model.workspace, !model.isLocal {
             var items: [PhoneSettingsSection] = [.workspace, .members, .workspacePrivacy]
             if w.canManage { items.append(.workspaceGuests) }
@@ -188,24 +204,64 @@ public struct PhoneSettingsList: View {
         return out
     }
 
+    /// Create a workspace is offered: in Personal, with an account whose plan has workspaces.
+    static func canCreateWorkspace(_ model: PhoneSettingsModel) -> Bool {
+        model.workspace == nil && !model.isLocal && (model.session.value?.capabilities.workspaces ?? true)
+    }
+
+    /// Foli AI is on (the search offers Ask Foli AI): an account's, while the plan includes it and it's on.
+    static func aiOn(_ model: PhoneSettingsModel) -> Bool { !model.isLocal && (model.session.value?.capabilities.ai ?? false) }
+
+    /// What Foli AI may pick from: every section listed, keyed by its id, with its group's name.
+    static func askOptions(_ model: PhoneSettingsModel) -> [SettingsAskOption] {
+        groups(model).flatMap { g in g.items.map { SettingsAskOption(key: $0.rawValue, title: $0.label, section: g.label) } }
+    }
+
     public var body: some View {
         let q = query.trimmingCharacters(in: .whitespaces)
         if q.isEmpty {
             list
         } else {
-            let found = Self.groups(model).flatMap { g in g.items.filter { Self.matches($0, q) } } + (Self.matches(.about, q) ? [.about] : [])
+            let all = Self.groups(model).flatMap(\.items) + [.about]
+            let found = all.enumerated().compactMap { i, s in Self.score(s, q).map { (s, $0, i) } }
+                .sorted { ($0.1, -$0.2) > ($1.1, -$1.2) }.map(\.0)
+            let canAsk = SettingsMatch.canAsk(q, aiOn: Self.aiOn(model)) && !ask.shows(q)
             PhoneSettingsPage {
-                if found.isEmpty {
-                    PhoneScreenEmpty(icon: .search, title: "No settings match “\(q)”", message: nil)
+                if ask.shows(q) { answer(all) }
+                if found.isEmpty && !canAsk {
+                    if !ask.shows(q) { PhoneScreenEmpty(icon: .search, title: "No settings match “\(q)”", message: nil) }
                 } else {
                     PhoneSettingsGroup("Results") {
                         ForEach(found, id: \.self) { s in
                             PhoneSettingsRow(s.label, chevron: true, action: { model.open("/settings/\(s.rawValue)") }) { s.rowIcon }
                         }
+                        // Ask Foli AI: after the matches, or the only row when nothing matches.
+                        if canAsk {
+                            PhoneSettingsRow("Ask Foli AI", description: "“\(q)”", action: { askFoliAI(q) }) { PhoneRowIcon.foliAI }
+                                .accessibilityIdentifier("settings.search.ask")
+                        }
                     }
                 }
             }
         }
+    }
+
+    /// Foli AI's answer: its sentence (or what went wrong, muted), then the sections it picked.
+    @ViewBuilder private func answer(_ all: [PhoneSettingsSection]) -> some View {
+        let picks = ask.keys.compactMap { k in all.first { $0.rawValue == k } }
+        PhoneSettingsGroup("Foli AI") {
+            PhoneSettingsText(text: ask.error ?? ask.line, muted: ask.error != nil || ask.busy)
+                .accessibilityIdentifier("settings.search.answer")
+            ForEach(picks, id: \.self) { s in
+                PhoneSettingsRow(s.label, chevron: true, action: { model.open("/settings/\(s.rawValue)") }) { s.rowIcon }
+            }
+        }
+    }
+
+    private func askFoliAI(_ q: String) {
+        let options = Self.askOptions(model)
+        let client = model.client
+        Task { await ask.ask(q, options: options, client: client) }
     }
 
     private var list: some View {
@@ -219,9 +275,10 @@ public struct PhoneSettingsList: View {
                     }
                 }
             }
-            if model.workspace == nil && !model.isLocal {
-                PhoneSettingsGroup(footer: "Share folders and notes with your team, each in its own workspace.") {
-                    PhoneSettingsRow("Create a workspace", action: { host.newWorkspace() }) { PhoneRowIcon(.buildingComplex) }
+            if Self.canCreateWorkspace(model) {
+                // A plain row under its own Workspace heading, like the sections (the owner, 28 November 2026).
+                PhoneSettingsGroup("Workspace", footer: "Work with a team: shared notes, folders and tasks, with its own plan and members.") {
+                    PhoneSettingsRow("Create a workspace", action: { host.newWorkspace() }) { PhoneRowIcon(.plus) }
                 }
             }
             PhoneSettingsGroup("Support") {

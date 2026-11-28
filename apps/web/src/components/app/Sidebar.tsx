@@ -1,5 +1,9 @@
 "use client";
 
+import { useNavRoute, useNoteColumnsActive } from "@/lib/app/useNoteColumns";
+import { useCreateDocument } from "./useCreateDocument";
+import { useKeyLabels } from "@/lib/shortcuts";
+import { SquarePen } from "lucide-react";
 import { useMutation } from "convex/react";
 import { Fragment, useEffect, useId, useMemo, useState } from "react";
 import { ArrowDownUp, Archive, CalendarDays, SquareCheckBig, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, SlidersHorizontal, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
@@ -134,7 +138,7 @@ function NavItem({
   /** The row's right-click menu (the app's own items: Move to More, Customize sidebar). */
   menu?: MenuItem[];
 }) {
-  const { route } = useAppRouter();
+  const route = useNavRoute();
   const tabClicks = useFolderTabClicks(tabFolder ?? { id: "", name: "" });
   const active = isActive(route, href);
   const hint = useDropHint(dropFolderId ?? "\u0000");
@@ -270,7 +274,7 @@ function MoreLink({ href, count, noun, onNavigate, exact = true }: { href: strin
 }
 
 function Section({ title, href, children, action, defaultOpen = true, onNavigate }: { title: string; href?: string; children: React.ReactNode; action?: React.ReactNode; defaultOpen?: boolean; onNavigate?: () => void }) {
-  const { route } = useAppRouter();
+  const route = useNavRoute();
   // Follows `defaultOpen` (which may only be known once data loads) until the person toggles it; their
   // choice is remembered on this device (e.g. Tags stays open once opened).
   const [toggled, setToggled] = useLocalStorage<boolean | null>(`folevi:sidebar-section:${title.toLowerCase()}`, null);
@@ -469,16 +473,35 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
 /** "Search or jump to…" (⌘K): the same box at the top of the app's sidebar and of a note's own sidebar. */
 export function SidebarSearch() {
   const { openPalette } = useShell();
-  return (
+  // In the columns layout there's no tab bar: New note sits beside the search box (docs/NOTE_COLUMNS.md).
+  const columnsOn = useNoteColumnsActive();
+  const createDocument = useCreateDocument();
+  const keys = useKeyLabels();
+  const search = (
     <button
       type="button"
       onClick={openPalette}
       className="ui-well flex h-9 w-full items-center gap-2 rounded-control pl-3 pr-1.5 text-left text-subheadline text-muted transition-colors hover:text-ink pointer-coarse:h-11"
     >
       <Search size={14} aria-hidden />
-      <span className="flex-1">Search or jump to…</span>
+      <span className="min-w-0 flex-1 truncate">Search or jump to…</span>
       <Kbd>{modKey()}K</Kbd>
     </button>
+  );
+  if (!columnsOn) return search;
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="min-w-0 flex-1">{search}</div>
+      <button
+        type="button"
+        aria-label="New note"
+        title={keys("New note (⌘⌥N)")}
+        onClick={() => void createDocument({})}
+        className="ui-hit grid size-9 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:size-11"
+      >
+        <SquarePen size={16} aria-hidden />
+      </button>
+    </div>
   );
 }
 
@@ -533,6 +556,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const starred = useOfflineQuery(api.documents.list, { scope, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
   const folderActions = useFolderActions();
   const { route } = useAppRouter();
+  // A note open in a list's column is in that list (docs/NOTE_COLUMNS.md).
+  const navRoute = useNavRoute();
   // Changes others made in notes you've opened (everywhere), leaving out the note in front of you.
   // (Local mode has no Changes: nobody else edits a library, docs/LOCAL_MODE_PLAN.md §5.2.)
   const caps = useCapabilities();
@@ -617,7 +642,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   };
   // Only the first few top-level folders and tags are listed (plus the one you're in, opened down to it);
   // "+N more" opens the full list.
-  const activeFolder = route.name === "folder" ? folders.find((f) => f.id === route.id) : undefined;
+  const activeFolder = navRoute.name === "folder" ? folders.find((f) => f.id === navRoute.id) : undefined;
   const activePath = activeFolder ? folderAncestors(folders, activeFolder.id) : [];
   const activeRootId = activeFolder ? (activePath[0]?.id ?? activeFolder.id) : null;
   const shownRoots = allFoldersShown ? roots : roots.filter((f, i) => i < SIDEBAR_LIMIT || f.id === activeRootId);
@@ -658,7 +683,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const draggedIsNested = draggedFolder !== null && Boolean(folders.find((f) => f.id === draggedFolder)?.parentFolderId);
   const hiddenFolders = folders.length - shownFolderCount;
   const allTags = org?.tags ?? [];
-  const shownTags = allTags.filter((t, i) => i < SIDEBAR_LIMIT || (route.name === "tag" && route.id === t.id));
+  const shownTags = allTags.filter((t, i) => i < SIDEBAR_LIMIT || (navRoute.name === "tag" && navRoute.id === t.id));
 
   // The app's own items (lib/app/sidebarLayout.ts): on the sidebar or under More, in this person's order, saved
   // with their account. Each shows only where it's available here (Foli AI when it's on, Changes where others edit).
@@ -690,7 +715,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const underMore = shownIds.filter((s) => s.more).map((s) => s.id);
   // More starts closed and remembers being opened or closed on this device; it opens by itself for the page you're on.
   const [moreToggled, setMoreOpen] = useLocalStorage("folevi:sidebar-more-open", false);
-  const activeInMore = underMore.some((id) => isActive(route, SIDEBAR_ITEMS[id].href));
+  const activeInMore = underMore.some((id) => isActive(navRoute, SIDEBAR_ITEMS[id].href));
   useEffect(() => {
     if (activeInMore && !moreToggled) setMoreOpen(true);
   }, [activeInMore, moreToggled, setMoreOpen]);

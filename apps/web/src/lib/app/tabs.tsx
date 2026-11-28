@@ -7,6 +7,7 @@ import { cameFromHistory } from "./historyNav";
 import { emitNoteEvent, nativePanes, onNativePanes, setNativePanes } from "@/lib/engine/noteHost";
 import { requestNavigation } from "@/lib/engine/navigation";
 import { openInMainWindow } from "./float";
+import { useNoteColumnsActive } from "./useNoteColumns";
 
 /**
  * An open note in the tab strip. A tab is a top-level page (`id`); its nested pages open inside it, and
@@ -237,7 +238,8 @@ export function tabsStorageKeys(accountKey: string, workspaceId: string | null):
  * tab comes back).
  */
 export function TabsProvider({ accountKey, workspaceId, children }: { accountKey: string; workspaceId: string | null; children: ReactNode }) {
-  const { route, pathname, search, navigate } = useAppRouter();
+  const { route: routerRoute, pathname, search, navigate } = useAppRouter();
+  const route: { name: string; id?: string | null } = routerRoute;
   const keys = tabsStorageKeys(accountKey, workspaceId);
   const [tabs, setTabs] = useLocalStorage<DocTab[]>(keys.tabs, []);
   const [homeHref, setHomeHref] = useLocalStorage<string>(keys.homeHref, "/documents");
@@ -255,7 +257,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   const used = useRef(new Map<string, number>());
   const useClock = useRef(0);
 
-  const docId = route.name === "doc" ? route.id : null;
+  const docId = route.name === "doc" ? (route.id ?? null) : null;
   const query = search.toString();
   // The pages shown most recently, newest first (this session).
   const [recent, setRecent] = useState<string[]>([]);
@@ -285,7 +287,17 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   const viewTitle = useRef<{ path: string; title: string } | null>(null);
   // The tab on screen, kept while its page changes: a note in two tabs stays in the one it's in (see `shownId`).
   const [current, setCurrent] = useState<string | null>(null);
+  // The columns layout has no tabs (docs/NOTE_COLUMNS.md): the tabs saved stay as they were for when it's off.
+  const columnsOn = useNoteColumnsActive();
   useEffect(() => {
+    if (columnsOn) {
+      nextInNewTab = false;
+      takeFresh();
+      shownPath.current = pathname;
+      shownRoute.current = route.name;
+      previousDoc.current = docId;
+      return;
+    }
     const from = previousDoc.current;
     previousDoc.current = docId;
     const fromPath = shownPath.current;
@@ -385,7 +397,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
         });
       }
     }
-  }, [docId, route.name, pathname, query]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [docId, route.name, pathname, query, columnsOn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Whether a tab is the one on screen (a note's page, or a view at its path).
   const isShown = useCallback((t: DocTab) => (t.view ? t.view.path === pathname : Boolean(docId) && tabHolds(t, docId!)), [pathname, docId]);
@@ -806,6 +818,10 @@ export function useOpenInBackground(): TabsValue["openInBackground"] | undefined
   return useContext(TabsContext)?.openInBackground;
 }
 
+export function useOpenManyInBackground(): TabsValue["openManyInBackground"] | undefined {
+  return useContext(TabsContext)?.openManyInBackground;
+}
+
 /** useFolderTabClicks without the hook, for rows drawn in a loop. */
 export function folderTabClicks(open: TabsValue["openInBackground"] | undefined, folder: { id: string; name: string }): FolderTabClicks {
   return {
@@ -855,6 +871,14 @@ export function useViewTab(title: string | undefined) {
     if (!setView || isDoc || !title) return;
     setView({ path: pathname, title });
   }, [setView, isDoc, pathname, title]);
+}
+
+/** Names a list's tab from its note column (the column has no ViewChrome of its own: docs/NOTE_COLUMNS.md). */
+export function useListViewTab(path: string, title: string | undefined) {
+  const setView = useContext(TabsActionsContext)?.setView;
+  useEffect(() => {
+    if (setView && title) setView({ path, title });
+  }, [setView, path, title]);
 }
 
 /**

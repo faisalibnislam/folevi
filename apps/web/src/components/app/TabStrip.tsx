@@ -1,5 +1,6 @@
 "use client";
 
+import { useColumnsList } from "@/lib/app/useNoteColumns";
 import { memo, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, CalendarDays, SquareCheckBig, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Trash2, Waypoints, X, XCircle } from "lucide-react";
@@ -152,9 +153,13 @@ export function TabStrip() {
   // The first tab is always Home (the dashboard); every other view (Foli AI, Graph, Drafts, a folder…) gets a tab
   // of its own that stays until it's closed, like a note's.
   const onHome = route.name === "documents";
-  const inFolder = route.name === "folder";
+  // A note open in a folder's column counts as in the folder (docs/NOTE_COLUMNS.md).
+  const columnsList = useColumnsList();
+  const listRoute = columnsList?.route ?? route;
+  const inFolder = listRoute.name === "folder";
   // New folder shows next to New note on a folder's page (inside it). The Folders page has its own, in its title row.
-  const folderParent = route.name === "folder" ? route.id : undefined;
+  // (The Folders page in columns makes a folder at the top level, as its own page does.)
+  const folderParent = listRoute.name === "folder" ? listRoute.id : columnsList?.route.name === "folders" ? null : undefined;
 
   // Dragging a tab (with a mouse or pen; a finger scrolls the strip): it follows the pointer and trades
   // places with a neighbour once it passes that tab's middle, as tabs do in a browser.

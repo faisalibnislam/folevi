@@ -11,6 +11,7 @@ import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { EDITOR_ZOOMS, EDITOR_ZOOM_KEY } from "@/lib/editorZoom";
 import { Slider } from "@/components/ui/Slider";
 import { Card } from "./Card";
+import { useNoteColumnsPref } from "@/lib/app/useNoteColumns";
 
 const ZOOMS = EDITOR_ZOOMS;
 
@@ -100,6 +101,7 @@ export function AppearanceSection() {
           })}
         </div>
       </Card>
+      <NoteListsCard />
       <Card title="Editor text size">
         <label className="flex max-w-md items-center gap-3 text-subheadline">
           <span>Smaller</span>
@@ -160,6 +162,86 @@ function ThemePicture({ theme }: { theme: "light" | "dark" | "system" }) {
           <Window p={PALETTES.dark} />
         </span>
       ) : null}
+    </span>
+  );
+}
+
+/**
+ * How note lists open (docs/NOTE_COLUMNS.md): cards and rows filling the page, or the list in a column beside the
+ * open note. Layout in the Sidebar menu flips the same choice.
+ */
+function NoteListsCard() {
+  const [columns, setColumns] = useNoteColumnsPref();
+  return (
+    <Card title="Note lists" description="Folders, Drafts, All notes, Bookmarks, tags, Archive and Trash. Layout in the sidebar's menu (the panel button) switches it at any time.">
+      <div role="radiogroup" aria-label="Note lists" className="grid max-w-lg grid-cols-2 gap-3">
+        {(
+          [
+            [false, "Cards and rows", "A list fills the page"],
+            [true, "Columns", "The list beside the open note"],
+          ] as const
+        ).map(([v, label, caption]) => {
+          const chosen = columns === v;
+          return (
+            <button
+              key={label}
+              type="button"
+              role="radio"
+              aria-checked={chosen}
+              onClick={() => setColumns(v)}
+              className={`group flex flex-col gap-2.5 rounded-panel p-1.5 pb-3 text-left outline-none transition-[background-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus ${chosen ? "bg-surface shadow-[inset_0_0_0_2px_var(--color-heading)]" : "hover:bg-[var(--glass-hover)]"}`}
+            >
+              <ListsPicture columns={v} />
+              <span className="flex items-start gap-2 px-1.5">
+                <span aria-hidden className={`mt-px grid size-4 flex-none place-items-center rounded-small ${chosen ? "bg-heading text-canvas" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}>
+                  {chosen ? <Check size={10} strokeWidth={3.5} /> : null}
+                </span>
+                <span className="min-w-0">
+                  <span className={`block text-subheadline leading-4 ${chosen ? "font-semibold text-heading" : "font-medium text-ink"}`}>{label}</span>
+                  <span className="mt-0.5 block text-footnote text-muted">{caption}</span>
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+/** A small drawing of each choice: a sidebar and cards, or a sidebar, a column of rows and a note. */
+function ListsPicture({ columns }: { columns: boolean }) {
+  const line = "h-1 rounded-tiny bg-[var(--color-line-strong)]";
+  return (
+    <span aria-hidden className="flex h-20 gap-1.5 overflow-hidden rounded-small bg-sunken p-1.5">
+      <span className="flex w-1/6 flex-none flex-col gap-1 pt-1">
+        <span className={`${line} w-3/4`} />
+        <span className={`${line} w-2/3`} />
+        <span className={`${line} w-3/4`} />
+      </span>
+      {columns ? (
+        <>
+          <span className="flex w-1/3 flex-none flex-col gap-1.5 pt-1">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className={`flex flex-col gap-0.5 rounded-tiny p-1 ${i === 0 ? "bg-surface" : ""}`}>
+                <span className={`${line} w-3/4 !bg-heading/50`} />
+                <span className={`${line} w-full`} />
+              </span>
+            ))}
+          </span>
+          <span className="flex flex-1 flex-col gap-1 rounded-tiny bg-surface p-1.5">
+            <span className={`${line} w-1/2 !bg-heading/50`} />
+            <span className={`${line} w-full`} />
+            <span className={`${line} w-5/6`} />
+          </span>
+        </>
+      ) : (
+        <span className="grid flex-1 grid-cols-3 gap-1">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <span key={i} className="rounded-tiny bg-surface" />
+          ))}
+        </span>
+      )}
     </span>
   );
 }

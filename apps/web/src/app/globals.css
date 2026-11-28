@@ -1146,6 +1146,15 @@ svg.lucide :is(path, line, polyline, polygon, rect, circle, ellipse) { vector-ef
   .ui-list-row:hover { background: var(--glass-hover); }
   .ui-list-name { font-family: var(--font-serif); font-size: var(--type-headline); line-height: var(--type-headline-leading); font-weight: 600; color: var(--color-heading); }
   .ui-list-meta { font-size: var(--type-footnote); line-height: var(--type-footnote-leading); font-variant-numeric: tabular-nums; color: var(--color-ink-muted); }
+  /* The columns layout's note rows (docs/NOTE_COLUMNS.md): the list's type (.ui-list-name, .ui-list-meta) between
+     hairlines, inset like sidebar rows. A row lights up on hover; the open note's comes forward as the open tab does;
+     notes picked for a multi-selection take the selection's fill. */
+  .ui-note-rows > li + li::before { content: ""; position: absolute; top: 0; left: 12px; right: 12px; border-top: 1px solid var(--color-line); }
+  .ui-note-row { position: relative; border-radius: var(--radius-chip); transition: background-color 120ms; }
+  .ui-note-row:hover { background: var(--glass-hover); }
+  .ui-note-row[data-selected] { background: var(--glass-active); }
+  .ui-note-row[data-current] { background: var(--color-surface-raised); box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent); }
+  .ui-note-row[data-current]::before, .ui-note-row[data-current] + li::before, .ui-note-row:hover::before, .ui-note-row:hover + li::before, .ui-note-row[data-selected]::before, .ui-note-row[data-selected] + li::before { opacity: 0; }
 }
 /* Nothing fades the content out above the floating tab bar: it scrolls under the bar at full strength, and the
    bar's capsules are glass a little more opaque than the rest (the page's colour at 72 %) so they read over it. */

@@ -127,7 +127,7 @@ describe("value views", () => {
     expect(home.recents.map((x) => x.id)).toEqual(["doc_1", "doc_2"]);
     expect(home.recents[1]!.folder).toEqual({ id: "f1", name: "Trips", color: "moss" });
     expect(home.rows.map((x) => [x.id, x.count])).toEqual([["notes", null], ["drafts", 3], ["shared", null], ["changes", 3], ["reviews", 3]]);
-    expect(home.folders).toEqual([expect.objectContaining({ id: "f1", noteCount: 4, childCount: 1, previews: [{ title: "Kyoto", excerpt: "Temples", cover: { kind: "none" }, createdAt: 0 }] })]);
+    expect(home.folders).toEqual([expect.objectContaining({ id: "f1", noteCount: 4, childCount: 1, previews: [{ title: "Kyoto", excerpt: "Temples", cover: { kind: "none" }, createdAt: 0, updatedAt: 0, style: null, preview: null, shape: null, kind: "document" }] })]);
     expect(home.starred.rows.map((x) => x.id)).toEqual(["doc_1"]);
     expect(home.tags).toEqual([{ id: "t1", name: "ideas", color: "marigold" }]);
     expect(home.catchUp).toEqual({ available: true, state: "idle", brief: null, error: null });

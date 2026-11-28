@@ -806,12 +806,41 @@ public struct FolderPreview: Codable, Hashable, Sendable {
     public var cover: CardCover
     /// Revision 33: when the note was created ("Created Nov 3" on the page peeking out of the card); 0 when unknown.
     public var createdAt: Double
+    /// Revision 36: when the note last changed ("Edited 2 days ago" on its card); 0 when unknown.
+    public var updatedAt: Double
+    /// Revision 36: the note's look, so the page peeking out of the folder is drawn as the note's own card (NoteRow's
+    /// style, preview, shape and kind). Null when the server has none for it yet (the default look).
+    public var style: CardStyle?
+    /// Revision 36: the note's first blocks, as NoteRow.preview.
+    public var preview: [PreviewLine]?
+    /// Revision 36: what kind of page it is, as NoteRow.shape.
+    public var shape: String?
+    /// Revision 36: "document", "daily" or "template", as NoteRow.kind.
+    public var kind: String
 
-    public init(title: String, excerpt: String, cover: CardCover, createdAt: Double = 0) {
+    public init(title: String, excerpt: String, cover: CardCover, createdAt: Double = 0, updatedAt: Double = 0, style: CardStyle? = nil, preview: [PreviewLine]? = nil, shape: String? = nil, kind: String = "document") {
         self.title = title
         self.excerpt = excerpt
         self.cover = cover
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.style = style
+        self.preview = preview
+        self.shape = shape
+        self.kind = kind
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.excerpt, forKey: .excerpt)
+        try container.encode(self.cover, forKey: .cover)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.style, forKey: .style)
+        try container.encode(self.preview, forKey: .preview)
+        try container.encode(self.shape, forKey: .shape)
+        try container.encode(self.kind, forKey: .kind)
     }
 }
 

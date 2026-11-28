@@ -188,6 +188,9 @@ public extension EnvironmentValues {
         get { self[WebCardMenuRoomKey.self] }
         set { self[WebCardMenuRoomKey.self] = newValue }
     }
+    /// The note card drawn as a small picture of itself (a note peeking out of a folder card, WebFolderNote): the
+    /// footer scales with the card like everything else instead of staying at Footnote (DocumentCard.tsx miniature).
+    @Entry var webCardMiniature: Bool = false
 }
 
 public struct WebCardMenuRoomKey: EnvironmentKey {
@@ -205,6 +208,7 @@ public struct WebNoteCard: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webPhoneCards) private var phone
     @Environment(\.webCardMenuRoom) private var menuRoom
+    @Environment(\.webCardMiniature) private var miniature
     /// The native chrome round the card (the card itself resets it for what the note draws): its dates and chip
     /// are set in the system font then (WebTextStyle.cardInterface).
     @Environment(\.nativeChrome) private var chrome
@@ -556,8 +560,9 @@ public struct WebNoteCard: View {
 
     private func footer(cq: CGFloat, heading: RGBA, muted: RGBA, chip: RGBA) -> some View {
         // At the card-time size, as a folder card's Edited date: one size for a card's time everywhere (DocumentCard.tsx).
-        let footStyle = WebTextStyle.cardTime.cardInterface(chrome?.forText != nil)
-        let footH = max(8.6 * cq, 14)
+        // A miniature (a note in a folder card) keeps the footer scaled with the card, as before.
+        let footStyle = (miniature ? WebTextStyle(size: 3.8 * cq, leading: 3.8 * cq * 1.55) : WebTextStyle.cardTime).cardInterface(chrome?.forText != nil)
+        let footH = miniature ? 8.6 * cq : max(8.6 * cq, 14)
         return HStack(spacing: 2 * cq) {
             if unsynced {
                 HStack(spacing: 4) {
@@ -583,7 +588,7 @@ public struct WebNoteCard: View {
                     }
                 }
                 .foregroundStyle(heading.color)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, miniature ? 3 * cq : 4)
                 .frame(height: footH)
                 .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill(chip.color))
                 .frame(maxWidth: (100 - 13) * cq * 0.62 * 0.94, alignment: .trailing)
@@ -952,8 +957,9 @@ public struct WebFolderCard: View {
             .opacity(0.85)
             ForEach(Array(shown.enumerated().reversed()), id: \.offset) { depth, note in
                 let at = noteTop + CGFloat(depth) * 0.014
-                let nh = min(model.subfolders > 0 ? 0.76 : 0.70, 0.95 - at)
-                WebFolderNote(note: note, cq: cq)
+                // The note card's own shape, 70% of the folder's width (the web's aspect-[25/27]).
+                let nh = w * 0.7 / WebNoteCard.aspect / h
+                WebFolderNote(note: note)
                     .frame(width: w * 0.7, height: h * nh)
                     .rotationEffect(.degrees(Self.tilt[depth]), anchor: .bottom)
                     .offset(x: w * (0.15 + Self.step[depth]), y: h * at - (risen ? h * nh * Self.rise[depth] : 0))
@@ -1089,66 +1095,18 @@ struct FrostBackShape: Shape {
     }
 }
 
-/// One note inside a folder card, drawn as today's note card, small (FolderCardArt's FolderNote): its page colour,
-/// its art down the spine (or a plain note's punched holes), title, created date and opening text.
+/// One note inside a folder card, drawn as exactly its own note card (WebNoteCard; the web's FolderCardArt draws
+/// NoteCardFace the same way, the owner, 28 November 2026), at the card's 25:27 shape. The phone's fixed card type
+/// sizes are off here: the card is a small picture inside the folder, sized by its width like the web's.
 struct WebFolderNote: View {
     let note: FolderCardModel.Note
-    /// 1% of the folder card's width (the note's sizes are shares of the card, as the web's `cqw`).
-    let cq: CGFloat
-    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let theme = note.cover.theme
-        let dark = scheme == .dark
-        let paper = theme?.paper ?? (dark ? RGBA(45, 45, 50) : RGBA(255, 255, 255))
-        let ink = theme?.ink ?? (dark ? RGBA(239, 239, 242) : RGBA(31, 31, 35))
-        let shape = WebCornersShape(topLeft: FoleviTokens.Radius.tiny, topRight: FoleviTokens.Radius.small, bottomRight: FoleviTokens.Radius.small, bottomLeft: FoleviTokens.Radius.tiny)
-        let shadows = [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(40, 40, 60, 0.16)), ShadowLayer(x: 0, y: cq, blur: 2 * cq, spread: -cq, color: RGBA(0, 0, 0, 0.25))]
-        GeometryReader { geo in
-            let w = geo.size.width, h = geo.size.height
-            let lead = w * (theme != nil ? 0.134 : 0.126)
-            let textW = max(0, w - lead - w * 0.077)
-            ZStack(alignment: .topLeading) {
-                WebShapeBox(shape: shape, fill: paper.color, shadows: shadows)
-                ZStack(alignment: .topLeading) {
-                    if theme != nil {
-                        CoverFill(note.cover).frame(width: w * 0.075, height: h).clipped()
-                    } else {
-                        // A plain note's punched holes down the spine (today's card's spiral).
-                        VStack(spacing: 0) {
-                            ForEach(0..<8, id: \.self) { i in
-                                if i > 0 { Spacer(minLength: 0) }
-                                Circle().fill(ink.color.opacity(0.8)).frame(width: 1.8 * cq, height: 1.8 * cq)
-                            }
-                        }
-                        .frame(height: h * 0.86)
-                        .offset(x: w * 0.033, y: h * 0.07)
-                    }
-                    VStack(alignment: .leading, spacing: 0) {
-                        WebClampedText(note.title.isEmpty ? "Untitled" : note.title, style: WebTextStyle(family: .display, size: 5.1 * cq, leading: 5.1 * cq * 1.2, weight: 500), maxLines: 2, width: textW)
-                            .foregroundStyle(ink.color)
-                        if !note.createdText.isEmpty {
-                            Text(note.createdText)
-                                .webText(WebTextStyle(size: 3.2 * cq, leading: 3.2 * cq * 1.3))
-                                .lineLimit(1)
-                                .foregroundStyle(ink.oklabMix(paper, 0.68).color)
-                                .padding(.top, 0.8 * cq)
-                        }
-                        Text(WebNoteCard.preLine(note.excerpt))
-                            .webText(WebTextStyle(size: 2.9 * cq, leading: 4.2 * cq))
-                            .foregroundStyle(ink.oklabMix(paper, 0.72).color)
-                            .frame(width: textW, alignment: .leading)
-                            .padding(.top, 2.6 * cq)
-                    }
-                    .frame(width: textW, alignment: .topLeading)
-                    .padding(.top, w * 0.077)
-                    .offset(x: lead)
-                    .frame(width: w, height: h, alignment: .topLeading)
-                    .clipped()
-                }
-                .clipShape(shape)
-            }
-        }
+        WebNoteCard(note.card)
+            .environment(\.webPhoneCards, false)
+            .environment(\.webCardMenuRoom, 0)
+            .environment(\.webCardMiniature, true)
+            .allowsHitTesting(false)
     }
 }
 

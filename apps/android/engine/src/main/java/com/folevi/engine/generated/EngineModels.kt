@@ -504,6 +504,19 @@ data class FolderPreview(
     val cover: CardCover,
     /** Revision 33: when the note was created ("Created Nov 3" on the page peeking out of the card); 0 when unknown. */
     @EncodeDefault val createdAt: Double = 0.0,
+    /** Revision 36: when the note last changed ("Edited 2 days ago" on its card); 0 when unknown. */
+    @EncodeDefault val updatedAt: Double = 0.0,
+    /**
+     * Revision 36: the note's look, so the page peeking out of the folder is drawn as the note's own card (NoteRow's
+     * style, preview, shape and kind). Null when the server has none for it yet (the default look).
+     */
+    @EncodeDefault val style: CardStyle? = null,
+    /** Revision 36: the note's first blocks, as NoteRow.preview. */
+    @EncodeDefault val preview: List<PreviewLine>? = null,
+    /** Revision 36: what kind of page it is, as NoteRow.shape. */
+    @EncodeDefault val shape: String? = null,
+    /** Revision 36: "document", "daily" or "template", as NoteRow.kind. */
+    @EncodeDefault val kind: String = "document",
 )
 
 /** A folder as Home's and a folder screen's folder cards show it. */

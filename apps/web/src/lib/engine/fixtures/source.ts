@@ -182,7 +182,7 @@ const folderCard = (i: number, over: Partial<FolderCard> = {}): FolderCard => ({
   childCount: i === 0 ? 2 : 0,
   childColors: i === 0 ? [FOLDERS[1]!.color, FOLDERS[2]!.color] : [],
   updatedAt: NOW - i * DAY,
-  previews: rows(3, i * 3).map((r) => ({ title: r.title, excerpt: r.excerpt, cover: r.cover, createdAt: NOW - (i + 3) * DAY })),
+  previews: rows(3, i * 3).map((r) => ({ title: r.title, excerpt: r.excerpt, cover: r.cover, createdAt: NOW - (i + 3) * DAY, updatedAt: r.updatedAt, style: r.style, preview: r.preview, shape: r.shape, kind: r.kind })),
   encrypted: false,
   sync: "saved",
   locked: false,

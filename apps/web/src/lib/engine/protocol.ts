@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 35;
+export const CONTRACT_REVISION = 36;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -555,6 +555,32 @@ export interface FolderPreview {
    * @default 0
    */
   createdAt: number;
+  /**
+   * Revision 36: when the note last changed ("Edited 2 days ago" on its card); 0 when unknown.
+   * @default 0
+   */
+  updatedAt: number;
+  /**
+   * Revision 36: the note's look, so the page peeking out of the folder is drawn as the note's own card (NoteRow's
+   * style, preview, shape and kind). Null when the server has none for it yet (the default look).
+   * @default null
+   */
+  style: CardStyle | null;
+  /**
+   * Revision 36: the note's first blocks, as NoteRow.preview.
+   * @default null
+   */
+  preview: PreviewLine[] | null;
+  /**
+   * Revision 36: what kind of page it is, as NoteRow.shape.
+   * @default null
+   */
+  shape: string | null;
+  /**
+   * Revision 36: "document", "daily" or "template", as NoteRow.kind.
+   * @default "document"
+   */
+  kind: string;
 }
 
 /** A folder as Home's and a folder screen's folder cards show it. */

@@ -5,26 +5,33 @@ import { arrangeHome, greetingFor, moveHomeBlock, setHomeBlockHidden, upNext } f
 const ids = (saved: Parameters<typeof arrangeHome>[0]) => arrangeHome(saved).map((r) => (r.hidden ? `(${r.block.id})` : r.block.id));
 
 describe("Home layout", () => {
-  test("no saved layout: the default order, Bookmarks off until added", () => {
-    expect(ids(null)).toEqual(["scratch", "recent", "upnext", "today", "tasks", "dna", "folders", "(bookmarks)"]);
+  test("no saved layout: the default order, the optional blocks off until added", () => {
+    expect(ids(null)).toEqual(["recent", "summary", "bookmarks", "upnext", "today", "tasks", "dna", "folders", "(shared)", "(pinned)", "(templates)"]);
+  });
+
+  test("the Foli AI summary is left out while Foli AI is off", () => {
+    expect(arrangeHome(null, ["summary"]).map((r) => r.block.id)).not.toContain("summary");
+    // Moving past where it sits steps over it, and it keeps its place for when Foli AI is back on.
+    const moved = moveHomeBlock(null, "bookmarks", -1, ["summary"]);
+    expect(moved.order.slice(0, 3)).toEqual(["bookmarks", "summary", "recent"]);
   });
 
   test("a saved order is kept; unknown ids go; missing blocks take their default place", () => {
-    expect(ids({ order: ["folders", "nope", "tasks", "folders"], hidden: ["today"] })).toEqual(["scratch", "recent", "upnext", "(today)", "folders", "(bookmarks)", "tasks", "dna"]);
+    expect(ids({ order: ["folders", "nope", "tasks", "folders", "scratch"], hidden: ["today"] })).toEqual(["recent", "summary", "bookmarks", "upnext", "(today)", "folders", "(shared)", "(pinned)", "(templates)", "tasks", "dna"]);
   });
 
   test("moving a block skips hidden ones", () => {
     const moved = moveHomeBlock({ order: [], hidden: ["today"] }, "tasks", -1);
-    expect(moved.order.slice(0, 5)).toEqual(["scratch", "recent", "tasks", "today", "upnext"]);
-    expect(moved.hidden).toEqual(expect.arrayContaining(["today", "bookmarks"]));
-    expect(moveHomeBlock(null, "scratch", -1).order[0]).toBe("scratch");
+    expect(moved.order.slice(0, 6)).toEqual(["recent", "summary", "bookmarks", "tasks", "today", "upnext"]);
+    expect(moved.hidden).toEqual(expect.arrayContaining(["today", "shared", "pinned", "templates"]));
+    expect(moveHomeBlock(null, "recent", -1).order[0]).toBe("recent");
   });
 
   test("hiding, and adding a block back puts it last", () => {
     const hidden = setHomeBlockHidden(null, "upnext", true);
-    expect(hidden.hidden).toEqual(expect.arrayContaining(["upnext", "bookmarks"]));
-    const added = setHomeBlockHidden(null, "bookmarks", false);
-    expect(ids(added).at(-1)).toBe("bookmarks");
+    expect(hidden.hidden).toEqual(expect.arrayContaining(["upnext", "shared"]));
+    const added = setHomeBlockHidden(null, "pinned", false);
+    expect(ids(added).at(-1)).toBe("pinned");
   });
 
   test("greeting by the hour", () => {

@@ -1,22 +1,22 @@
-// homePrefs.* in local mode (convex/homePrefs.ts): Home's block order, hidden blocks and the scratch pad. Two values in
-// the library's meta ("homeLayout", "homeScratch"), so they travel with the library to every device it syncs to.
+// homePrefs.* in local mode (convex/homePrefs.ts): Home's block order, hidden blocks and the pinned note. Two values in
+// the library's meta ("homeLayout", "homePinnedNote"), so they travel with the library to every device it syncs to.
 import { api } from "@/lib/convex/api";
 import { fail } from "../errors";
 import { defineLocal } from "../registry";
 import { requireProfile } from "./shared";
 
 const LAYOUT = "homeLayout";
-const SCRATCH = "homeScratch";
-/** As the server (convex/homePrefs.ts HOME_LAYOUT_MAX, SCRATCH_MAX). */
+const PINNED = "homePinnedNote";
+/** As the server (convex/homePrefs.ts HOME_LAYOUT_MAX, BLOCK_ID, NOTE_ID). */
 const MAX = 50;
-const SCRATCH_MAX = 4000;
 const BLOCK_ID = /^[a-z][a-z0-9-]{0,39}$/;
+const NOTE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 defineLocal(api.homePrefs.get, "query", async (ctx) => {
   await requireProfile(ctx);
   const layout = (await ctx.db.get("meta", LAYOUT)) as { order: string[]; hidden: string[] } | null | undefined;
-  const scratch = (await ctx.db.get("meta", SCRATCH)) as string | null | undefined;
-  return { layout: layout ? { order: layout.order, hidden: layout.hidden } : null, scratch: scratch ?? "" };
+  const pinned = (await ctx.db.get("meta", PINNED)) as string | null | undefined;
+  return { layout: layout ? { order: layout.order, hidden: layout.hidden } : null, pinnedNote: pinned ?? null };
 });
 
 defineLocal(api.homePrefs.setLayout, "mutation", async (ctx, args) => {
@@ -32,9 +32,9 @@ defineLocal(api.homePrefs.setLayout, "mutation", async (ctx, args) => {
   return null;
 });
 
-defineLocal(api.homePrefs.setScratch, "mutation", async (ctx, args) => {
+defineLocal(api.homePrefs.setPinnedNote, "mutation", async (ctx, args) => {
   await requireProfile(ctx);
-  if (args.text.length > SCRATCH_MAX) fail("invalid_argument", "The scratch pad is full.");
-  ctx.db.put("meta", SCRATCH, args.text);
+  if (args.documentId !== null && !NOTE_ID.test(args.documentId)) fail("invalid_argument", "Invalid note.");
+  ctx.db.put("meta", PINNED, args.documentId);
   return null;
 });

@@ -1,8 +1,8 @@
-// One person's Home (the owner, 28 November 2026): the order of Home's blocks, which of them are hidden, and their
-// scratch pad, the same on every device and in every place. The apps own the block ids and the default order
-// (apps/web/src/lib/app/homeLayout.ts); a block the order doesn't name (one added later) takes its default place.
-// No row: the default Home and an empty scratch pad. The scratch pad is a person's own plain text, never part of a
-// space, so it is not end-to-end encrypted.
+// One person's Home (the owner, 28 November 2026): the order of Home's blocks, which of them are hidden, and the note
+// their Pinned note block shows, the same on every device and in every place. The apps own the block ids and the
+// default order (apps/web/src/lib/app/homeLayout.ts); a block the order doesn't name (one added later) takes its
+// default place. No row: the default Home and no pinned note. The pinned note is only its id: Home reads it with
+// documents.get, so it shows only while this person can open it.
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { query, type QueryCtx } from "./_generated/server";
@@ -12,9 +12,9 @@ import { fail } from "./lib/errors";
 
 /** Block ids one layout keeps, at most (far more than Home has). */
 export const HOME_LAYOUT_MAX = 50;
-/** The scratch pad's length, at most. */
-export const SCRATCH_MAX = 4000;
 const BLOCK_ID = /^[a-z][a-z0-9-]{0,39}$/;
+/** A note's public id, as documents.get takes it. */
+const NOTE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 async function rowOf(ctx: QueryCtx, profileId: Doc<"profiles">["_id"]) {
   return await ctx.db
@@ -23,7 +23,7 @@ async function rowOf(ctx: QueryCtx, profileId: Doc<"profiles">["_id"]) {
     .unique();
 }
 
-/** This person's Home: their block order and hidden blocks (null: the default) and their scratch pad. */
+/** This person's Home: their block order and hidden blocks (null: the default) and their pinned note's id. */
 export const get = query({
   args: {},
   handler: async (ctx) => {
@@ -31,7 +31,7 @@ export const get = query({
     const row = await rowOf(ctx, profile._id);
     return {
       layout: row?.order || row?.hidden ? { order: row.order ?? [], hidden: row.hidden ?? [] } : null,
-      scratch: row?.scratch ?? "",
+      pinnedNote: row?.pinnedNote ?? null,
     };
   },
 });
@@ -61,17 +61,19 @@ export const setLayout = mutation({
   },
 });
 
-/** Saves this person's scratch pad (the whole text; the last save wins). */
-export const setScratch = mutation({
-  args: { text: v.string() },
+/** Sets the note this person's Pinned note block shows (null: none). */
+export const setPinnedNote = mutation({
+  args: { documentId: v.union(v.string(), v.null()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    if (args.text.length > SCRATCH_MAX) fail("invalid_argument", "The scratch pad is full.");
+    if (args.documentId !== null && !NOTE_ID.test(args.documentId)) fail("invalid_argument", "Invalid note.");
     const row = await rowOf(ctx, profile._id);
     const now = Date.now();
-    if (row) await ctx.db.patch(row._id, { scratch: args.text, updatedAt: now });
-    else await ctx.db.insert("homePrefs", { profileId: profile._id, scratch: args.text, updatedAt: now });
+    const pinnedNote = args.documentId ?? undefined;
+    if (row) await ctx.db.patch(row._id, { pinnedNote, updatedAt: now });
+    else if (pinnedNote) await ctx.db.insert("homePrefs", { profileId: profile._id, pinnedNote, updatedAt: now });
     return null;
   },
 });
+

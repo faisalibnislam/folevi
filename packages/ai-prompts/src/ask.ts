@@ -194,6 +194,42 @@ export function briefRequest(o: { today: string; notes: SourceNote[]; tasks: { t
   };
 }
 
+/** Home's Foli AI summary when nothing was edited this week and nothing is open. */
+export const HOME_SUMMARY_EMPTY = "Nothing new this week yet. Notes you edit show up here.";
+
+/**
+ * Home's Foli AI summary: one or two sentences on the week, then three points, each citing its note with [n] or
+ * [tasks] for one about open tasks. parseHomeSummary reads the reply.
+ */
+export function homeSummaryRequest(o: { today: string; notes: SourceNote[]; tasks: { title: string; due: string | null; note: string }[] }): PromptRequest {
+  const sources = o.notes.map((n, i) => `[${i + 1}] ${n.title}\n${n.text}`).join("\n\n---\n\n");
+  const taskList = o.tasks.map((t) => `- ${t.title}${t.due ? ` (due ${t.due})` : ""}, in "${t.note}"`).join("\n");
+  return {
+    system: `${PERSONA} You write a very short summary of someone's week for the top of their notes app.`,
+    prompt: `Today is ${o.today}.\n\n<recent_notes>\n${sources || "(none)"}\n</recent_notes>\n\n<open_tasks>\n${taskList || "(none)"}\n</open_tasks>\n\nReply in plain text, no Markdown headings or bold. First line: one or two sentences (under 35 words) on what the week has been about. Then exactly three lines, each starting with "- ": one concrete point (under 20 words) ending with the note it comes from as [n], or [tasks] when it is about open tasks (overdue or due soon first). No greeting, no sign-off.`,
+    temperature: 0.4,
+    maxOutputTokens: 400,
+  };
+}
+
+/** A point of Home's summary: its text and the note ([n], 0-based) or open tasks it comes from. */
+export type HomeSummaryPoint = { text: string; note?: number; tasks?: boolean };
+
+/** Reads a homeSummaryRequest reply: the opening sentences and at most three points. */
+export function parseHomeSummary(answer: string): { summary: string; points: HomeSummaryPoint[] } {
+  const lines = answer.split("\n").map((l) => l.trim()).filter(Boolean);
+  const bullet = /^[-*\u2022]\s+/;
+  const summary = lines.filter((l) => !bullet.test(l)).join(" ").replace(/\s*\[(\d{1,2}|tasks)\]/g, "").replace(/\*\*/g, "").trim();
+  const points: HomeSummaryPoint[] = [];
+  for (const l of lines.filter((x) => bullet.test(x)).slice(0, 3)) {
+    const ref = /\[(\d{1,2}|tasks)\]/i.exec(l)?.[1];
+    const text = l.replace(bullet, "").replace(/\s*\[(\d{1,2}|tasks)\]/gi, "").replace(/\*\*/g, "").trim();
+    if (!text) continue;
+    points.push({ text, ...(ref?.toLowerCase() === "tasks" ? { tasks: true } : ref ? { note: Number(ref) - 1 } : {}) });
+  }
+  return { summary, points };
+}
+
 /** Naming a new conversation from its first question and answer (chat.ts cleanTitle reads the reply). */
 export function chatTitleRequest(o: { question: string; answer: string }): PromptRequest {
   return {

@@ -1,9 +1,8 @@
 "use client";
 
 // Home's own blocks (the owner, 28 November 2026, from the Home concepts canvas): the centred greeting and capture
-// field (with where a capture saves), the scratch pad, Up next, Today, My tasks, Foli DNA of the week, and the frame
-// and Add-a-block tile of Customize mode. The layout and the scratch pad are one person's, synced
-// (convex/homePrefs.ts).
+// field (with where a capture saves), Up next, Today, My tasks, Foli DNA of the week, and the frame and Add-a-block
+// tile of Customize mode. The layout and the pinned note are one person's, synced (convex/homePrefs.ts).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation } from "convex/react";
 import { ArrowDown, ArrowUp, Check, ChevronDown, EyeOff, LayoutTemplate, NotebookPen, Plus, SquareCheckBig } from "lucide-react";
@@ -22,15 +21,12 @@ import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { useToggleTask } from "./TasksView";
 import { greetingFor, moveHomeBlock, setHomeBlockHidden, upNext, type HomeBlock, type HomeBlockId, type SavedHomeLayout } from "@/lib/app/homeLayout";
 
-/** The scratch pad's length, at most (convex/homePrefs.ts SCRATCH_MAX). */
-const SCRATCH_MAX = 4000;
-
-/** This person's Home layout and scratch pad, with the calls that change them. */
+/** This person's Home layout and pinned note, with the calls that change them. */
 export function useHomePrefs() {
   const prefs = useOfflineQuery(api.homePrefs.get, {});
   const setLayout = useMutation(api.homePrefs.setLayout);
-  const setScratch = useMutation(api.homePrefs.setScratch);
-  return { prefs, setLayout, setScratch };
+  const setPinnedNote = useMutation(api.homePrefs.setPinnedNote);
+  return { prefs, setLayout, setPinnedNote };
 }
 
 /** A block's heading, the same as Home's other sections (an icon in a chip, then the title in the display face). */
@@ -258,51 +254,6 @@ export function CaptureField() {
   );
 }
 
-/** The scratch pad: plain text that saves itself as you type (a moment after the last key) and follows you. */
-export function ScratchPad({ saved, save }: { saved: string | undefined; save: (text: string) => Promise<unknown> }) {
-  const toast = useToast();
-  const [text, setText] = useState<string | null>(null);
-  const dirty = useRef(false);
-  // Until this person types, the pad shows what the server has (another device's edit appears here).
-  useEffect(() => {
-    if (!dirty.current && saved !== undefined) setText(saved);
-  }, [saved]);
-  useEffect(() => {
-    if (text === null || !dirty.current) return;
-    const t = setTimeout(() => {
-      save(text).then(
-        () => {
-          dirty.current = false;
-        },
-        (e) => toast.show(errorMessage(e), { tone: "error" }),
-      );
-    }, 600);
-    return () => clearTimeout(t);
-  }, [text, save, toast]);
-  return (
-    <div className="flex min-h-48 flex-col rounded-control bg-[color-mix(in_oklab,var(--color-surface),#f5d76e_14%)] p-3">
-      <label htmlFor="home-scratch" className="sr-only">
-        Scratch pad
-      </label>
-      <textarea
-        id="home-scratch"
-        value={text ?? ""}
-        disabled={text === null}
-        maxLength={SCRATCH_MAX}
-        placeholder="Jot anything. It saves itself."
-        onChange={(e) => {
-          dirty.current = true;
-          setText(e.target.value);
-        }}
-        className="min-h-40 flex-1 resize-none bg-transparent text-body leading-relaxed text-ink outline-none placeholder:text-faint"
-      />
-      <span className="self-end text-footnote tabular-nums text-faint">
-        {(text ?? "").length} / {SCRATCH_MAX}
-      </span>
-    </div>
-  );
-}
-
 /** Today's events (the calendars this person shows in Calendar), from local midnight to midnight. */
 function useTodayEvents() {
   const range = useMemo(() => {
@@ -503,6 +454,7 @@ export function HomeBlockFrame({
   saveLayout,
   children,
   panel,
+  without = [],
 }: {
   block: HomeBlock;
   hidden: boolean;
@@ -514,11 +466,13 @@ export function HomeBlockFrame({
   children: ReactNode;
   /** The small blocks sit on a panel; the wide ones (rows of cards, the map) on the page. */
   panel: boolean;
+  /** Blocks left off Home for now (the Foli AI summary while Foli AI is off), which moves step over. */
+  without?: readonly HomeBlockId[];
 }) {
   const toast = useToast();
   if (hidden) return null;
   const save = (l: { order: string[]; hidden: string[] }) => saveLayout(l).catch((e) => toast.show(errorMessage(e), { tone: "error" }));
-  const move = (dir: -1 | 1) => void save(moveHomeBlock(saved, block.id as HomeBlockId, dir));
+  const move = (dir: -1 | 1) => void save(moveHomeBlock(saved, block.id as HomeBlockId, dir, without));
   const tool = "ui-btn ui-btn-quiet size-control p-0 disabled:opacity-40";
   const span = block.span === 3 ? "col-span-full" : block.span === 2 ? "@[760px]:col-span-2" : "";
   return (

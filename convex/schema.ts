@@ -3368,14 +3368,15 @@ export default defineSchema({
 
   /**
    * One person's Home (convex/homePrefs.ts): the order of Home's blocks and which are hidden (block ids,
-   * apps/web/src/lib/app/homeLayout.ts), and their scratch pad. The same on every device; no row = the default Home
-   * and an empty scratch pad.
+   * apps/web/src/lib/app/homeLayout.ts), and the note their Pinned note block shows. The same on every device; no row = the default Home
+   * and no pinned note.
    */
   homePrefs: defineTable({
     profileId: v.id("profiles"),
     order: v.optional(v.array(v.string())),
     hidden: v.optional(v.array(v.string())),
-    scratch: v.optional(v.string()),
+    /** The note the Pinned note block shows (its public id). */
+    pinnedNote: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_profile", ["profileId"]),
 

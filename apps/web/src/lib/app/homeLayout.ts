@@ -1,10 +1,10 @@
 // Home's blocks (the owner, 28 November 2026, from the Home concepts: the widget grid, with the calm start's greeting
-// and capture field and the briefing's Up next and Recent notes): what Home can show, in which order by default, and
-// how one person's saved layout (convex/homePrefs.ts) is laid over that. A block the saved order doesn't name (one
-// added to the apps later) takes its default place, shown or hidden as its default says; an id the apps no longer know
-// is dropped.
+// and capture field and the briefing's Up next and Recent notes; design version 14 took the scratch pad off and added
+// the Foli AI summary and the Bookmarks list): what Home can show, in which order by default, and how one person's
+// saved layout (convex/homePrefs.ts) is laid over that. A block the saved order doesn't name (one added to the apps
+// later) takes its default place, shown or hidden as its default says; an id the apps no longer know is dropped.
 
-export type HomeBlockId = "scratch" | "recent" | "upnext" | "today" | "tasks" | "dna" | "folders" | "bookmarks";
+export type HomeBlockId = "recent" | "summary" | "bookmarks" | "upnext" | "today" | "tasks" | "dna" | "folders" | "shared" | "pinned" | "templates";
 
 export type HomeBlock = {
   id: HomeBlockId;
@@ -16,14 +16,18 @@ export type HomeBlock = {
 };
 
 export const HOME_BLOCKS: readonly HomeBlock[] = [
-  { id: "scratch", label: "Scratch pad", span: 1 },
-  { id: "recent", label: "Recent notes", span: 2 },
+  { id: "recent", label: "Recent notes", span: 3 },
+  // Only while Foli AI is on (Home leaves it out otherwise).
+  { id: "summary", label: "Foli AI summary", span: 2 },
+  { id: "bookmarks", label: "Bookmarks", span: 1 },
   { id: "upnext", label: "Up next", span: 1 },
   { id: "today", label: "Today", span: 1 },
   { id: "tasks", label: "My tasks", span: 1 },
   { id: "dna", label: "Foli DNA", span: 3 },
   { id: "folders", label: "Recent folders", span: 3 },
-  { id: "bookmarks", label: "Bookmarks", span: 3, hiddenByDefault: true },
+  { id: "shared", label: "Shared with me", span: 1, hiddenByDefault: true },
+  { id: "pinned", label: "Pinned note", span: 1, hiddenByDefault: true },
+  { id: "templates", label: "Templates", span: 1, hiddenByDefault: true },
 ];
 
 export type SavedHomeLayout = { order: string[]; hidden: string[] } | null | undefined;
@@ -33,9 +37,9 @@ const KNOWN = new Map(HOME_BLOCKS.map((b, i) => [b.id as string, i]));
 /**
  * The blocks in this person's order with whether each is hidden. Unknown ids are dropped; blocks the saved order
  * doesn't name go in at their default place (after the block that comes before them by default), shown or hidden
- * as their default says.
+ * as their default says. Blocks in `without` (the Foli AI summary while Foli AI is off) are left out.
  */
-export function arrangeHome(saved: SavedHomeLayout): { block: HomeBlock; hidden: boolean }[] {
+export function arrangeHome(saved: SavedHomeLayout, without: readonly HomeBlockId[] = []): { block: HomeBlock; hidden: boolean }[] {
   const named = new Set(saved?.order ?? []);
   const hidden = new Set(saved?.hidden ?? []);
   const order: HomeBlockId[] = [];
@@ -53,7 +57,7 @@ export function arrangeHome(saved: SavedHomeLayout): { block: HomeBlock; hidden:
     }
     order.splice(at, 0, b.id);
   }
-  return order.map((id) => {
+  return order.filter((id) => !without.includes(id)).map((id) => {
     const block = HOME_BLOCKS[KNOWN.get(id)!]!;
     return { block, hidden: hidden.has(id) || (!named.has(id) && !!block.hiddenByDefault) };
   });
@@ -61,10 +65,13 @@ export function arrangeHome(saved: SavedHomeLayout): { block: HomeBlock; hidden:
 
 const layoutOf = (rows: { block: HomeBlock; hidden: boolean }[]) => ({ order: rows.map((r) => r.block.id as string), hidden: rows.filter((r) => r.hidden).map((r) => r.block.id as string) });
 
-/** The layout to save after moving block `id` one place earlier (-1) or later (+1) among the shown blocks. */
-export function moveHomeBlock(saved: SavedHomeLayout, id: HomeBlockId, dir: -1 | 1): { order: string[]; hidden: string[] } {
+/**
+ * The layout to save after moving block `id` one place earlier (-1) or later (+1) among the shown blocks (blocks in
+ * `without`, left off Home for now, keep their place and are stepped over).
+ */
+export function moveHomeBlock(saved: SavedHomeLayout, id: HomeBlockId, dir: -1 | 1, without: readonly HomeBlockId[] = []): { order: string[]; hidden: string[] } {
   const rows = arrangeHome(saved);
-  const shown = rows.filter((r) => !r.hidden).map((r) => r.block.id);
+  const shown = rows.filter((r) => !r.hidden && !without.includes(r.block.id)).map((r) => r.block.id);
   const j = shown.indexOf(id) + dir;
   if (shown.indexOf(id) >= 0 && j >= 0 && j < shown.length) {
     const a = rows.findIndex((r) => r.block.id === id);

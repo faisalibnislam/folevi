@@ -13,7 +13,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Next steps
 
-- Port the customizable Home (2026-11-28, web PR from `claude/dazzling-sanderson-1d2975`): greeting, capture field with a Saves-to picker, Scratch pad, Recent notes, Up next, Today, My tasks, Foli DNA, Recent folders, and Customize (move, remove, add blocks). Data: `homePrefs.get`, `homePrefs.setLayout`, `homePrefs.setScratch`; block ids and defaults in `apps/web/src/lib/app/homeLayout.ts`. See docs/DESKTOP_PARITY.md.
+- Port the customizable Home (2026-11-28, web PR from `claude/dazzling-sanderson-1d2975`): greeting, capture field with a Saves-to picker, Recent notes, Foli AI summary, Bookmarks, Up next, Today, My tasks, Foli DNA, Recent folders, Shared with me / Pinned note / Templates to add, and Customize (move, remove, add blocks). Data: `homePrefs.get`, `homePrefs.setLayout`, `homePrefs.setPinnedNote`, `ai.homeSummary`; block ids and defaults in `apps/web/src/lib/app/homeLayout.ts`. See docs/DESKTOP_PARITY.md.
 
 - The owner tries Float this note on the Mac (several panels, pin off and on, over a full-screen app).
 - Try Import from Apple Notes with a Notes account or macOS user made only for testing (with the owner's OK): big library, big attachments, "denied", attachments saving into Folevi's temporary folder, checklist ticks.

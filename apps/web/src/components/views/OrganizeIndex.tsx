@@ -231,11 +231,19 @@ export function FoldersIndex() {
             )}
           </ul>
         ) : (
-          <ul className="ui-card divide-y divide-transparent overflow-hidden rounded-chip" aria-label="Folders">
+          <>
+          <div className="ui-list-head" aria-hidden>
+            <span className="w-5 flex-none" />
+            <span className="min-w-0 flex-1">Name</span>
+            <span className="w-20 text-right">Pages</span>
+            <span className="hidden w-32 text-right sm:block">Edited</span>
+            <span className="w-8 flex-none" />
+          </div>
+          <ul className="ui-list" aria-label="Folders">
             {list.map((f) => {
               const on = selection.selected.has(f.id);
               return (
-              <li key={f.id} data-ctx-host="" {...itemProps(f.id)} className={`group relative ${on ? "bg-[var(--glass-active)]" : ""}`}>
+              <li key={f.id} data-ctx-host="" {...itemProps(f.id)} className="group relative py-0.5">
                 <AppLink
                   href={`/folders/${f.id}`}
                   {...folderTabClicks(openInBackground, f)}
@@ -243,29 +251,30 @@ export function FoldersIndex() {
                   onDragStart={canEdit ? (e) => (dragSelection(f.id) ?? ((ev: React.DragEvent) => startFolderDrag(ev, f.id)))(e) : undefined}
                   onDragEnd={canEdit ? endFolderDrag : undefined}
                   aria-label={on ? `${f.name}, selected` : undefined}
-                  className="flex items-center gap-3 py-2.5 pl-4 pr-14 hover:bg-accent-soft/50 focus-visible:bg-accent-soft/60 focus-visible:outline-none"
+                  className={`ui-list-row pr-14 focus-visible:bg-[var(--glass-hover)] focus-visible:outline-none ${on ? "!bg-[var(--glass-active)]" : ""}`}
                 >
                   {on ? (
-                    <span className="grid h-6 w-6 flex-none place-items-center">
+                    <span className="grid h-5 w-5 flex-none place-items-center">
                       <span className="grid h-4 w-4 place-items-center rounded-tiny bg-heading text-canvas">
                         <Check size={11} strokeWidth={3} aria-hidden />
                       </span>
                     </span>
                   ) : (
-                    <FolderGlyph color={f.color} size={24} />
+                    <FolderGlyph color={f.color} size={20} />
                   )}
-                  <span className="min-w-0 flex-1 truncate font-medium">
-                    {f.name}
-                    {f.parentFolderId ? <span className="ml-2 text-footnote font-normal text-muted">in {names.get(f.id) || "a folder"}</span> : null}
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="ui-list-name">{f.name}</span>
+                    {f.parentFolderId ? <span className="ui-list-meta ml-2">in {names.get(f.id) || "a folder"}</span> : null}
                   </span>
-                  <span className="w-20 text-right text-footnote tabular-nums text-muted">{pages(f.documentCount)}</span>
-                  <span className="hidden w-32 text-right text-footnote text-faint sm:block">{ageText(f.updatedAt)}</span>
+                  <span className="ui-list-meta w-20 text-right">{pages(f.documentCount)}</span>
+                  <span className="ui-list-meta hidden w-32 text-right sm:block">{ageText(f.updatedAt)}</span>
                 </AppLink>
-                <FolderMenu folder={f} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100" />
+                <FolderMenu folder={f} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100" />
               </li>
               );
             })}
           </ul>
+          </>
         )}
       </div>
       </div>

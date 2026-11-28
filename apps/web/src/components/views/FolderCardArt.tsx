@@ -134,6 +134,7 @@ function FolderNote({ note, depth, top }: { note: FolderPreview; depth: number; 
         shape={note.shape ?? null}
         kind={note.kind}
         showFolder={false}
+        miniature
       />
     </div>
   );
@@ -260,10 +261,7 @@ export function FolderCardArt({
           >
             {folderCountText(count, subfolders)}
           </span>
-          <span
-            data-fc="edited"
-            className="mt-auto truncate text-[clamp(10.5px,calc(4.3cqw*var(--fc-text,1)),16px)] leading-[1.3] opacity-85"
-          >
+          <span data-fc="edited" className="mt-auto truncate text-footnote opacity-85">
             Edited {age}
           </span>
         </span>

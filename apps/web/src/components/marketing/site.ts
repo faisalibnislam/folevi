@@ -1,4 +1,5 @@
 import { appUrl, marketingUrl } from "@/lib/env";
+import { COMING_SOON_APPS_NOTE } from "@/lib/platforms";
 
 export const SIGN_IN_URL = `${appUrl()}/signin`;
 export const SIGN_UP_URL = `${appUrl()}/signup`;
@@ -31,6 +32,13 @@ export const ANDROID_INSTALL_NOTE = "The first time, Android asks you to allow i
 export const WINDOWS_REQUIREMENT = "Windows 11 or Windows 10 (22H2), on Arm or Intel and AMD PCs";
 /** The Windows installers aren't code signed yet (docs/DESKTOP_APP.md), so SmartScreen asks first. Drop this once they are. */
 export const WINDOWS_SMARTSCREEN_NOTE = "This early build isn’t signed yet, so Windows SmartScreen asks you to confirm it: choose More info, then Run anyway.";
+/**
+ * Android, Windows and Linux are paused (owner, 2026-11-28): the site offers no downloads or store links for them
+ * and says they're coming soon instead. The download constants above stay for when they come back.
+ */
+export const COMING_SOON_PLATFORMS = ["Android", "Windows", "Linux"] as const;
+/** "Android, Windows and Linux are coming soon.": the same line the apps' own lists show (lib/platforms.ts). */
+export const COMING_SOON_NOTE = COMING_SOON_APPS_NOTE;
 export const SECURITY_EMAIL = "security@folevi.com";
 export const SUPPORT_EMAIL = "support@folevi.com";
 
@@ -46,12 +54,10 @@ export function signUpWithTemplate(key: string): string {
  */
 export const MARKETING_ROUTES = [
   { path: "/", priority: 1, changeFrequency: "weekly", updated: "2026-11-19" },
-  { path: "/apps", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-26" },
-  { path: "/downloads", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-26" },
+  { path: "/apps", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-28" },
+  { path: "/downloads", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-28" },
   { path: "/features", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-06" },
   { path: "/mac", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-19" },
-  { path: "/windows", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-27" },
-  { path: "/linux", priority: 0.7, changeFrequency: "monthly", updated: "2026-11-27" },
   { path: "/server", priority: 0.7, changeFrequency: "weekly", updated: "2026-11-26" },
   { path: "/security", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-06" },
   { path: "/pricing", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-19" },

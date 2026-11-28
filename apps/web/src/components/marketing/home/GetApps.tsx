@@ -1,13 +1,13 @@
 import { Cloud, LockKeyhole, Sparkles, WifiOff } from "lucide-react";
-import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL } from "../site";
+import { APP_STORE_URL, COMING_SOON_NOTE, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL } from "../site";
 import { artById, artVars, CheckMark } from "../product/Replica";
 import { ButtonLink, cx } from "../ui";
 import { DeviceShowcase } from "./DeviceShowcase";
 import { Mark } from "../fun";
 
 /*
- * The apps, right under the hero: the Mac, Windows, Linux, iPhone, iPad and Android apps (free forever, with every
- * feature and no account) and the web app (with an account). The Mac picture is drawn from the site's own note pieces, not a screenshot, so it follows the
+ * The apps, right under the hero: the Mac, iPhone and iPad apps (free forever, with every feature and no account)
+ * and the web app (with an account). Android, Windows and Linux are paused and coming soon (owner, 2026-11-28). The Mac picture is drawn from the site's own note pieces, not a screenshot, so it follows the
  * theme like everything else on the page (the iPad and iPhone: product/TouchDevices.tsx).
  */
 
@@ -78,12 +78,12 @@ export function HeroApps() {
         <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
           <div>
             <h2 id="apps-title" className="mk-h2">
-              On your Mac, Windows, Linux, iPhone, iPad and Android.
+              On your Mac, iPhone and iPad.
               <br />
               <Mark kind="circle">Free,</Mark> with no account.
             </h2>
             <p className="mk-lede mt-4 max-w-[54ch]">
-              The whole workspace, with every feature, on Mac, Windows, Linux (Beta), iPhone, iPad and Android. The apps open in a moment and work offline. Choose Keep notes on my devices and start writing without signing up. There’s no trial and no limit.
+              The whole workspace, with every feature, on Mac, iPhone and iPad. The apps open in a moment and work offline. Choose Keep notes on my devices and start writing without signing up. There’s no trial and no limit.
             </p>
             <ul className="mt-5 flex flex-wrap gap-2">
               {PROMISES.map((p) => (
@@ -103,18 +103,12 @@ export function HeroApps() {
           <ButtonLink href={APP_STORE_URL} lead="app-store" size="lg">
             Get it on the App Store
           </ButtonLink>
-          <ButtonLink href="/downloads" variant="secondary" size="lg">
-            Android, Windows and Linux
-          </ButtonLink>
           <ButtonLink href={WEB_APP_URL} variant="secondary" size="lg">
             Open the web app
           </ButtonLink>
-          <ButtonLink href="/downloads" variant="secondary" size="lg">
-            Windows and Linux
-          </ButtonLink>
         </div>
         <p className="mt-4 text-[13px] text-muted">
-          {MAC_REQUIREMENT}. {IOS_REQUIREMENT}. The web app needs a free Folevi account.
+          {MAC_REQUIREMENT}. {IOS_REQUIREMENT}. The web app needs a free Folevi account. {COMING_SOON_NOTE}
         </p>
     </section>
   );

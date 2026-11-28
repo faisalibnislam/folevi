@@ -5,7 +5,7 @@ import { BetaBadge, BetaNote } from "@/components/ui/Beta";
 import { BetaNote as SiteBetaNote } from "@/components/marketing/Beta";
 import { AboutSection } from "@/components/views/settings/AboutSection";
 
-// Folevi for Linux and Folevi Server carry a Beta badge with one note and one feedback link (owner, 2026-11-26).
+// Folevi Server (and the paused Linux app) carry an "Early Beta" badge with one note and one feedback link (owner, 2026-11-28).
 // Windows, which runs the same Tauri app, must not show it.
 const w = window as { __foleviTestShell?: unknown };
 
@@ -15,15 +15,15 @@ afterEach(() => {
 
 describe("Beta badges", () => {
   test("the note has no em dash and links to support", () => {
-    expect(BETA_NOTE).toBe("Beta: works, but expect rough edges.");
+    expect(BETA_NOTE).toBe("Early Beta: works, but expect rough edges.");
     expect(BETA_NOTE).not.toContain("—");
     for (const html of [renderToStaticMarkup(<BetaNote badge />), renderToStaticMarkup(<SiteBetaNote badge />)]) {
       expect(html).toContain(BETA_NOTE);
       expect(html).toContain(`href="${BETA_FEEDBACK_URL}"`);
-      expect(html).toContain(">Beta<");
+      expect(html).toContain(">Early Beta<");
       expect(html).toContain("Send feedback");
     }
-    expect(renderToStaticMarkup(<BetaBadge />)).toContain(">Beta<");
+    expect(renderToStaticMarkup(<BetaBadge />)).toContain(">Early Beta<");
   });
 
   test("only the Linux app counts as Linux", () => {
@@ -41,6 +41,6 @@ describe("Beta badges", () => {
     w.__foleviTestShell = { platform: "linux" };
     const html = renderToStaticMarkup(<AboutSection />);
     expect(html).toContain(BETA_NOTE);
-    expect(html).toContain(">Beta<");
+    expect(html).toContain(">Early Beta<");
   });
 });

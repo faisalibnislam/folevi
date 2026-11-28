@@ -4,6 +4,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Current state
 
+- **PAUSED since 2026-11-28 (owner).** Folevi for Windows is no longer offered: the website, the apps and Folevi Server show it as "Coming soon" with no download links (`docs/claude-context/memory/platforms-paused-2026-11-28.md`). No new releases or feature work until the owner resumes it. The builds already published below were not withdrawn.
 - 1.9.80 (build 111) installers are on folevi.com (x64 and ARM64), unsigned, built by the Desktop workflow (run 46090145089, started by hand on `main` at the release commit `7b16a128`) and uploaded with wrangler. The update feeds say 1.9.80, so 1.7.78 and 1.8.78 installs are offered it; 1.6.78 and older have no updater.
 - Own AI keys (1.9.80) are kept in Credential Manager (`docs/DESKTOP_PARITY.md`).
 - Reaching home servers over plain http is in (PR 117).

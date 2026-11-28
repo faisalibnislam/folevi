@@ -66,7 +66,7 @@ export function DownloadsBar({ items }: { items: DownloadsBarItem[] }) {
             >
               <PlatformMark name={item.mark} size={18} className="shrink-0" />
               {item.title}
-              {item.beta ? <span className="sr-only"> (Beta)</span> : null}
+              {item.beta ? <span className="sr-only"> (Early Beta)</span> : null}
             </a>
           </li>
         ))}

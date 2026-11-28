@@ -1,5 +1,8 @@
 # Desktop feature parity: Mac vs Windows and Linux
 
+> **Paused 2026-11-28 (owner):** the Windows and Linux app is paused and shown as "Coming soon". Nothing here is being ported until it resumes; this list is kept for then.
+
+
 Owner rule (2026-11-25): features added to the web or Mac app also go to Windows and Linux when they make sense
 there. See `docs/claude-context/memory/desktop-feature-parity.md`.
 

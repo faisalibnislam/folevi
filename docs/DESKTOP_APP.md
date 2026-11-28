@@ -1,5 +1,9 @@
 # Folevi for Windows and Linux
 
+> **Paused (2026-11-28, owner decision):** the Windows, Linux and Android apps are paused. folevi.com shows them as
+> coming soon, with no download links. Folevi is available on the Mac, iPhone and iPad (iPhone Duo too), the web and
+> Folevi Server. The technical notes below are kept as they are for when the work picks up again.
+
 Folevi for Windows and Linux (`apps/desktop`) is a Tauri 2 app. It shows Folevi's own interface in the system's web
 view, WebView2 on Windows and WebKitGTK on Linux, so it carries no browser of its own. It ships as native builds:
 

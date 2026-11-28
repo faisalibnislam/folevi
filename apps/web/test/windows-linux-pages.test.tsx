@@ -1,54 +1,55 @@
 import { describe, expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import WindowsPage from "@/app/(marketing)/windows/page";
-import LinuxPage from "@/app/(marketing)/linux/page";
+import WindowsPage, { metadata as windowsMetadata } from "@/app/(marketing)/windows/page";
+import LinuxPage, { metadata as linuxMetadata } from "@/app/(marketing)/linux/page";
 import { BETA_NOTE } from "@/lib/beta";
-import { LINUX_CHECKSUMS_URL, LINUX_DOWNLOADS, MARKETING_ROUTES, WINDOWS_DOWNLOAD_ARM64_URL, WINDOWS_DOWNLOAD_X64_URL } from "@/components/marketing/site";
+import { COMING_SOON_NOTE, MARKETING_ROUTES, WEB_APP_URL } from "@/components/marketing/site";
 
-// The /windows and /linux pages (owner, 2026-11-27): the right downloads, Beta on Linux only (lib/beta.ts), the
-// SmartScreen note while the Windows installers are unsigned, never a build number and never an em or en dash.
+// The /windows and /linux pages while the apps are paused (owner, 2026-11-28): the routes stay, say Coming soon,
+// offer no download and no install steps, point to the web app, and stay out of the sitemap and search results.
+// The Linux app's Beta tag is gone. Never an em or en dash.
 const windows = renderToStaticMarkup(<WindowsPage />);
 const linux = renderToStaticMarkup(<LinuxPage />);
 const text = (html: string) => html.replace(/<[^>]+>/g, " ");
 
 describe("the Windows and Linux pages", () => {
-  test("Windows links both installers and no Linux package", () => {
-    expect(windows).toContain(`href="${WINDOWS_DOWNLOAD_X64_URL}"`);
-    expect(windows).toContain(`href="${WINDOWS_DOWNLOAD_ARM64_URL}"`);
-    expect(windows).not.toContain("/download/linux/");
+  test("both say Coming soon and link to no download", () => {
+    for (const html of [windows, linux]) {
+      expect(html).toContain("Coming soon");
+      expect(html).toContain(COMING_SOON_NOTE);
+      expect(html).not.toMatch(/\/download\/(windows|linux|android)\//);
+      expect(html).not.toContain("SHA256SUMS");
+      expect(html).toContain(`href="${WEB_APP_URL}"`);
+    }
   });
 
-  test("Linux links every package and the checksums, and no Windows installer", () => {
-    for (const format of Object.values(LINUX_DOWNLOADS)) for (const href of Object.values(format)) expect(linux).toContain(`href="${href}"`);
-    expect(linux).toContain(`href="${LINUX_CHECKSUMS_URL}"`);
-    expect(linux).not.toContain("/download/windows/");
+  test("no install steps for the paused apps", () => {
+    expect(text(windows)).not.toContain("SmartScreen");
+    expect(text(linux)).not.toMatch(/AppImage|apt|Snap Store/);
   });
 
-  test("Beta on Linux, not on Windows", () => {
-    expect(linux).toContain(">Beta<");
-    expect(linux).toContain(BETA_NOTE);
+  test("Linux points Linux servers to Folevi Server", () => {
+    expect(linux).toContain('href="/server#linux"');
+  });
+
+  test("no Beta tag on either app page", () => {
+    for (const html of [windows, linux]) expect(html).not.toContain(BETA_NOTE);
+    expect(linux).not.toContain(">Beta<");
     expect(windows).not.toContain(">Beta<");
-    expect(windows).not.toContain(BETA_NOTE);
   });
 
-  test("Windows says SmartScreen asks first", () => {
-    expect(text(windows)).toContain("SmartScreen");
-    expect(text(windows)).toContain("More info, then Run anyway");
-  });
-
-  test("no build numbers, no em or en dashes, no store links for the phones", () => {
+  test("no em or en dashes, no store links", () => {
     for (const html of [windows, linux]) {
       expect(html).not.toMatch(/[–—]/);
-      expect(text(html)).not.toMatch(/\bbuild\s*\d/i);
-      expect(text(html)).not.toMatch(/\b\d+\.\d+\.\d+\b/);
       expect(html).not.toContain("apps.apple.com");
       expect(html).not.toContain("play.google.com");
     }
   });
 
-  test("both are in the sitemap", () => {
+  test("both are kept out of search results and the sitemap", () => {
+    for (const meta of [windowsMetadata, linuxMetadata]) expect(meta.robots).toEqual({ index: false, follow: true });
     const paths = MARKETING_ROUTES.map((route) => route.path as string);
-    expect(paths).toContain("/windows");
-    expect(paths).toContain("/linux");
+    expect(paths).not.toContain("/windows");
+    expect(paths).not.toContain("/linux");
   });
 });

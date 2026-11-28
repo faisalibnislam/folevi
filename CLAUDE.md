@@ -7,7 +7,10 @@
 > frozen, and CI fails a pull request that changes it) and never edit another session's log entry.
 
 Notes app: web (Next.js 16, `apps/web`), Convex backend (`convex/`), native Mac app (`apps/mac`), iPhone/iPad
-app (`apps/ios`), Android as the Capacitor app (PR 69, Play internal testing; the separate native Compose app in `apps/android` is paused), Windows and Linux (`apps/desktop`, Tauri, `docs/DESKTOP_APP.md`), shared packages in `packages/`.
+app (`apps/ios`), Folevi Server (`services/`), shared packages in `packages/`. **Paused since 2026-11-28 (owner):** the
+Android app (Capacitor, PR 69; the native Compose app in `apps/android`) and the Windows and Linux app (`apps/desktop`,
+Tauri, `docs/DESKTOP_APP.md`). Their code stays, but the site and apps show them as "Coming soon", and nothing new ships
+for them until the owner resumes them (`docs/claude-context/memory/platforms-paused-2026-11-28.md`).
 
 Start here when resuming work:
 1. `handoff/guide.md`, then `node scripts/handoff.mjs show`: setup, build, release, rules; each area's current state and next steps; the newest changes. (`docs/HANDOFF.md` is the October handoff, history only.)
@@ -24,8 +27,8 @@ or upload to TestFlight without the owner's OK; never use `--prod` with the Conv
 never touch the owner's real library or app data; no em dashes; the assistant is "Foli AI"; commit with
 `git commit <paths>`.
 
-Feature parity: a feature added to the web or Mac app also goes to the Windows and Linux app (`apps/desktop`)
-when it makes sense there. Port it in the same work or record the gap in `docs/DESKTOP_PARITY.md`.
+Feature parity with the Windows and Linux app is on hold while that app is paused (2026-11-28). Don't port web or Mac
+features to `apps/desktop` unless the owner asks; `docs/DESKTOP_PARITY.md` is kept for when it resumes.
 
 ## graphify
 

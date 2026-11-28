@@ -4,6 +4,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Current state
 
+- **Android, Windows and Linux are PAUSED since 2026-11-28 (owner):** no releases for them until the owner resumes them; releases are web, Mac, iPhone and iPad, and Folevi Server. The lines below about those three describe the last builds, which stay published (`docs/claude-context/memory/platforms-paused-2026-11-28.md`).
 - Version **1.9.80** (build 111), a Big update released 2026-11-28 from PR 186's merge (`7b16a128`; its tree equals the release branch commit `11b41db4`): the new pricing (every app is free, PR 173), Foli AI on your own key (PR 172), the workspace switch for Foli AI, Space Cherries LLC as operator (PR 180). The owner said "release all" in the PR manager session; no kind was named, so Big was chosen for the new features. Every platform ships it: web, Mac, iPhone and iPad, Android, and Windows and Linux (the Linux session, see below).
 - Web and Convex: 1.9.80 live; Vercel's production deployment of `7b16a128` finished with success, and of `159302fb` (PR 187) after it. Checked by Vercel's status and by fetching pages, not in a browser. Not checked: Admin > Billing setup for a price mismatch against Polar (needs an admin sign-in), and a real purchase.
 - Mac: 1.9.80 (111) published from `7b16a128` with `apps/mac/scripts/publish.mjs`: universal, notarized and stapled ("Notarized Developer ID" for the hosted DMG and the app), `mac/Folevi.dmg` (119,099,710 bytes) and `mac/Folevi-1.9.80.zip` (109,468,650 bytes) match the local builds by SHA-256, Sparkle feed's first item 1.9.80 (111) with deltas from 110, 109 and 108; `Folevi-1.9.80.zip` added to `apps/mac/release-archive/`. Before publishing: `release.mjs` dry run passed and `swift test --filter FoleviMacTests` passed (266 tests). Not run: the app-hosted `FoleviTests` (they launch Folevi Dev in the owner's session). Not opened on a Mac after publishing; nobody has watched a Mac update itself.
@@ -17,6 +18,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Next steps
 
+- The Android, Windows and Linux items below wait until those apps resume (paused 2026-11-28).
 - Android hardware checks nobody has done: the hosted APK on a real phone, sign-in, push. On the emulator the big heading on the first screens briefly showed a duplicated second line before settling; unknown whether that is the emulator or the app.
 - The owner or a signed-in admin opens Admin > Billing setup once and confirms no Polar product shows a price mismatch. The Mac, iPhone, iPad, Android, Windows and Linux apps people have installed were built before the new pricing and own keys; the next build of each carries the native parts (own-key settings on the Mac and iPhone, the new plan copy).
 - Downloads and Vercel's CDN (PR 187, 2026-11-28): `/download/*` carries `CDN-Cache-Control: no-store` since Vercel had cached a 100-byte ranged response for a Linux AppImage and served it to everyone. After any upload to the bucket, check a file with two `Range: bytes=0-99` requests and then a plain request: the full length must come back.

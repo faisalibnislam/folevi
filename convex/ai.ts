@@ -28,6 +28,7 @@ import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blocksToMarkdown } from "@folevi/editor-schema";
+import { SETTINGS_SEARCH_MAX_OPTIONS, SETTINGS_SEARCH_MAX_QUERY, parseSettingsSearch, settingsSearchRequest } from "@folevi/ai-prompts/settingsSearch";
 import { accessAtLeast, documentAccess, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
@@ -65,6 +66,9 @@ import {
   actRequest,
   answerRequest,
   briefRequest,
+  homeSummaryRequest,
+  parseHomeSummary,
+  HOME_SUMMARY_EMPTY,
   citedIndexes,
   cleanToday,
   parseAct,
@@ -898,11 +902,16 @@ export const flowchart = action({
 
 /** What's been happening: recently edited notes and open tasks this person can read. */
 export const recent = internalQuery({
-  args: { scope: vScopeArg, today: v.string() },
-  handler: async (ctx, args): Promise<{ notes: SourceNote[]; tasks: { title: string; due: string | null; note: string }[] }> => {
+  args: {
+    scope: vScopeArg,
+    today: v.string(),
+    /** Notes edited since this time (ms), at most 7 days back; the last 7 days without it. */
+    since: v.optional(v.number()),
+  },
+  handler: async (ctx, args): Promise<{ notes: SourceNote[]; tasks: { title: string; due: string | null; note: string }[]; edited: number }> => {
     const profile = await requireProfile(ctx);
     const { scope } = await resolveScope(ctx, profile, args.scope);
-    const since = Date.now() - 7 * 86_400_000;
+    const since = Math.max(Date.now() - 7 * 86_400_000, args.since ?? 0);
     const docs = await (
       scope.kind === "personal"
         ? ctx.db.query("documents").withIndex("by_owner_updated", (q) => q.eq("ownerProfileId", scope.profileId).gt("updatedAt", since))
@@ -911,10 +920,13 @@ export const recent = internalQuery({
       .order("desc")
       .take(40);
     const notes: SourceNote[] = [];
+    // The notes edited in the window this person can read (of the latest 40), for "From N notes".
+    let edited = 0;
     for (const d of docs) {
-      if (notes.length >= 8) break;
       if (d.inTrash || d.archivedAt || d.kind === "template") continue;
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
+      edited++;
+      if (notes.length >= 8) continue;
       const copy = isSealed(d) ? await readableFor(ctx, d, "ai") : null;
       if (isSealed(d) && !copy) continue;
       notes.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : await textOfNote(ctx, d._id)).slice(0, 2500) });
@@ -939,7 +951,7 @@ export const recent = internalQuery({
       if (!d || isSealed(d)) continue;
       tasks.push({ title: t.title.slice(0, 200), due: t.dueDate ?? null, note: d.title || "Untitled" });
     }
-    return { notes, tasks };
+    return { notes, tasks, edited };
   },
 });
 
@@ -974,6 +986,77 @@ export const brief = action({
       const answer = await streamed(ctx, args.streamId, briefRequest({ today, notes, tasks }), meter);
       const cited = citedIndexes(answer);
       return { answer, sources: notes.map((n, i) => ({ id: n.id, title: n.title, i })).filter((n) => cited.has(n.i)).map(({ id, title }) => ({ id, title })) };
+    }, undefined, provided);
+  },
+});
+
+/**
+ * Settings search with Foli AI: the person's words and the settings the app offers them (id, title, section); the
+ * fast model picks up to three that do what they asked and says in one sentence what to change. Only ids from the
+ * list come back (packages/ai-prompts/src/settingsSearch.ts). Settings asks only when the person chooses "Ask Foli AI".
+ */
+export const settingsSearch = action({
+  args: {
+    ownKey: v.optional(vOwnKey),
+    scope: vScopeArg,
+    query: v.string(),
+    options: v.array(v.object({ key: v.string(), title: v.string(), section: v.string() })),
+  },
+  handler: async (ctx, args): Promise<{ keys: string[]; answer: string }> => {
+    await requireIdentity(ctx);
+    const query = args.query.trim().slice(0, SETTINGS_SEARCH_MAX_QUERY);
+    if (!query) return { keys: [], answer: "" };
+    if (args.options.length > SETTINGS_SEARCH_MAX_OPTIONS) fail("invalid_argument", "Too many settings.");
+    const options = args.options.map((o) => ({ key: o.key.slice(0, 80), title: o.title.slice(0, 80), section: o.section.slice(0, 40) }));
+    const inputChars = PERSONA.length + 700 + query.length + options.reduce((n, o) => n + o.key.length + o.title.length + o.section.length + 8, 0);
+    const plan: PlannedCall[] = [{ fast: true, inputChars, maxOutputTokens: 200 }];
+    const { holdId } = await beginRequest(ctx, { scope: args.scope, plan, feature: "chat" }, args.ownKey);
+    return await metered(ctx, holdId, async (meter) => {
+      const answer = await gemini(settingsSearchRequest({ query, options }), meter);
+      return parseSettingsSearch(answer, new Set(options.map((o) => o.key)));
+    });
+  },
+});
+
+/**
+ * Home's Foli AI summary (the owner, 28 November 2026): one or two sentences on the week and three points, each
+ * with the note (or the open tasks) it comes from, from the notes edited since `since` (the start of the person's
+ * week). Home asks for it once a day while Foli AI is on, and again on Refresh.
+ */
+export const homeSummary = action({
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    scope: vScopeArg,
+    today: v.string(),
+    since: v.number(),
+    /** An encrypted space: the notes edited this week, as the device read them. */
+    provided: v.optional(vProvidedContext),
+  },
+  handler: async (ctx, args): Promise<{ summary: string; points: { text: string; note?: { id: string; title: string }; tasks?: boolean }[]; edited: number }> => {
+    await requireIdentity(ctx);
+    const provided = args.provided;
+    const plan: PlannedCall[] = [{ fast: false, inputChars: PERSONA.length + 700 + 8 * 2600 + 20 * 260, maxOutputTokens: 400 }];
+    const { holdId } = await beginRequest(ctx, { scope: args.scope, plan, feature: "chat", ...(provided ? { provided: providedMeta(provided) } : {}) }, args.ownKey);
+    return await metered(ctx, holdId, async (meter) => {
+      const today = cleanToday(args.today);
+      const { notes, tasks, edited } = provided
+        ? (() => {
+            const all = providedSources(provided);
+            return { notes: all.slice(0, 8).map((n) => ({ ...n, text: n.text.slice(0, 2500) })), tasks: [], edited: all.length };
+          })()
+        : await ctx.runQuery(internal.ai.recent, { scope: args.scope, today, since: args.since });
+      if (!notes.length && !tasks.length) return { summary: HOME_SUMMARY_EMPTY, points: [], edited: 0 };
+      const answer = await streamed(ctx, undefined, homeSummaryRequest({ today, notes, tasks }), meter);
+      const { summary, points } = parseHomeSummary(answer);
+      return {
+        summary,
+        points: points.map((p) => {
+          const n = p.note !== undefined ? notes[p.note] : undefined;
+          return { text: p.text, ...(n ? { note: { id: n.id, title: n.title } } : {}), ...(p.tasks ? { tasks: true } : {}) };
+        }),
+        edited,
+      };
     }, undefined, provided);
   },
 });

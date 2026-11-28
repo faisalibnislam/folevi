@@ -440,7 +440,7 @@ struct RoutesAndMappingTests {
         let now = Date(timeIntervalSince1970: row.updatedAt / 1000 + 5 * 60)
         let card = CardMapping.noteCard(row, now: now)
         #expect(card.createdText == "Created 3 days ago")
-        #expect(card.timeText == "Edited 5 mins ago")
+        #expect(card.timeText == "5 mins ago")
         #expect(card.accessibilityText.contains("edited 5 mins ago"))
         #expect(!card.accessibilityText.contains("edited Edited"))
         #expect(CardMapping.noteCard(row, inTrash: true, now: now).timeText.hasPrefix("Deleted "))

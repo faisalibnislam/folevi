@@ -9,6 +9,7 @@ import { overlaySidebar, overlaySidebarOrder, type SidebarData } from "@/lib/syn
 import type { Outbox } from "@/lib/sync/outbox";
 import { useAppState } from "./state";
 import { beginDrag, dragState, endDrag } from "./dragSession";
+import { setCardDragImage } from "./dragImage";
 
 /** A dragged folder (sidebar rows), by id. */
 export const FOLDER_MIME = "application/x-folevi-folder";
@@ -19,12 +20,10 @@ export function startFolderDrag(e: DragEvent, id: string) {
   e.dataTransfer.effectAllowed = "move";
   e.dataTransfer.setData(FOLDER_MIME, id);
   beginDrag({ kind: "folder", id });
-  // The pointer carries the row itself (a link would show the browser's chip with its address).
+  // The pointer carries the card or row itself (a link would show the browser's chip with its address), as a
+  // transparent copy with its whole shadow (lib/app/dragImage.ts).
   const row = e.currentTarget instanceof HTMLElement ? (e.currentTarget.closest<HTMLElement>("[data-drop-folder]") ?? e.currentTarget) : null;
-  if (row) {
-    const box = row.getBoundingClientRect();
-    e.dataTransfer.setDragImage(row, Math.min(Math.max(e.clientX - box.left, 0), box.width), Math.min(Math.max(e.clientY - box.top, 0), box.height));
-  }
+  if (row) setCardDragImage(e, row);
 }
 
 export function endFolderDrag() {

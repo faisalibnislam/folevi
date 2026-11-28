@@ -17,7 +17,8 @@ test("tasks: quick add with priority, My Tasks in Personal, edit/cancel from the
   await page.getByRole("link", { name: /^My tasks/ }).click();
   const row = page.getByRole("listitem").filter({ hasText: "Plan the herb bed" });
   await expect(row).toBeVisible();
-  await expect(row.getByText("High")).toBeVisible();
+  // Priority shows as a flag (the owner's Tasks redesign, PR 190), named for screen readers.
+  await expect(row.getByRole("img", { name: "High priority" })).toBeVisible();
 
   // Edit metadata without opening the page: cancel it.
   await row.hover();

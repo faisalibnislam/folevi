@@ -285,7 +285,7 @@ public enum FoleviTokens {
             public static let gap: CGFloat = 8
             public static let icon: CGFloat = 16
             public static let compactIcon: CGFloat = 14
-            public static let iconStroke: CGFloat = 1.5
+            public static let iconStroke: CGFloat = 1.25
             public static let border: CGFloat = 1
             public static let segmentInset: CGFloat = 4
             public static let labelWeight: CGFloat = 550
@@ -300,7 +300,7 @@ public enum FoleviTokens {
             public static let gap: CGFloat = 8
             public static let icon: CGFloat = 20
             public static let compactIcon: CGFloat = 18
-            public static let iconStroke: CGFloat = 1.75
+            public static let iconStroke: CGFloat = 1.5
             public static let border: CGFloat = 1
             public static let segmentInset: CGFloat = 4
             public static let labelWeight: CGFloat = 550

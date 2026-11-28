@@ -30,11 +30,13 @@ describe("labels", () => {
     expect(templatesCountText(0, 3)).toBe("3 custom templates");
     expect(templatesCountText(26, 50, true)).toBe("26 built-in · 50+ custom templates");
   });
-  test("a card names its created and edited times (F14)", () => {
+  // F14 named both times; since 28 November 2026 the footer's last edit is the bare date (the owner: no "Edited"
+  // word on note or folder cards). "Created" still names itself, so the two can't be confused.
+  test("a card names its created time and shows its last edit bare (F14)", () => {
     const now = Date.UTC(2026, 10, 5, 12);
     expect(createdText(now - 24 * 60_000, now)).toBe("Created 24 mins ago");
-    expect(editedText(now - 3 * 60_000, now)).toBe("Edited 3 mins ago");
-    expect(editedText(now - 10_000, now)).toBe("Edited just now");
+    expect(editedText(now - 3 * 60_000, now)).toBe("3 mins ago");
+    expect(editedText(now - 10_000, now)).not.toMatch(/^Edited/);
   });
 });
 

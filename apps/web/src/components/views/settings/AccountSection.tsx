@@ -86,7 +86,6 @@ export function AccountSection() {
         <IosSection footer="Used for Today, the calendar and reminders.">
           <ChoiceRow screen="time-zone" label="Time zone" value={timeZone} filter choices={zones.map((z) => ({ value: z, label: z.replace(/_/g, " ") }))} onChange={(z) => void update({ timeZone: z })} />
         </IosSection>
-        <AiSettingCard />
       </>
     );
   }
@@ -140,7 +139,6 @@ export function AccountSection() {
           </div>
         </form>
       </Card>
-      <AiSettingCard />
     </>
   );
 }

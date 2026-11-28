@@ -11,12 +11,33 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadFailed } from "@/components/ui/LoadFailed";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { roleLabel, sharedPlace } from "@/lib/app/folderSharing";
+import { useMemo, useState } from "react";
+import { NoteColumns } from "./NoteColumns";
+import { FilterField } from "./ListPageHeader";
+import type { ColumnsInput, Summary } from "./DocumentBrowser";
 
-/** Shared with Me: folders shared with this person (docs/SHARING.md), then pages shared with them one by one. */
-export function SharedView() {
+const NONE = new Set<string>();
+
+/**
+ * Shared with Me: folders shared with this person (docs/SHARING.md), then pages shared with them one by one. In the
+ * columns layout (docs/NOTE_COLUMNS.md) the pages are the column's rows, under the folders and Vault items.
+ */
+export function SharedView({ columns }: { columns?: ColumnsInput } = {}) {
   const docsState = useQueryState(api.sharing.sharedWithMe, {});
   const foldersState = useQueryState(api.folderSharing.sharedFolders, {});
   const docs = docsState.data;
+  const [q, setQ] = useState("");
+  const rows = useMemo(
+    () =>
+      (docs ?? [])
+        .map((d) => ({ ...d, starred: false, tags: [], homeFolder: null, folderId: null, kind: "document" }) as unknown as Summary)
+        .sort((a, b) => b.updatedAt - a.updatedAt),
+    [docs],
+  );
+  const shownRows = useMemo(() => {
+    const needle = q.trim().toLocaleLowerCase();
+    return needle ? rows.filter((d) => (d.title || "Untitled").toLocaleLowerCase().includes(needle) || (d.excerpt ?? "").toLocaleLowerCase().includes(needle)) : rows;
+  }, [rows, q]);
   const folders = foldersState.data;
   // Either list failed (it keeps retrying): said in place of the loading placeholder.
   const failed = (docs === undefined && docsState.failed) || (folders === undefined && foldersState.failed);
@@ -31,6 +52,59 @@ export function SharedView() {
       ]
         .filter(Boolean)
         .join(" · ");
+  if (columns) {
+    return (
+      <NoteColumns
+        list={columns.list}
+        noteId={columns.noteId}
+        row={columns.row ?? columns.noteId}
+        note={columns.note}
+        view="shared"
+        title="Shared with Me"
+        count={counts}
+        docs={rows}
+        shown={shownRows}
+        loading={loading && !failed}
+        failed={loading && failed ? { what: "what’s shared with you", onRetry: () => (docsState.retry(), foldersState.retry()) } : undefined}
+        canLoadMore={false}
+        onLoadMore={() => undefined}
+        sort="updated"
+        filter={rows.length || q ? <FilterField value={q} onChange={setQ} label="Filter notes" /> : null}
+        controls={null}
+        empty={{ icon: Share2, title: "Nothing has been shared with you yet", body: "Folders and pages people share with you, from their Personal or from any workspace, show up here." }}
+        filtering={q.trim() !== ""}
+        filterEmpty={<p className="px-3 pt-4 text-subheadline text-muted">No notes match “{q.trim()}”.</p>}
+        rowProps={() => ({})}
+        rowMenu={() => null}
+        selected={NONE}
+        unsynced={NONE}
+        unsyncedMark={null}
+        dropTarget={null}
+        overlay={null}
+        before={
+          folders?.length ? (
+            <section aria-label="Folders">
+              <h2 className="ui-caption-caps px-3 pb-1.5 pt-4">Folders</h2>
+              <ul>
+                {folders.map((f) => (
+                  <li key={f.id}>
+                    <AppLink href={`/shared/${f.id}`} className="flex items-center gap-2 rounded-chip px-3 py-2 outline-none hover:bg-[var(--glass-hover)] focus-visible:ring-2 focus-visible:ring-focus">
+                      <FolderGlyph color={f.color} size={16} />
+                      <span className="min-w-0 flex-1">
+                        <span className="ui-list-name block truncate">{f.name || "Untitled"}</span>
+                        <span className="ui-list-meta block truncate">Shared by {f.sharedBy}</span>
+                      </span>
+                    </AppLink>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null
+        }
+        after={<SharedVaultItems />}
+      />
+    );
+  }
   return (
     <ViewChrome
       title={<h1 className="text-subheadline font-semibold">Shared with Me</h1>}

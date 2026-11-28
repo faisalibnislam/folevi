@@ -1,7 +1,11 @@
 "use client";
 
+import { useNavRoute, useNoteColumnsActive } from "@/lib/app/useNoteColumns";
+import { useCreateDocument } from "./useCreateDocument";
+import { useKeyLabels } from "@/lib/shortcuts";
+import { SquarePen } from "lucide-react";
 import { useMutation } from "convex/react";
-import { Fragment, useEffect, useId, useMemo, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowDownUp, Archive, CalendarDays, SquareCheckBig, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, SlidersHorizontal, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
 import { Bookmark } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -34,6 +38,7 @@ import { flattenFolders, folderAncestors } from "@folevi/editor-schema";
 import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { applySidebarOrder, planSidebarDrop, setSidebarTreeDrops, SIDEBAR_FOLDER_SORTS, sortSidebarFolders, type SidebarFolderSort } from "@/lib/app/sidebarFolderSort";
 import { folderPlace } from "@/lib/app/folderDrop";
+import { FILLED_SIDEBAR_ICONS } from "./SidebarFilledIcons";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useBackendMode, useCanCall, useCapabilities } from "@/lib/mode";
@@ -103,6 +108,7 @@ function menuPoint(e: React.MouseEvent | React.KeyboardEvent): { x: number; y: n
 function NavItem({
   href,
   icon,
+  activeIcon,
   label,
   count,
   onNavigate,
@@ -116,6 +122,8 @@ function NavItem({
 }: {
   href: string;
   icon: React.ReactNode;
+  /** The icon filled, shown while the item is selected (SidebarFilledIcons.tsx). */
+  activeIcon?: React.ReactNode;
   label: string;
   count?: number;
   onNavigate?: () => void;
@@ -134,7 +142,7 @@ function NavItem({
   /** The row's right-click menu (the app's own items: Move to More, Customize sidebar). */
   menu?: MenuItem[];
 }) {
-  const { route } = useAppRouter();
+  const route = useNavRoute();
   const tabClicks = useFolderTabClicks(tabFolder ?? { id: "", name: "" });
   const active = isActive(route, href);
   const hint = useDropHint(dropFolderId ?? "\u0000");
@@ -185,7 +193,7 @@ function NavItem({
       } ${over ? "bg-[var(--glass-active)] text-heading ring-2 ring-heading" : ""} focus-visible:ring-2 focus-visible:ring-focus`}
     >
       <span className={`transition-colors ${active ? "text-heading" : "text-muted group-hover:text-heading"}`} aria-hidden>
-        {icon}
+        {active && activeIcon ? activeIcon : icon}
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {locked ? <LockGlyph /> : null}
@@ -270,7 +278,7 @@ function MoreLink({ href, count, noun, onNavigate, exact = true }: { href: strin
 }
 
 function Section({ title, href, children, action, defaultOpen = true, onNavigate }: { title: string; href?: string; children: React.ReactNode; action?: React.ReactNode; defaultOpen?: boolean; onNavigate?: () => void }) {
-  const { route } = useAppRouter();
+  const route = useNavRoute();
   // Follows `defaultOpen` (which may only be known once data loads) until the person toggles it; their
   // choice is remembered on this device (e.g. Tags stays open once opened).
   const [toggled, setToggled] = useLocalStorage<boolean | null>(`folevi:sidebar-section:${title.toLowerCase()}`, null);
@@ -469,16 +477,35 @@ function TagMenu({ tag }: { tag: { id: string; name: string; color: string } }) 
 /** "Search or jump to…" (⌘K): the same box at the top of the app's sidebar and of a note's own sidebar. */
 export function SidebarSearch() {
   const { openPalette } = useShell();
-  return (
+  // In the columns layout there's no tab bar: New note sits beside the search box (docs/NOTE_COLUMNS.md).
+  const columnsOn = useNoteColumnsActive();
+  const createDocument = useCreateDocument();
+  const keys = useKeyLabels();
+  const search = (
     <button
       type="button"
       onClick={openPalette}
       className="ui-well flex h-9 w-full items-center gap-2 rounded-control pl-3 pr-1.5 text-left text-subheadline text-muted transition-colors hover:text-ink pointer-coarse:h-11"
     >
       <Search size={14} aria-hidden />
-      <span className="flex-1">Search or jump to…</span>
+      <span className="min-w-0 flex-1 truncate">Search or jump to…</span>
       <Kbd>{modKey()}K</Kbd>
     </button>
+  );
+  if (!columnsOn) return search;
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="min-w-0 flex-1">{search}</div>
+      <button
+        type="button"
+        aria-label="New note"
+        title={keys("New note (⌘⌥N)")}
+        onClick={() => void createDocument({})}
+        className="ui-hit grid size-9 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:size-11"
+      >
+        <SquarePen size={16} aria-hidden />
+      </button>
+    </div>
   );
 }
 
@@ -533,6 +560,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const starred = useOfflineQuery(api.documents.list, { scope, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
   const folderActions = useFolderActions();
   const { route } = useAppRouter();
+  // A note open in a list's column is in that list (docs/NOTE_COLUMNS.md).
+  const navRoute = useNavRoute();
   // Changes others made in notes you've opened (everywhere), leaving out the note in front of you.
   // (Local mode has no Changes: nobody else edits a library, docs/LOCAL_MODE_PLAN.md §5.2.)
   const caps = useCapabilities();
@@ -617,7 +646,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   };
   // Only the first few top-level folders and tags are listed (plus the one you're in, opened down to it);
   // "+N more" opens the full list.
-  const activeFolder = route.name === "folder" ? folders.find((f) => f.id === route.id) : undefined;
+  const activeFolder = navRoute.name === "folder" ? folders.find((f) => f.id === navRoute.id) : undefined;
   const activePath = activeFolder ? folderAncestors(folders, activeFolder.id) : [];
   const activeRootId = activeFolder ? (activePath[0]?.id ?? activeFolder.id) : null;
   const shownRoots = allFoldersShown ? roots : roots.filter((f, i) => i < SIDEBAR_LIMIT || f.id === activeRootId);
@@ -658,7 +687,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const draggedIsNested = draggedFolder !== null && Boolean(folders.find((f) => f.id === draggedFolder)?.parentFolderId);
   const hiddenFolders = folders.length - shownFolderCount;
   const allTags = org?.tags ?? [];
-  const shownTags = allTags.filter((t, i) => i < SIDEBAR_LIMIT || (route.name === "tag" && route.id === t.id));
+  const shownTags = allTags.filter((t, i) => i < SIDEBAR_LIMIT || (navRoute.name === "tag" && navRoute.id === t.id));
 
   // The app's own items (lib/app/sidebarLayout.ts): on the sidebar or under More, in this person's order, saved
   // with their account. Each shows only where it's available here (Foli AI when it's on, Changes where others edit).
@@ -688,13 +717,18 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // (Templates on the sidebar waits with the rows below it, so nothing jumps as the start settles: see lowerSettled.)
   const onSidebar = shownIds.filter((s) => !s.more && (s.id !== "templates" || lowerSettled)).map((s) => s.id);
   const underMore = shownIds.filter((s) => s.more).map((s) => s.id);
-  // More starts closed and remembers being opened or closed on this device; it opens by itself for the page you're on.
+  // More starts closed and remembers being opened or closed on this device. It opens by itself when you go to a page
+  // under it, once: after that its toggle is yours, so it closes even while that page is open (the owner, 28 November
+  // 2026: "more isn't collapsing/expanding properly").
   const [moreToggled, setMoreOpen] = useLocalStorage("folevi:sidebar-more-open", false);
-  const activeInMore = underMore.some((id) => isActive(route, SIDEBAR_ITEMS[id].href));
+  const activeInMore = underMore.some((id) => isActive(navRoute, SIDEBAR_ITEMS[id].href));
+  // (Starts false, so a page opened straight from its address, under More, opens it too.)
+  const wasInMore = useRef(false);
   useEffect(() => {
-    if (activeInMore && !moreToggled) setMoreOpen(true);
-  }, [activeInMore, moreToggled, setMoreOpen]);
-  const moreOpen = moreToggled || activeInMore;
+    if (activeInMore && !wasInMore.current) setMoreOpen(true);
+    wasInMore.current = activeInMore;
+  }, [activeInMore, setMoreOpen]);
+  const moreOpen = moreToggled === true;
   const customizeItems = useMemo(
     () => new Map(shownIds.map((s) => [s.id, { label: SIDEBAR_ITEMS[s.id].label, icon: SIDEBAR_ITEMS[s.id].icon }] as const)),
     // (shownIds is new each render; its ids are what matter.)
@@ -708,7 +742,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     return [{ label: more ? "Move to sidebar" : "Move to More", onSelect: () => saveLayout(moveSidebarItem(layout, id, !more)) }, customize];
   };
   const item = (id: SidebarItemId, extra?: Partial<Parameters<typeof NavItem>[0]>) => (
-    <NavItem href={SIDEBAR_ITEMS[id].href} icon={SIDEBAR_ITEMS[id].icon} label={SIDEBAR_ITEMS[id].label} onNavigate={onNavigate} menu={itemMenu(id)} {...extra} />
+    <NavItem href={SIDEBAR_ITEMS[id].href} icon={SIDEBAR_ITEMS[id].icon} activeIcon={FILLED_SIDEBAR_ICONS[id]} label={SIDEBAR_ITEMS[id].label} onNavigate={onNavigate} menu={itemMenu(id)} {...extra} />
   );
   const renderItem = (id: SidebarItemId): React.ReactNode => {
     switch (id) {

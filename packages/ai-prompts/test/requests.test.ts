@@ -250,3 +250,23 @@ describe("block requests", () => {
     expect(words.fast).toBeUndefined();
   });
 });
+
+describe("Home's Foli AI summary", () => {
+  it("asks for a short summary and three cited points", () => {
+    const req = ask.homeSummaryRequest({ today: "2026-11-28", notes: [{ id: "a", title: "Atlas", text: "Brief" }], tasks: [{ title: "Book ferry", due: "2026-11-27", note: "Trip" }] });
+    expect(req.prompt).toContain("[1] Atlas");
+    expect(req.prompt).toContain("Book ferry (due 2026-11-27)");
+    expect(req.maxOutputTokens).toBeLessThanOrEqual(400);
+  });
+
+  it("reads the reply: the sentences, then at most three points with their note or the tasks", () => {
+    const parsed = ask.parseHomeSummary("A busy week on **Atlas** [1].\n\n- The brief is nearly done [1]\n- Two tasks are overdue [tasks]\n* Mira asked about plot sizes [2]\n- A fourth point [3]");
+    expect(parsed.summary).toBe("A busy week on Atlas.");
+    expect(parsed.points).toEqual([
+      { text: "The brief is nearly done", note: 0 },
+      { text: "Two tasks are overdue", tasks: true },
+      { text: "Mira asked about plot sizes", note: 1 },
+    ]);
+    expect(ask.parseHomeSummary("Just a sentence.")).toEqual({ summary: "Just a sentence.", points: [] });
+  });
+});

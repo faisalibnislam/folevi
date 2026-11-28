@@ -1,5 +1,7 @@
 "use client";
 
+import { ColumnsCornerButtons } from "./SidebarMenu";
+import { useColumnsList, useNoteColumnsActive } from "@/lib/app/useNoteColumns";
 import { createContext, Fragment, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@/lib/convex/queries";
 import { useOfflineQuery } from "@/lib/sync/queryCache";
@@ -434,7 +436,10 @@ function WebShell() {
   const { profile, context } = useAppState();
   const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
   const [docSidebarMode, setDocSidebarModePref] = useLocalStorage<"document" | "folders">("folevi:doc-sidebar-mode", "document");
-  const pageSidebar = route.name === "doc" && docSidebarMode === "document" && !iphone;
+  // A note open in a list's column keeps the app's sidebar: the list beside it is what you browse (docs/NOTE_COLUMNS.md).
+  const columns = useColumnsList();
+  const pageSidebar = route.name === "doc" && docSidebarMode === "document" && !iphone && !columns;
+  const columnsOn = useNoteColumnsActive();
 
   // "Use this template" on folevi.com: open the picked template as a new page, once, as soon as the app can
   // create pages (after onboarding; straight away for someone already signed in, via ?template=).
@@ -795,9 +800,11 @@ function WebShell() {
         ) : null}
         {/* While the modal drawer is open, the page behind it is inert (not focusable, hidden from AT). */}
         {/* The content panel. A note brings its own panel (its page on its backdrop), so it sits straight on the canvas. */}
-        <div ref={contentPanel} className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" ? "" : "ui-content overflow-hidden rounded-container"}`} inert={isNarrow && drawerOpen}>
+        <div ref={contentPanel} className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" || columns ? "" : "ui-content overflow-hidden rounded-container"}`} inert={isNarrow && drawerOpen}>
           {/* The tab strip floats over the view: content scrolls behind it (views pad their top to clear it). */}
-          {!isNarrow ? <TabStrip /> : null}
+          {/* (No tab bar in the columns layout: New note is beside the search box, docs/NOTE_COLUMNS.md.) */}
+          {!isNarrow && !columnsOn ? <TabStrip /> : null}
+          {!isNarrow && columnsOn && !columns ? <ColumnsCornerButtons /> : null}
           <RouteView />
         </div>
       </div>
@@ -817,6 +824,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   const inIphone = useIphoneApp();
   const ipad = useIpadLayout();
   const ipadNativeWide = useIpadNativeWide();
+  const noStrip = useNoteColumnsActive();
   const pane = usePane();
   // A floating note's window (components/app/FloatNote.tsx): its own slim bar has the name; the view is the note.
   const floating = useFloating();
@@ -922,10 +930,11 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   const inFlow = route.name !== "doc" && !drawerMode;
   // Room for the floating tab strip (desktop); list views scroll underneath it.
   // (The iPad's strip is taller: 52 pt, 8 from the top.)
-  const clear = drawerMode ? "" : ipad ? "pt-[68px] [scroll-padding-top:72px]" : "pt-[56px] [scroll-padding-top:60px]";
+  // (The columns layout has no tab strip: only a little air at the top.)
+  const clear = drawerMode ? "" : noStrip ? "pt-3" : ipad ? "pt-[68px] [scroll-padding-top:72px]" : "pt-[56px] [scroll-padding-top:60px]";
   return (
     <div className={`relative flex min-h-0 flex-1 flex-col ${tint ? "ui-view-tint" : ""} ${invert ? "ui-invert bg-canvas text-ink" : ""}`} style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}>
-      {inFlow ? null : <div className={drawerMode ? "" : ipad ? "pt-[68px]" : "pt-[56px]"}>{bar}</div>}
+      {inFlow ? null : <div className={drawerMode ? "" : noStrip ? "pt-2" : ipad ? "pt-[68px]" : "pt-[56px]"}>{bar}</div>}
       {/* A note scrolls inside its own page, so <main> doesn't clip: the page's edge and shadow show whole, and the
           tools panel can run to the window's bottom edge. */}
       <main id="main" tabIndex={-1} className={`min-h-0 flex-1 outline-none ${route.name === "doc" && !drawerMode ? "overflow-visible" : "overflow-y-auto"} ${inFlow ? clear : ""}`}>

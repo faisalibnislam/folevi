@@ -36,7 +36,7 @@ test("menus, panels and editor popups are never clipped or covered", async ({ br
   await page.keyboard.press("Escape");
 
   // Folder card menu.
-  const folder = page.locator('[aria-labelledby="home-recent-folders"] li').first();
+  const folder = page.locator('[aria-labelledby="home-folders-title"] li').first();
   await folder.hover();
   await folder.getByRole("button", { name: /^Folder options for/ }).click();
   await expectOnTop(page, page.getByRole("menu", { name: /^Folder options for/ }), "folder card menu");

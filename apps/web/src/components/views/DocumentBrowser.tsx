@@ -2,9 +2,8 @@
 
 import { useMutation } from "convex/react";
 import { usePaginatedQuery, useQuery } from "@/lib/convex/queries";
-import { useCardSizes } from "@/lib/cardSize";
 import { lazy, startTransition, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, PencilLine, Plus, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
@@ -27,13 +26,12 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
 import { folderHex } from "@/lib/folderColors";
 import { useCreateDocument } from "@/components/app/useCreateDocument";
-import { ageText, editedText, formatRelative, templatesCountText } from "@/lib/format";
+import { editedText, formatRelative, templatesCountText } from "@/lib/format";
 import { t } from "@/i18n";
 import { localDb } from "@/lib/sync/db";
 import { onMemoryPressure } from "@/lib/memoryPressure";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
-import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
-import { FolderBadge } from "./FolderBadge";
+import { NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderCard, type FolderSummary } from "./FolderCard";
 import { pendingByDocument, type PendingDocument } from "@/lib/hooks/usePendingDocs";
 import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
@@ -53,6 +51,7 @@ import { FolderShareDialog } from "@/components/app/FolderShareDialog";
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { FilterField, ListPageHeader, ROW_ICON_BUTTON, ROW_SEG, RowSort, RowTraySep, SECTION_LABEL } from "./ListPageHeader";
+import { NoteColumns } from "./NoteColumns";
 
 // Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
 // time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
@@ -68,8 +67,10 @@ function UnsyncedMarker({ className = "" }: { className?: string }) {
   );
 }
 
-type View = "all" | "starred" | "archive" | "trash" | "templates" | "unsorted" | "folder" | "tag";
-type Layout = "grid" | "compact" | "list";
+/** `folders`: every note in a folder, the Folders page in the columns layout (docs/NOTE_COLUMNS.md). */
+type View = "all" | "starred" | "archive" | "trash" | "templates" | "unsorted" | "folder" | "folders" | "tag";
+/** Grid or List; the Compact cards view is gone (the owner, 28 November 2026), and a saved "compact" shows the grid. */
+type Layout = "grid" | "list";
 type Sort = "updated" | "created" | "title" | "manual";
 const NOTE_SORTS: readonly (readonly [Sort, string])[] = [
   ["updated", "Last edited"],
@@ -86,6 +87,7 @@ const TITLES: Record<View, string> = {
   templates: "Templates",
   unsorted: "Drafts",
   folder: "Folder",
+  folders: "All folders",
   tag: "Tag",
 };
 
@@ -98,6 +100,7 @@ const LIST_WHAT: Record<View, string> = {
   templates: "your templates",
   unsorted: "your drafts",
   folder: "this folder",
+  folders: "your folders",
   tag: "this tag",
 };
 
@@ -110,6 +113,7 @@ const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = 
   templates: { icon: LayoutTemplate, title: "No templates of your own yet", body: "Save any note as a template from its menu." },
   unsorted: { icon: Inbox, title: "No drafts", body: "Notes without a folder show up here." },
   folder: { icon: FolderOpen, title: "This folder is empty", body: "Start a note here, or move one in with Move to folder." },
+  folders: { icon: FolderOpen, title: "No notes in folders yet", body: "Move a note into a folder, or start one in a folder." },
   tag: { icon: Hash, title: "No notes with this tag yet", body: "Add tags to a note from its Info panel." },
 };
 
@@ -147,7 +151,16 @@ function samePending(a: PendingDocument[], b: PendingDocument[]): boolean {
 
 export type Summary = NonNullable<ReturnType<typeof usePaginatedQuery<typeof api.documents.list>>["results"]>[number];
 
-export function DocumentBrowser({ view, folderId, tagId, title }: { view: View; folderId?: string; tagId?: string; title?: string }) {
+/** The columns layout (docs/NOTE_COLUMNS.md): the list's path, the note open in it, and that note's page. */
+export interface ColumnsInput {
+  list: string;
+  noteId: string | null;
+  /** The row marked open: the note, or the top note a nested page is inside. */
+  row?: string | null;
+  note: ReactNode;
+}
+
+export function DocumentBrowser({ view, folderId, tagId, title, columns }: { view: View; folderId?: string; tagId?: string; title?: string; columns?: ColumnsInput }) {
   const { scope } = useAppState();
   const { data: org, fromCache } = useFolderTreeState(scope);
   // A folder/tag link that doesn't resolve in the current context (deleted, mistyped, or from Personal while a
@@ -158,7 +171,7 @@ export function DocumentBrowser({ view, folderId, tagId, title }: { view: View; 
     !fromCache &&
     ((view === "folder" && !org.folders.some((f) => f.id === folderId)) || (view === "tag" && !org.tags.some((t) => t.id === tagId)));
   if (missing) return <MissingContainer kind={view === "folder" ? "folder" : "tag"} />;
-  return <DocumentList view={view} folderId={folderId} tagId={tagId} org={org} titleOverride={title} />;
+  return <DocumentList view={view} folderId={folderId} tagId={tagId} org={org} titleOverride={title} columns={columns} />;
 }
 
 function MissingContainer({ kind }: { kind: "folder" | "tag" }) {
@@ -203,6 +216,7 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
   switch (view) {
     case "all":
     case "folder":
+    case "folders":
       return ordered || !online ? (d) => page(d) && live(d) && !d.parentDocumentId : null;
     case "unsorted":
       return ordered || !online ? (d) => page(d) && live(d) && !d.parentDocumentId && !(d as { folderId?: string | null }).folderId : null;
@@ -215,17 +229,19 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
   }
 }
 
-function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
-  const { scale: cardScale } = useCardSizes();
+function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string; columns?: ColumnsInput }) {
   const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
-  const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
+  const [savedLayout, setLayout] = useLocalStorage<Layout | "compact">(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
+  const layout: Layout = savedLayout === "list" ? "list" : "grid";
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
   // A folder made on this device whose creation is still in the outbox (just made, or made offline) isn't on
   // the server (or in the library) yet: asking for its notes would fail as not found and take the page down.
   // Until it's there it's an empty folder; its notes, if any were filed while it waited, arrive with it.
   const queued = useOutboxEntries(outbox);
   const unsent = view === "folder" && !!folderId && queued.some((e) => e.creates?.includes(folderId));
-  const paged = usePaginatedQuery(api.documents.list, unsent ? "skip" : { scope, view, folderId, tagId, sort }, { initialNumItems: PAGE_SIZE });
+  // The Folders page's notes are All notes' without Drafts (filed below): the server has no list of its own for them.
+  const serverView = view === "folders" ? "all" : view;
+  const paged = usePaginatedQuery(api.documents.list, unsent ? "skip" : { scope, view: serverView, folderId, tagId, sort }, { initialNumItems: PAGE_SIZE });
   const { results, loadMore } = paged;
   const status = unsent ? ("Exhausted" as const) : paged.status;
   const builtIns = useQuery(api.settings.builtInTemplates, view === "templates" ? {} : "skip");
@@ -320,12 +336,13 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   // Notes made (or renamed, or moved) on this device that the server doesn't have yet show in their lists at
   // once, marked as waiting to sync (lib/sync/localNotes.ts).
   const offlineNoList = status === "LoadingFirstPage" && !cached && !online;
-  const docs =
+  const withLocal =
     useNotesWithLocal(offlineNoList ? undefined : served, {
-      include: view === "all" ? "all" : view === "unsorted" ? "drafts" : view === "folder" ? "folder" : "none",
+      include: view === "all" || view === "folders" ? "all" : view === "unsorted" ? "drafts" : view === "folder" ? "folder" : "none",
       folderId,
       byUpdated: sort === "updated",
     }) ?? served;
+  const docs = useMemo(() => (view === "folders" ? withLocal.filter((d) => d.folderId) : withLocal), [view, withLocal]);
   // "Filter notes" narrows the notes loaded so far, by title or text (as the iPhone's list does); it starts empty on
   // each list. Typing in it never asks the server: Search looks through every note.
   const [filterState, setFilterState] = useState({ view, q: "" });
@@ -367,7 +384,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   // its notes in its own way.)
   const selectable = view !== "templates";
   // While filtering, the page shows only the notes that match: its folders step aside.
-  const subfolderIds = useMemo(() => (iphone || filtering ? [] : subfolders.map((f) => f.id)), [iphone, filtering, subfolders]);
+  // (The columns layout's note column shows notes only: the sidebar has the folders inside.)
+  const subfolderIds = useMemo(() => (iphone || filtering || columns ? [] : subfolders.map((f) => f.id)), [iphone, filtering, columns, subfolders]);
   const itemIds = useMemo(() => [...subfolderIds, ...shown.map((d) => d.id)], [subfolderIds, shown]);
   const selection = useCardSelection(itemIds, selectable);
   const selectedEntries = useMemo<SelectionEntry[]>(() => {
@@ -455,6 +473,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const menuProps = (d: Summary) => ({
     doc: d,
     view,
+    columns: Boolean(columns),
     arrange: canArrange ? { up: () => nudge(d.id, -1), down: () => nudge(d.id, 1) } : undefined,
     select: selectable ? { selected: selection.selected.has(d.id), toggle: () => selection.toggle(d.id) } : undefined,
   });
@@ -497,7 +516,6 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       {(
         [
           ["grid", "Grid", <LayoutGrid key="g" size={15} />],
-          ["compact", "Compact cards", <Rows3 key="c" size={15} />],
           ["list", "List", <List key="l" size={15} />],
         ] as const
       ).map(([value, label, icon]) => (
@@ -560,10 +578,71 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     </>
   );
 
+  if (columns && !iphone) {
+    return (
+      <NoteColumns
+        list={columns.list}
+        noteId={columns.noteId}
+        row={columns.row ?? columns.noteId}
+        note={columns.note}
+        view={view}
+        title={title}
+        mark={view === "folder" ? <FolderGlyph color={folder?.color} size={20} /> : undefined}
+        count={loading || listEmpty ? undefined : sentence([countText, !online && cached ? "saved on this device" : null, canArrange ? "drag to arrange" : null].filter(Boolean).join(" · "))}
+        docs={docs}
+        shown={shown}
+        loading={loading}
+        failed={listFailed ? { what: LIST_WHAT[view], onRetry: paged.retry } : undefined}
+        canLoadMore={canLoadMore}
+        onLoadMore={() => (moreCached ? setCachedShown((n) => n + PAGE_SIZE) : loadMore(PAGE_SIZE))}
+        sort={sort}
+        filter={filterField(false)}
+        controls={
+          <>
+            {/* Nothing to sort in an empty list (the owner: not on an empty Archive or folder). */}
+            {listEmpty ? null : <ColumnSort value={sort} onChange={setSort} />}
+            {/* (A folder's options, Share among them, are its right-click menu in the sidebar: the column's head keeps to
+                Sort.) */}
+            {view === "trash" && results.length ? (
+              <MenuButton label="Trash actions" trigger={<MoreHorizontal size={15} aria-hidden />} triggerClassName={ROW_ICON_BUTTON} items={[{ label: "Empty Trash…", icon: <Trash2 size={14} />, danger: true, onSelect: () => setConfirmEmpty(true) }]} />
+            ) : null}
+          </>
+        }
+        empty={{
+          ...EMPTY[view],
+          action:
+            view === "all" || view === "folder" || view === "unsorted" ? (
+              <Button variant="primary" onClick={() => void createDocument({})}>
+                <Plus size={14} aria-hidden /> New note
+              </Button>
+            ) : undefined,
+        }}
+        filtering={filtering}
+        filterEmpty={<p className="px-3 pt-4 text-subheadline text-muted">No notes match “{q.trim()}”.</p>}
+        rowProps={cardProps}
+        rowMenu={(d) => <DocMenu {...menuProps(d)} />}
+        selected={selection.selected}
+        unsynced={unsynced}
+        unsyncedMark={<UnsyncedMarker />}
+        dropTarget={dropTarget}
+        overlay={
+          selection.selectedIds.length ? (
+            <SelectionBar count={selection.selectedIds.length} total={itemIds.length} actions={bulkActions} onSelectAll={selection.selectAll} onClear={selection.clear} label={selectionActions.label} />
+          ) : null
+        }
+      >
+        {ctx ? <NoteContextMenu key={ctx.doc.id + ctx.at.x + ctx.at.y} at={ctx.at} onDone={() => setCtx(null)} {...menuProps(ctx.doc)} /> : null}
+        {selectionCtx ? <ContextMenu key={selectionCtx.x + selectionCtx.y} at={selectionCtx} label={`${selectionActions.noun} selected`} items={selectionActions.menuItems} onClose={() => setSelectionCtx(null)} /> : null}
+        {dialogs}
+      </NoteColumns>
+    );
+  }
+
   if (iphone) {
     return (
       <IphoneNoteList
-        view={view}
+        // (The phone shows the Folders page as folders: its notes view is only drawn in the columns layout.)
+        view={view === "folders" ? "all" : view}
         title={title}
         docs={docs}
         loading={loading}
@@ -746,6 +825,12 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           </section>
         ) : null}
 
+        {/* A folder with folders and notes names both sections (the owner, 28 November 2026). */}
+        {subfolderCards.length && !filtering && !loading && !listFailed && docs.length ? (
+          <h2 data-section-label="" className={SECTION_LABEL}>
+            Notes
+          </h2>
+        ) : null}
         {loading ? (
           <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy>
             {Array.from({ length: 8 }).map((_, i) => (
@@ -771,40 +856,70 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             }
           />
         ) : layout === "list" ? (
-          <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
+          // Apple Notes-style rows (the owner, 28 November 2026): the serif title over the note's first words on the left,
+          // the time over its folder (or Draft) and tags on the right. Hairlines start at the text and stop before the
+          // last row; the "…" and the drag handle show on hover.
+          <ul aria-label="Notes" className="-mx-3">
             {shown.map((d) => {
               const on = selection.selected.has(d.id);
+              const time = view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : editedText(d.updatedAt);
+              const firstWords = d.excerpt.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
               return (
                 <li
                   key={d.id}
-                  className={`group flex items-center gap-3 px-4 py-2.5 ${on ? "bg-[var(--glass-active)]" : "hover:bg-[var(--glass-hover)]"} ${dropTarget === d.id ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
+                  className={`group relative rounded-chip transition-colors [&:last-child_[data-note-row-body]]:border-b-transparent ${on ? "bg-[var(--glass-active)]" : "hover:bg-[var(--glass-hover)]"} ${dropTarget === d.id ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
                   {...cardProps(d)}
                 >
-                  <DocDragHandle ids={on ? selection.selectedIds : [d.id]} />
-                  {on ? (
-                    <span className="grid h-4 w-4 flex-none place-items-center rounded-tiny bg-heading text-canvas">
-                      <Check size={11} strokeWidth={3} aria-hidden />
+                  <span className="absolute -left-4 top-1/2 -translate-y-1/2">
+                    <DocDragHandle ids={on ? selection.selectedIds : [d.id]} />
+                  </span>
+                  <AppLink href={`/d/${d.id}`} className="flex items-center gap-3 px-3 outline-none focus-visible:bg-[var(--glass-hover)]">
+                    {on ? (
+                      <span className="grid h-4 w-4 flex-none place-items-center rounded-tiny bg-heading text-canvas">
+                        <Check size={11} strokeWidth={3} aria-hidden />
+                        <span className="sr-only">Selected</span>
+                      </span>
+                    ) : null}
+                    {/* The title and the note's first words on the left; the time and its folder (or Draft) on the right. */}
+                    <span data-note-row-body="" className="flex min-w-0 flex-1 items-center gap-6 border-b border-[var(--color-line)] py-3 pr-10">
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="ui-list-name min-w-0 truncate">{d.title || "Untitled"}</span>
+                          {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
+                        </span>
+                        <span className="mt-0.5 block truncate text-subheadline leading-[18px] text-muted">{firstWords || "No additional text"}</span>
+                      </span>
+                      <span className="flex max-w-[40%] flex-none flex-col items-end gap-1">
+                        <span className="ui-list-meta text-ink/80">{time}</span>
+                        <span className="ui-list-meta flex min-w-0 max-w-full items-center gap-1.5">
+                          {d.tags.length ? <span className="truncate text-faint">{d.tags.map((t) => `#${t.name}`).join(" ")}</span> : null}
+                          {d.kind === "template" ? (
+                            <span>Template</span>
+                          ) : d.homeFolder ? (
+                            <>
+                              <FolderGlyph color={d.homeFolder.color} size={11} />
+                              <span className="truncate">{d.homeFolder.name}</span>
+                            </>
+                          ) : (
+                            <>
+                              <PencilLine size={11} strokeWidth={2} aria-hidden className="flex-none" />
+                              <span>Draft</span>
+                            </>
+                          )}
+                        </span>
+                      </span>
                     </span>
-                  ) : (
-                    <FileText size={16} aria-hidden className="flex-none text-muted" />
-                  )}
-                  <AppLink href={`/d/${d.id}`} className="min-w-0 flex-1 truncate font-medium outline-none focus-visible:underline">
-                    {d.title || "Untitled"}
-                    {on ? <span className="sr-only"> (selected)</span> : null}
                   </AppLink>
-                  {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
-                  {/* Fixed columns (folder, tags, time), so they line up from row to row. */}
-                  <span className="flex w-32 flex-none justify-end sm:w-40">{d.kind !== "template" ? <FolderBadge folder={d.homeFolder} className="!max-w-full" /> : null}</span>
-                  <span className="hidden w-28 flex-none truncate text-footnote text-muted sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
-                  <span className="w-28 flex-none text-right text-footnote text-faint">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}</span>
-                  {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} /> : null}
-                  <DocMenu {...menuProps(d)} />
+                  <div data-card-menu="" className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
+                    {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} /> : null}
+                    <DocMenu {...menuProps(d)} />
+                  </div>
                 </li>
               );
             })}
           </ul>
         ) : (
-          <ul className={`grid gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)] ${layout === "compact" ? (cardScale < 1 ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5") : "grid-cols-[repeat(auto-fill,minmax(var(--note-card-min),1fr))]"}`}>
+          <ul className={`grid gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)] grid-cols-[repeat(auto-fill,minmax(var(--note-card-min),1fr))]`}>
             {cards.map((d) => {
               const on = selection.selected.has(d.id);
               return (
@@ -813,42 +928,26 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   className={`group relative [container-type:inline-size] rounded-chip ${dropTarget === d.id || on ? "ring-2 ring-heading ring-offset-4 ring-offset-canvas" : ""}`}
                   {...cardProps(d)}
                 >
-                  {layout === "compact" ? (
-                    <AppLink href={`/d/${d.id}`} data-card-row="" className="block h-28 rounded-chip shadow-[var(--shadow-edge),var(--shadow-resting)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-edge),var(--shadow-floating)] focus-visible:ring-2 focus-visible:ring-focus">
-                      <DocumentCardPreview
-                        title={d.title}
-                        style={d.style}
-                        footer={
-                          <>
-                            {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
-                            {d.kind !== "template" ? <FolderBadge folder={d.homeFolder} className="ml-auto" /> : null}
-                          </>
-                        }
-                      />
-                      {on ? <span className="sr-only">Selected</span> : null}
-                    </AppLink>
-                  ) : (
-                    <AppLink href={`/d/${d.id}`} className={NOTE_CARD_LINK}>
-                      <NoteCardFace
-                        title={d.title}
-                        excerpt={d.excerpt}
-                        preview={d.preview}
-                        shape={d.shape}
-                        kind={d.kind}
-                        cover={d.cover}
-                        style={d.style}
-                        createdAt={d.createdAt}
-                        time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : editedText(d.updatedAt)}
-                        starred={d.starred}
-                        folder={d.homeFolder}
-                        showFolder={d.kind !== "template"}
-                        extra={unsynced.has(d.id) ? <UnsyncedMarker /> : null}
-                      />
-                      {on ? <span className="sr-only">Selected</span> : null}
-                    </AppLink>
-                  )}
+                  <AppLink href={`/d/${d.id}`} className={NOTE_CARD_LINK}>
+                    <NoteCardFace
+                      title={d.title}
+                      excerpt={d.excerpt}
+                      preview={d.preview}
+                      shape={d.shape}
+                      kind={d.kind}
+                      cover={d.cover}
+                      style={d.style}
+                      createdAt={d.createdAt}
+                      time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : editedText(d.updatedAt)}
+                      starred={d.starred}
+                      folder={d.homeFolder}
+                      showFolder={d.kind !== "template"}
+                      extra={unsynced.has(d.id) ? <UnsyncedMarker /> : null}
+                    />
+                    {on ? <span className="sr-only">Selected</span> : null}
+                  </AppLink>
                   {on ? <SelectedCheck /> : null}
-                  <div data-card-menu="" className={`absolute top-2 flex items-center gap-1 ${d.starred && layout !== "compact" ? "right-[calc(11cqw+4px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
+                  <div data-card-menu="" className={`absolute top-2 flex items-center gap-1 ${d.starred ? "right-[calc(11cqw+4px)]" : "right-2"} opacity-0 transition-[opacity,translate] duration-200 ease-[var(--ease-folio)] group-focus-within:opacity-100 group-hover:-translate-y-0.5 group-hover:opacity-100 pointer-coarse:opacity-100`}>
                     {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} raised /> : null}
                     <div className="ui-raised rounded-tiny [&_button]:rounded-tiny">
                       <DocMenu {...menuProps(d)} />
@@ -874,6 +973,18 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   );
 }
 
+/** The column's sort: a "…"-sized button with the sorts in its menu (the column is too narrow for the row's field). */
+function ColumnSort({ value, onChange }: { value: Sort; onChange: (v: Sort) => void }) {
+  return (
+    <MenuButton
+      label={`Sort by: ${NOTE_SORTS.find(([v]) => v === value)?.[1] ?? ""}`}
+      trigger={<ArrowDownUp size={15} aria-hidden />}
+      triggerClassName={ROW_ICON_BUTTON}
+      items={NOTE_SORTS.map(([v, label]) => ({ label, icon: v === value ? <Check size={14} /> : <span className="inline-block w-3.5" />, onSelect: () => onChange(v) }))}
+    />
+  );
+}
+
 /** A subfolder card is 152 px wide, about two thirds of All folders' (~234 px): its labels stay that card's size. */
 const SUBFOLDER_LABELS = 234 / 152;
 
@@ -886,7 +997,7 @@ function DocDragHandle({ ids }: { ids: string[] }) {
         startNoteDrag(e, ids);
       }}
       aria-hidden
-      className="cursor-grab text-faint opacity-0 group-hover:opacity-100"
+      className="w-3 flex-none cursor-grab overflow-hidden text-center text-faint opacity-0 group-hover:opacity-100"
     >
       ⋮⋮
     </span>
@@ -917,13 +1028,15 @@ interface DocMenuProps {
   recent?: boolean;
   /** Offer "Float this note" (the right-click menu only; lib/app/float.ts). */
   floatable?: boolean;
+  /** In the columns layout a click already opens the note here: "Open in New Tab" instead of Open. */
+  columns?: boolean;
 }
 
 /**
  * A note's actions (shared by its "…" button and its right-click menu), with the dialogs they open.
  * `dialogOpen` tells a context menu to stay mounted while one of its dialogs is showing.
  */
-function useDocMenu({ doc, view, arrange, select, recent, floatable }: DocMenuProps): { items: (MenuItem | "separator")[]; dialogs: ReactNode; dialogOpen: boolean } {
+function useDocMenu({ doc, view, arrange, select, recent, floatable, columns }: DocMenuProps): { items: (MenuItem | "separator")[]; dialogs: ReactNode; dialogOpen: boolean } {
   const createDocument = useCreateDocument();
   const duplicate = useMutation(api.documents.duplicate);
   const notes = useNoteActions();
@@ -951,7 +1064,8 @@ function useDocMenu({ doc, view, arrange, select, recent, floatable }: DocMenuPr
           ...(phone && doc.kind !== "template"
             ? []
             : [
-                { label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
+                // (In the columns layout a click already opens the note, and there are no tabs to open it in.)
+                ...(columns && doc.kind !== "template" ? [] : [{ label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) }]),
               ]),
           ...(floatable && doc.kind !== "template" ? floatMenuItems({ id: doc.id, title: doc.title }) : []),
           doc.starred

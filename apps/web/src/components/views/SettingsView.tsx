@@ -1,8 +1,13 @@
 "use client";
 
 import { isServerEdition } from "@/lib/edition";
-import { useEffect, useState, type ComponentType } from "react";
-import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, SpellCheck2, UserRound, UserRoundPlus, Users } from "lucide-react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
+import { SETTINGS_INDEX, searchSettings } from "@/lib/app/settingsSearch";
+import { useAiEnabled } from "@/components/ai/useAi";
+import { useAiAction } from "@/components/ai/useAiAction";
+import { AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
+import { api } from "@/lib/convex/api";
+import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, Search, X, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, SpellCheck2, UserRound, UserRoundPlus, Users } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
@@ -68,6 +73,13 @@ const YOU: Item[] = [
   { id: "desktop", label: "Desktop app", icon: AppWindowMac },
   { id: "this-device", label: "This device", icon: Smartphone },
 ];
+/** How "You" is grouped in the list (in this order); a section not named here goes under App. */
+const YOU_GROUPS: { label: string; ids: Section[] }[] = [
+  { label: "Account", ids: ["library", "account", "billing", "devices"] },
+  { label: "Security", ids: ["security", "privacy"] },
+  { label: "App", ids: ["appearance", "writing", "notifications", "ai"] },
+  { label: "Data", ids: ["sync", "data", "connected-apps", "desktop", "this-device"] },
+];
 /**
  * The current team workspace's settings, only when a workspace is open. Personal has none of these.
  * Each is listed only for the roles that may use it (the server checks every action again):
@@ -128,13 +140,31 @@ export function SettingsView({ section: asked }: { section: Section }) {
   }, [asked, bare]); // eslint-disable-line react-hooks/exhaustive-deps
   const iphone = useIphoneApp();
   const ipad = useIpadLayout();
+  const [query, setQuery] = useState("");
+  // A search result opens its section at the setting: ?find=<card title> scrolls to that card.
+  const find = search.get("find");
+  useEffect(() => {
+    if (!find) return;
+    const t = window.setTimeout(() => {
+      const h = [...document.querySelectorAll("#main h3")].find((el) => el.textContent?.trim() === find);
+      const card = h?.closest("section");
+      if (!card) return;
+      card.scrollIntoView({ block: "start", behavior: "smooth" });
+      card.setAttribute("data-found", "");
+      window.setTimeout(() => card.removeAttribute("data-found"), 1600);
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [find, section]);
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
   const workspaceItems = WORKSPACE.filter((i) => allowed(i.who) && !serverHides(i.id));
   // Desktop app: only in the Mac app; This device: only in the iPhone and iPad app (or opened by its address).
   const you = YOU.filter((i) => here(i.id) && (i.id !== "library" || !caps.account) && (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"))
     // In local mode the library comes first: it's where Settings opens (LOCAL_FIRST).
     .sort((a, b) => Number(b.id === "library") - Number(a.id === "library"));
-  const groups = [{ label: "You", items: you }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
+  // "You" in smaller groups (the owner, 28 November 2026: "divide you into more categories").
+  const groupOf = (id: Section) => YOU_GROUPS.find((g) => g.ids.includes(id))?.label ?? "App";
+  const youGroups = YOU_GROUPS.map((g) => ({ label: g.label, items: you.filter((i) => groupOf(i.id) === g.label) })).filter((g) => g.items.length);
+  const groups = [...youGroups, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
   const item = [...YOU, ...WORKSPACE, ABOUT].find((s) => s.id === section);
   const heading = (WORKSPACE_SECTIONS.has(section) && HEADINGS[section]) || item?.label;
   // A workspace section opened in Personal (a bookmark, or right after leaving a workspace).
@@ -250,7 +280,9 @@ export function SettingsView({ section: asked }: { section: Section }) {
       <div className="@container">
       <div data-mac-settings-window={settingsWindow ? "" : undefined} className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8 @3xl:grid-cols-[216px_minmax(0,1fr)] @3xl:gap-10">
         <nav aria-label="Settings sections" hidden={settingsWindow} className="@3xl:sticky @3xl:top-6 @3xl:self-start">
-          <div className="flex gap-6 overflow-x-auto pb-1 @3xl:flex-col @3xl:gap-5 @3xl:overflow-visible @3xl:pb-0">
+          <p aria-hidden className="ui-display mb-4 px-1 text-title-1 leading-tight">Settings</p>
+          <SettingsSearch items={[...groups.flatMap((g) => g.items), ABOUT]} query={query} setQuery={setQuery} />
+          <div hidden={query.trim() !== ""} className="flex gap-6 overflow-x-auto pb-1 @3xl:flex-col @3xl:gap-5 @3xl:overflow-visible @3xl:pb-0">
             {groups.map((g) => (
               <div key={g.label} className="flex-none">
                 <p className="mb-1.5 truncate px-2.5 text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">{g.label}</p>
@@ -281,7 +313,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           </div>
         </nav>
         <div className="min-w-0 space-y-5">
-          <h2 className={settingsWindow ? "sr-only" : "ui-display text-large-title leading-tight"}>{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
+          <h2 className="sr-only">{noWorkspace ? "Workspace" : sectionHidden ? "Not found" : heading}</h2>
           {section === "account" ? <AccountSection /> : null}
           {section === "ai" ? caps.account ? <AiSection /> : <LocalAiSection /> : null}
           {section === "billing" ? <BillingSection /> : null}
@@ -467,13 +499,19 @@ function IphoneCreateWorkspace() {
 function CreateWorkspaceNudge() {
   const [open, setOpen] = useState(false);
   const { navigate } = useAppRouter();
+  // A plain row under its own Workspace heading, like the sections (the owner, 28 November 2026).
   return (
-    <div className="hidden flex-none rounded-control border border-line p-3 @3xl:mt-1 @3xl:block">
-      <p className="text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
-      <p className="mt-1 max-w-52 text-subheadline text-muted">Work with a team: shared notes, folders and tasks, with its own plan and members.</p>
-      <Button className="mt-2" onClick={() => setOpen(true)}>
-        <Plus size={14} aria-hidden /> Create a workspace
-      </Button>
+    <div className="hidden flex-none @3xl:block">
+      <p className="mb-1.5 truncate px-2.5 text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Work with a team: shared notes, folders and tasks, with its own plan and members"
+        className="group flex h-8 w-full items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-left text-body text-ink/90 outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11"
+      >
+        <Plus size={16} aria-hidden className="flex-none text-muted group-hover:text-heading" />
+        Create a workspace
+      </button>
       <NewWorkspaceDialog open={open} onClose={() => setOpen(false)} onCreated={() => navigate("/settings/workspace")} />
     </div>
   );
@@ -497,5 +535,152 @@ function NoWorkspaceCard() {
       </Button>
       <NewWorkspaceDialog open={open} onClose={() => setOpen(false)} onCreated={() => navigate("/settings/workspace")} />
     </Card>
+  );
+}
+
+/**
+ * Settings search: one field above the sections. Typing swaps the section list for the matching settings
+ * (lib/app/settingsSearch.ts); a result opens its section at that setting. Arrow keys move, Return opens,
+ * Escape clears. While Foli AI is on, "Ask Foli AI" under the matches sends the words and the settings this person
+ * has to Foli AI (ai.settingsSearch), which picks the ones that do it and says what to change; it's the first row
+ * when nothing matches, so Return asks.
+ */
+function SettingsSearch({ items, query, setQuery }: { items: Item[]; query: string; setQuery: (q: string) => void }) {
+  const { navigate } = useAppRouter();
+  const { scope } = useAppState();
+  // "Ask Foli AI" asks Folevi's server: not in a local library (lib/local/registry.ts, LOCAL_HIDDEN).
+  const aiEnabled = useAiEnabled();
+  const { aiServer } = useCapabilities();
+  const aiOn = aiEnabled && aiServer;
+  const askAi = useAiAction(api.ai.settingsSearch);
+  const [at, setAt] = useState(0);
+  const input = useRef<HTMLInputElement>(null);
+  const byId = new Map(items.map((i) => [i.id as string, i]));
+  const hits = searchSettings(query, (id) => byId.get(id as Section)?.label).slice(0, 12);
+  const typing = query.trim() !== "";
+  type Hit = (typeof hits)[number];
+  const [ai, setAi] = useState<{ query: string; busy: boolean; answer: string; picks: Hit[]; error: AiProblem | null } | null>(null);
+  const aiFor = ai && ai.query === query.trim() ? ai : null;
+  const canAsk = aiOn && query.trim().length >= 2;
+  // The rows Return and the arrows move through: Ask Foli AI first when nothing matches, else last.
+  const askAt = canAsk && !aiFor ? (hits.length ? hits.length : 0) : -1;
+  const count = hits.length + (askAt >= 0 ? 1 : 0);
+  const open = (h: Hit) => {
+    setQuery("");
+    setAi(null);
+    navigate(`/settings/${h.section}?find=${encodeURIComponent(h.title)}`);
+  };
+  const ask = async () => {
+    const q = query.trim();
+    if (!q || aiFor?.busy) return;
+    setAi({ query: q, busy: true, answer: "", picks: [], error: null });
+    const offered = SETTINGS_INDEX.filter((h) => byId.has(h.section));
+    try {
+      const r = await askAi({ scope, query: q, options: offered.map((h) => ({ key: `${h.section}/${h.title}`, title: h.title, section: byId.get(h.section as Section)!.label })) });
+      const picks = r.keys.map((k) => offered.find((h) => `${h.section}/${h.title}` === k)).filter((h): h is Hit => !!h);
+      setAi({ query: q, busy: false, answer: r.answer, picks, error: null });
+    } catch (e) {
+      setAi({ query: q, busy: false, answer: "", picks: [], error: aiProblem(e) });
+    }
+  };
+  const row = (h: Hit, i: number, active: boolean) => {
+    const it = byId.get(h.section);
+    const Icon = it?.icon ?? Search;
+    return (
+      <li key={h.section + h.title}>
+        <button
+          type="button"
+          onClick={() => open(h)}
+          onMouseEnter={() => i >= 0 && setAt(i)}
+          className={`flex w-full items-center gap-2.5 rounded-chip px-2.5 py-1.5 text-left outline-none pointer-coarse:py-2.5 hover:bg-[var(--glass-hover)] ${active ? "bg-[var(--glass-hover)] text-heading" : "text-ink/90"}`}
+        >
+          <Icon size={16} aria-hidden className="flex-none text-muted" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-body">{h.title}</span>
+            <span className="block truncate text-footnote text-muted">{it?.label}</span>
+          </span>
+        </button>
+      </li>
+    );
+  };
+  return (
+    <div className="mb-5 @3xl:mb-4">
+      <label className="flex h-8 items-center gap-2 rounded-chip bg-[var(--glass-hover)] px-2.5 text-callout text-muted focus-within:ring-2 focus-within:ring-focus pointer-coarse:h-11">
+        <Search size={15} aria-hidden className="flex-none" />
+        <input
+          ref={input}
+          type="search"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setAt(0);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") setAt((a) => Math.min(a + 1, count - 1));
+            else if (e.key === "ArrowUp") setAt((a) => Math.max(a - 1, 0));
+            else if (e.key === "Enter" && at === askAt) void ask();
+            else if (e.key === "Enter" && hits[at]) open(hits[at]);
+            else if (e.key === "Escape") setQuery("");
+            else return;
+            e.preventDefault();
+          }}
+          placeholder={aiOn ? "Search or describe a setting" : "Search settings"}
+          aria-label="Search settings"
+          aria-controls={typing ? "settings-search-results" : undefined}
+          className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
+        />
+        {typing ? (
+          <button type="button" aria-label="Clear search" title="Clear search" onClick={() => { setQuery(""); input.current?.focus(); }} className="flex-none text-muted hover:text-heading">
+            <X size={14} aria-hidden />
+          </button>
+        ) : null}
+      </label>
+      {typing ? (
+        <div id="settings-search-results" className="mt-2 flex flex-col gap-2">
+          {aiFor ? (
+            <section aria-label="Foli AI’s answer" aria-live="polite" className="rounded-control border border-[var(--color-line)] bg-surface p-2">
+              <div className="flex items-start gap-2 px-1 pb-1 text-footnote text-ink">
+                <AiIcon size={14} aria-hidden className="mt-0.5 flex-none" />
+                {aiFor.error ? (
+                  <AiProblemNotice problem={aiFor.error} className="text-footnote text-muted" />
+                ) : (
+                  <span>{aiFor.busy ? "Looking through your settings…" : aiFor.answer || "Foli AI couldn’t find a setting for that."}</span>
+                )}
+              </div>
+              {aiFor.picks.length ? <ul className="flex flex-col gap-0.5">{aiFor.picks.map((h) => row(h, -1, false))}</ul> : null}
+            </section>
+          ) : null}
+          {hits.length || askAt >= 0 ? (
+            <ul className="flex flex-col gap-0.5" aria-label="Matching settings">
+              {askAt === 0 ? <AskRow query={query.trim()} active={at === 0} onAsk={() => void ask()} onHover={() => setAt(0)} /> : null}
+              {hits.map((h, i) => row(h, askAt === 0 ? i + 1 : i, (askAt === 0 ? i + 1 : i) === at))}
+              {askAt > 0 ? <AskRow query={query.trim()} active={at === askAt} onAsk={() => void ask()} onHover={() => setAt(askAt)} /> : null}
+            </ul>
+          ) : !aiFor ? (
+            <p className="px-2.5 py-1.5 text-footnote text-muted">No settings match. Try another word.</p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** "Ask Foli AI" in the search results: sends what was typed to Foli AI. */
+function AskRow({ query, active, onAsk, onHover }: { query: string; active: boolean; onAsk: () => void; onHover: () => void }) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onAsk}
+        onMouseEnter={onHover}
+        className={`flex w-full items-center gap-2.5 rounded-chip px-2.5 py-1.5 text-left outline-none pointer-coarse:py-2.5 hover:bg-[var(--glass-hover)] ${active ? "bg-[var(--glass-hover)] text-heading" : "text-ink/90"}`}
+      >
+        <AiIcon size={16} aria-hidden className="flex-none" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-body">Ask Foli AI</span>
+          <span className="block truncate text-footnote text-muted">“{query}”</span>
+        </span>
+      </button>
+    </li>
   );
 }

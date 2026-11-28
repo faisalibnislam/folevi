@@ -88,7 +88,7 @@ function useFitLines(title: string) {
  * pale gap.
  */
 export const NOTE_CARD_LINK =
-  "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-small shadow-[var(--shadow-resting)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-lifted)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+  "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-small shadow-[var(--shadow-resting)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-lifted)] group-hover:-translate-y-0.5 group-hover:shadow-[var(--shadow-lifted)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 export { noteLook, type CardLook } from "@/lib/cardLook";
 import { noteLook } from "@/lib/cardLook";
@@ -170,12 +170,14 @@ export function NoteCardFace({
         {...sheet}
         className="note-card-r fb-sheet absolute bottom-[1cqw] left-0 right-[1cqw] top-0 flex overflow-hidden rounded-l-tiny rounded-r-small bg-surface text-ink"
       >
-      {/* the spine, in the note's theme */}
-      <div aria-hidden className="relative w-[6%] flex-none shadow-[inset_-1px_0_0_rgb(0_0_0/0.06)]" style={{ background: strip }} />
+      {/* the spine, in the note's theme (7.5% of the cover, a quarter wider than it was: the owner, 28 November 2026) */}
+      <div aria-hidden className="relative w-[7.5%] flex-none shadow-[inset_-1px_0_0_rgb(0_0_0/0.06)]" style={{ background: strip }} />
       {look === "spiral" ? (
-        // A spiral's punched holes down the spine's edge.
-        <span aria-hidden className="pointer-events-none absolute bottom-[6%] left-[3.4%] top-[6%] z-10 flex flex-col justify-between">
-          {Array.from({ length: 9 }, (_, i) => <span key={i} className="block h-[2.6cqw] w-[2.6cqw] rounded-chip bg-[color-mix(in_oklab,var(--color-heading)_82%,transparent)] shadow-[0_0_0_0.6cqw_var(--color-surface)]" />)}
+        // A spiral's punched holes, centred in the spine (the owner, 28 November 2026). Each hole and its ring of cover
+        // are one radial gradient, so it stays a true circle at any size (a box with a box-shadow ring rendered
+        // squashed at its fractional pixel size).
+        <span aria-hidden className="pointer-events-none absolute bottom-[calc(6%-0.6cqw)] left-[calc(3.75%-1.9cqw)] top-[calc(6%-0.6cqw)] z-10 flex flex-col justify-between">
+          {Array.from({ length: 9 }, (_, i) => <span key={i} className="block size-[3.8cqw] bg-[radial-gradient(circle_closest-side,color-mix(in_oklab,var(--color-heading)_82%,transparent)_64%,var(--color-surface)_71%_91%,transparent_100%)]" />)}
         </span>
       ) : null}
       {/* the cover's face: title, preview and footer */}
@@ -190,15 +192,15 @@ export function NoteCardFace({
         {look === "memo" ? (
           <h3 data-card="memo" className="line-clamp-2 self-start text-ellipsis break-words rounded-tiny bg-heading px-[2.4cqw] py-[1.2cqw] font-mono text-[4cqw] font-medium uppercase leading-[1.3] tracking-[0.06em] text-surface">{title || "Untitled"}</h3>
         ) : (
-          <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
+          <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.9cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
         )}
         {look === "index" ? <span aria-hidden className="mt-[2.4cqw] block h-[0.5cqw] bg-[#e88e8e]" /> : null}
-        <p data-card="created" className="mt-[1cqw] truncate text-[4.5cqw] leading-[1.3] text-faint">
+        <p data-card="created" className="mt-[1cqw] truncate text-[5.3cqw] leading-[1.3] text-faint">
           {createdText(createdAt)}
         </p>
         <div
           ref={body.ref}
-          className="mt-[4.6cqw] min-h-0 flex-1 overflow-hidden text-[3.6cqw] leading-[5cqw]"
+          className="mt-[4.6cqw] min-h-0 flex-1 overflow-hidden text-[4.25cqw] leading-[5.9cqw]"
           // An index card's blue lines under each line of text.
           style={look === "index" ? { backgroundImage: "repeating-linear-gradient(transparent 0 calc(5cqw - 1px), rgb(120 160 210 / 0.35) calc(5cqw - 1px) 5cqw)" } : undefined}
         >
@@ -210,12 +212,14 @@ export function NoteCardFace({
           // A sleeve over the lower part of the page, the note peeking out of it.
           <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[44%] border-t border-[color-mix(in_oklab,var(--color-heading)_14%,transparent)]" style={{ background: tint(7) }} />
         ) : null}
-        <div className="relative mt-[3.5cqw] flex h-[8.6cqw] flex-none items-center gap-[2cqw] text-[3.8cqw]">
+        {/* The footer's words at the card-time size, as a folder card's Edited date: one size for a card's time
+            everywhere (globals.css --type-card-time; the owner, 28 November 2026). */}
+        <div className="relative mt-[3.5cqw] flex h-[max(8.6cqw,14px)] flex-none items-center gap-[2cqw] text-[length:var(--type-card-time)] leading-[var(--type-card-time-leading)]">
           {extra}
           <span className="min-w-0 flex-1 truncate text-muted">{time}</span>
           {showFolder ? (
-            <span className={`inline-flex h-full min-w-0 max-w-[62%] flex-none items-center gap-[1.8cqw] rounded-tiny px-[3cqw] font-semibold text-heading ${chip}`}>
-              {folder ? <FolderGlyph color={folder.color} className="h-[4.4cqw] w-auto" /> : <PencilLine aria-hidden className="h-[3.8cqw] w-[3.8cqw] flex-none" strokeWidth={2} />}
+            <span className={`inline-flex h-full min-w-0 max-w-[62%] flex-none items-center gap-[1.8cqw] rounded-tiny px-1 font-semibold text-heading ${chip}`}>
+              {folder ? <FolderGlyph color={folder.color} className="h-[1.15em] w-auto" /> : <PencilLine aria-hidden className="h-[1em] w-[1em] flex-none" strokeWidth={2} />}
               <span className="truncate">
                 {folder ? (
                   <>

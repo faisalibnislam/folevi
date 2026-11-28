@@ -549,7 +549,9 @@ function SettingsSearch({ items, query, setQuery }: { items: Item[]; query: stri
   const { navigate } = useAppRouter();
   const { scope } = useAppState();
   // "Ask Foli AI" asks Folevi's server: not in a local library (lib/local/registry.ts, LOCAL_HIDDEN).
-  const aiOn = useAiEnabled() && useCapabilities().aiServer;
+  const aiEnabled = useAiEnabled();
+  const { aiServer } = useCapabilities();
+  const aiOn = aiEnabled && aiServer;
   const askAi = useAiAction(api.ai.settingsSearch);
   const [at, setAt] = useState(0);
   const input = useRef<HTMLInputElement>(null);

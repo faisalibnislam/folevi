@@ -26,8 +26,10 @@ struct CardShadowTests {
     }
 
     @Test func theShadowMeetsTheCardThroughTheHover() {
-        let rest = Self.reach(ShadowLayer(x: -4, y: 18, blur: 30, spread: -18, color: RGBA(20, 20, 30, 0.14)))
-        let hover = Self.reach(WebNoteCard.hoverShadows[1])
+        // At rest a card has the resting level's shadow, under the pointer the lifted level's (docs/SHADOWS.md); the
+        // deepest layer of each reaches furthest.
+        let rest = Self.reach(FoleviTokens.Shadow.resting.light.last!)
+        let hover = Self.reach(WebNoteCard.hoverShadows(.light).last!)
         #expect(rest != hover)
         // Every step of the animation, out of the hover and into it: never on the card, never a gap under it.
         for t in stride(from: 0.0, through: 1.0, by: 0.1) {

@@ -166,9 +166,10 @@ struct SidebarLayoutMacTests {
         #expect(closed.onSidebar == [.home, .ai, .dna, .bookmarks, .drafts, .notes, .tasks, .calendar, .reviews, .vault])
         #expect(closed.underMore == [.shared, .changes, .templates])
         #expect(!closed.moreOpen)
-        // On Templates, More opens by itself.
+        // On Templates: the page is under More, but More is the person's to toggle (the sidebar opens it once when
+        // they arrive, WebSidebar+Mac.swift), so a closed More stays closed here.
         let here = SidebarSections(slots: SidebarLayout.defaults, available: all, selected: { $0 == .templates }, toggled: false)
-        #expect(here.activeInMore && here.moreOpen)
+        #expect(here.activeInMore && !here.moreOpen)
         // Items not here are left out of both.
         let some = SidebarSections(slots: SidebarLayout.defaults, available: { $0 != .ai && $0 != .changes }, selected: { _ in false }, toggled: true)
         #expect(!some.onSidebar.contains(.ai) && !some.underMore.contains(.changes))
@@ -200,9 +201,13 @@ struct SidebarLayoutMacTests {
         UserDefaults.standard.set(false, forKey: Self.moreKey)
         frame.open(.notes(.templates), .replace)
         sections = sidebar().macSections()
-        #expect(sections.activeInMore && sections.moreOpen)
+        #expect(sections.activeInMore)
         _ = await draw("sidebar-more-current", size: CGSize(width: 280, height: 900)) { _ in sidebar() }
         #expect(UserDefaults.standard.bool(forKey: Self.moreKey))
+        #expect(sidebar().macSections().moreOpen)
+        // And it closes again while that page is still open (the owner, 28 November 2026).
+        UserDefaults.standard.set(false, forKey: Self.moreKey)
+        #expect(!sidebar().macSections().moreOpen)
 
         // A person's own layout: Calendar under More, Templates on the sidebar right after Home.
         frame.open(.home, .replace)

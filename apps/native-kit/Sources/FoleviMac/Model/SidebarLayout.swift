@@ -167,6 +167,8 @@ public struct SidebarSections: Equatable, Sendable {
         onSidebar = shown.filter { !$0.more }.map(\.id)
         underMore = shown.filter(\.more).map(\.id)
         activeInMore = underMore.contains(where: selected)
-        moreOpen = toggled || activeInMore
+        // Yours to toggle: the sidebar opens it once when you go to a page under it (WebSidebar+Mac.swift), and it closes
+        // even while that page is open (the owner, 28 November 2026).
+        moreOpen = toggled
     }
 }

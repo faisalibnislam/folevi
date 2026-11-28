@@ -1056,7 +1056,8 @@ struct WebNoteBrowser: View {
         _layoutRaw = AppStorage(wrappedValue: (view == .trash || view == .archive) ? WebNotesLayout.list.rawValue : WebNotesLayout.grid.rawValue, "folevi.web.layout.\(view.rawValue)")
     }
 
-    private var layout: WebNotesLayout { WebNotesLayout(rawValue: layoutRaw) ?? .grid }
+    /// Grid or List: the Compact cards view is gone (the owner, 28 November 2026, as the web); a saved "compact" shows the grid.
+    private var layout: WebNotesLayout { WebNotesLayout(rawValue: layoutRaw).map { $0 == .compact ? .grid : $0 } ?? .grid }
 
     /// "Filter notes" shows wherever there are notes to narrow, and stays while it has words so they can be cleared.
     private var showsFilter: Bool { model.total > 0 || model.isFiltering }
@@ -1177,7 +1178,7 @@ struct WebNoteBrowser: View {
         // Sort, then the view switch, as the web's page has them.
         let model = self.model
         items.trailing.append(.sort(model.sortOptions.map { ($0.0, $0.1) }, value: model.sort) { model.sort = $0 })
-        let layouts: [(WebNotesLayout, WebIcon, String)] = [(.grid, .layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")]
+        let layouts: [(WebNotesLayout, WebIcon, String)] = [(.grid, .layoutGrid, "Grid"), (.list, .list, "List")]
         items.trailing.append(.segmented("layout", "View as", layouts.map { CardOption(id: $0.0.rawValue, title: $0.2, symbol: WebSegmented<WebNotesLayout>.symbol($0.1)) }, selected: layout.rawValue) { id in
             layoutRaw = id
         })
@@ -1302,7 +1303,7 @@ struct WebNoteBrowser: View {
                 }
                 WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
                 WebRowTrayDivider()
-                WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar", height: WebListPageHeaderMetrics.trayItemHeight)
+                WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar", height: WebListPageHeaderMetrics.trayItemHeight)
                 WebRowTrayDivider()
                 if frame.session.value?.capabilities.sharing ?? false {
                     WebRowIconButton(icon: .share2, label: "Share") { FrameDialogs.folderShare(frame, folderId: id, name: model.title) }
@@ -1322,7 +1323,7 @@ struct WebNoteBrowser: View {
             WebListPageHeader(title: model.title, count: model.isLoading ? "" : statusText) {
                 rowFilter
                 WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
-                WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
+                WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
                 toolbarActions
             }
         } else {
@@ -1361,7 +1362,7 @@ struct WebNoteBrowser: View {
                 WebIndexSearch(placeholder: "Filter notes", text: $model.filter, width: 260)
             }
             WebSortSelect(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
-            WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
+            WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
             if model.isTrash && model.total > 0 {
                 WebButton("Empty Trash", variant: .quiet) { model.confirmation = .emptyTrash(model.total) }
             }

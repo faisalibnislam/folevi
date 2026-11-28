@@ -312,8 +312,8 @@ export const tokens = {
       "touch": 18
     },
     "iconStroke": {
-      "desktop": 1.5,
-      "touch": 1.75
+      "desktop": 1.25,
+      "touch": 1.5
     },
     "border": {
       "desktop": 1,

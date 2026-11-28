@@ -89,7 +89,7 @@
   --control-gap: 8px;
   --control-icon: 16px;
   --control-compact-icon: 14px;
-  --control-icon-stroke: 1.5px;
+  --control-icon-stroke: 1.25px;
   --control-border: 1px;
   --control-segment-inset: 4px;
   --control-label-weight: 550;
@@ -194,7 +194,7 @@
   --control-gap: 8px;
   --control-icon: 20px;
   --control-compact-icon: 18px;
-  --control-icon-stroke: 1.75px;
+  --control-icon-stroke: 1.5px;
   --control-border: 1px;
   --control-segment-inset: 4px;
   --control-label-weight: 550;
@@ -211,7 +211,7 @@
     --control-gap: 8px;
     --control-icon: 20px;
     --control-compact-icon: 18px;
-    --control-icon-stroke: 1.75px;
+    --control-icon-stroke: 1.5px;
     --control-border: 1px;
     --control-segment-inset: 4px;
     --control-label-weight: 550;

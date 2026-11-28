@@ -2,9 +2,8 @@
 
 import { useMutation } from "convex/react";
 import { usePaginatedQuery, useQuery } from "@/lib/convex/queries";
-import { useCardSizes } from "@/lib/cardSize";
 import { lazy, startTransition, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, PencilLine, Plus, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
@@ -27,13 +26,12 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
 import { folderHex } from "@/lib/folderColors";
 import { useCreateDocument } from "@/components/app/useCreateDocument";
-import { ageText, editedText, formatRelative, templatesCountText } from "@/lib/format";
+import { editedText, formatRelative, templatesCountText } from "@/lib/format";
 import { t } from "@/i18n";
 import { localDb } from "@/lib/sync/db";
 import { onMemoryPressure } from "@/lib/memoryPressure";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
-import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
-import { FolderBadge } from "./FolderBadge";
+import { NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderCard, type FolderSummary } from "./FolderCard";
 import { pendingByDocument, type PendingDocument } from "@/lib/hooks/usePendingDocs";
 import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
@@ -69,7 +67,8 @@ function UnsyncedMarker({ className = "" }: { className?: string }) {
 }
 
 type View = "all" | "starred" | "archive" | "trash" | "templates" | "unsorted" | "folder" | "tag";
-type Layout = "grid" | "compact" | "list";
+/** Grid or List; the Compact cards view is gone (the owner, 28 November 2026), and a saved "compact" shows the grid. */
+type Layout = "grid" | "list";
 type Sort = "updated" | "created" | "title" | "manual";
 const NOTE_SORTS: readonly (readonly [Sort, string])[] = [
   ["updated", "Last edited"],
@@ -216,9 +215,9 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
 }
 
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
-  const { scale: cardScale } = useCardSizes();
   const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
-  const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
+  const [savedLayout, setLayout] = useLocalStorage<Layout | "compact">(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
+  const layout: Layout = savedLayout === "list" ? "list" : "grid";
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
   // A folder made on this device whose creation is still in the outbox (just made, or made offline) isn't on
   // the server (or in the library) yet: asking for its notes would fail as not found and take the page down.
@@ -497,7 +496,6 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       {(
         [
           ["grid", "Grid", <LayoutGrid key="g" size={15} />],
-          ["compact", "Compact cards", <Rows3 key="c" size={15} />],
           ["list", "List", <List key="l" size={15} />],
         ] as const
       ).map(([value, label, icon]) => (
@@ -771,51 +769,70 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             }
           />
         ) : layout === "list" ? (
-          <>
-          <div className="ui-list-head" aria-hidden>
-            <span className="w-3 flex-none" />
-            <span className="w-4 flex-none" />
-            <span className="min-w-0 flex-1">Name</span>
-            <span className="w-32 flex-none text-right sm:w-40">Folder</span>
-            <span className="hidden w-28 flex-none sm:block">Tags</span>
-            <span className="w-28 flex-none text-right">{view === "trash" ? "Deleted" : "Edited"}</span>
-            <span className="w-8 flex-none" />
-          </div>
-          <ul className="ui-list">
+          // Apple Notes-style rows (the owner, 28 November 2026): the serif title over the note's first words on the left,
+          // the time over its folder (or Draft) and tags on the right. Hairlines start at the text and stop before the
+          // last row; the "…" and the drag handle show on hover.
+          <ul aria-label="Notes" className="-mx-3">
             {shown.map((d) => {
               const on = selection.selected.has(d.id);
+              const time = view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : editedText(d.updatedAt);
+              const firstWords = d.excerpt.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
               return (
                 <li
                   key={d.id}
-                  className={`ui-list-row group my-0.5 ${on ? "!bg-[var(--glass-active)]" : ""} ${dropTarget === d.id ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
+                  className={`group relative rounded-chip transition-colors [&:last-child_[data-note-row-body]]:border-b-transparent ${on ? "bg-[var(--glass-active)]" : "hover:bg-[var(--glass-hover)]"} ${dropTarget === d.id ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
                   {...cardProps(d)}
                 >
-                  <DocDragHandle ids={on ? selection.selectedIds : [d.id]} />
-                  {on ? (
-                    <span className="grid h-4 w-4 flex-none place-items-center rounded-tiny bg-heading text-canvas">
-                      <Check size={11} strokeWidth={3} aria-hidden />
+                  <span className="absolute -left-4 top-1/2 -translate-y-1/2">
+                    <DocDragHandle ids={on ? selection.selectedIds : [d.id]} />
+                  </span>
+                  <AppLink href={`/d/${d.id}`} className="flex items-center gap-3 px-3 outline-none focus-visible:bg-[var(--glass-hover)]">
+                    {on ? (
+                      <span className="grid h-4 w-4 flex-none place-items-center rounded-tiny bg-heading text-canvas">
+                        <Check size={11} strokeWidth={3} aria-hidden />
+                        <span className="sr-only">Selected</span>
+                      </span>
+                    ) : null}
+                    {/* The title and the note's first words on the left; the time and its folder (or Draft) on the right. */}
+                    <span data-note-row-body="" className="flex min-w-0 flex-1 items-center gap-6 border-b border-[var(--color-line)] py-3 pr-10">
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="ui-list-name min-w-0 truncate">{d.title || "Untitled"}</span>
+                          {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
+                        </span>
+                        <span className="mt-0.5 block truncate text-subheadline leading-[18px] text-muted">{firstWords || "No additional text"}</span>
+                      </span>
+                      <span className="flex max-w-[40%] flex-none flex-col items-end gap-1">
+                        <span className="ui-list-meta text-ink/80">{time}</span>
+                        <span className="ui-list-meta flex min-w-0 max-w-full items-center gap-1.5">
+                          {d.tags.length ? <span className="truncate text-faint">{d.tags.map((t) => `#${t.name}`).join(" ")}</span> : null}
+                          {d.kind === "template" ? (
+                            <span>Template</span>
+                          ) : d.homeFolder ? (
+                            <>
+                              <FolderGlyph color={d.homeFolder.color} size={11} />
+                              <span className="truncate">{d.homeFolder.name}</span>
+                            </>
+                          ) : (
+                            <>
+                              <PencilLine size={11} strokeWidth={2} aria-hidden className="flex-none" />
+                              <span>Draft</span>
+                            </>
+                          )}
+                        </span>
+                      </span>
                     </span>
-                  ) : (
-                    <FileText size={16} aria-hidden className="flex-none text-muted" />
-                  )}
-                  <AppLink href={`/d/${d.id}`} className="ui-list-name min-w-0 flex-1 truncate outline-none focus-visible:underline">
-                    {d.title || "Untitled"}
-                    {on ? <span className="sr-only"> (selected)</span> : null}
                   </AppLink>
-                  {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
-                  {/* Fixed columns (folder, tags, time), so they line up from row to row. */}
-                  <span className="flex w-32 flex-none justify-end sm:w-40">{d.kind !== "template" ? <FolderBadge folder={d.homeFolder} className="!max-w-full" /> : null}</span>
-                  <span className="ui-list-meta hidden w-28 flex-none truncate sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
-                  <span className="ui-list-meta w-28 flex-none text-right">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}</span>
-                  {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} /> : null}
-                  <DocMenu {...menuProps(d)} />
+                  <div data-card-menu="" className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
+                    {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} /> : null}
+                    <DocMenu {...menuProps(d)} />
+                  </div>
                 </li>
               );
             })}
           </ul>
-          </>
         ) : (
-          <ul className={`grid gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)] ${layout === "compact" ? (cardScale < 1 ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5") : "grid-cols-[repeat(auto-fill,minmax(var(--note-card-min),1fr))]"}`}>
+          <ul className={`grid gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)] grid-cols-[repeat(auto-fill,minmax(var(--note-card-min),1fr))]`}>
             {cards.map((d) => {
               const on = selection.selected.has(d.id);
               return (
@@ -824,42 +841,26 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   className={`group relative [container-type:inline-size] rounded-chip ${dropTarget === d.id || on ? "ring-2 ring-heading ring-offset-4 ring-offset-canvas" : ""}`}
                   {...cardProps(d)}
                 >
-                  {layout === "compact" ? (
-                    <AppLink href={`/d/${d.id}`} data-card-row="" className="block h-28 rounded-chip shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] group-hover:-translate-y-0.5 group-hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus">
-                      <DocumentCardPreview
-                        title={d.title}
-                        style={d.style}
-                        footer={
-                          <>
-                            {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
-                            {d.kind !== "template" ? <FolderBadge folder={d.homeFolder} className="ml-auto" /> : null}
-                          </>
-                        }
-                      />
-                      {on ? <span className="sr-only">Selected</span> : null}
-                    </AppLink>
-                  ) : (
-                    <AppLink href={`/d/${d.id}`} className={NOTE_CARD_LINK}>
-                      <NoteCardFace
-                        title={d.title}
-                        excerpt={d.excerpt}
-                        preview={d.preview}
-                        shape={d.shape}
-                        kind={d.kind}
-                        cover={d.cover}
-                        style={d.style}
-                        createdAt={d.createdAt}
-                        time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : editedText(d.updatedAt)}
-                        starred={d.starred}
-                        folder={d.homeFolder}
-                        showFolder={d.kind !== "template"}
-                        extra={unsynced.has(d.id) ? <UnsyncedMarker /> : null}
-                      />
-                      {on ? <span className="sr-only">Selected</span> : null}
-                    </AppLink>
-                  )}
+                  <AppLink href={`/d/${d.id}`} className={NOTE_CARD_LINK}>
+                    <NoteCardFace
+                      title={d.title}
+                      excerpt={d.excerpt}
+                      preview={d.preview}
+                      shape={d.shape}
+                      kind={d.kind}
+                      cover={d.cover}
+                      style={d.style}
+                      createdAt={d.createdAt}
+                      time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : editedText(d.updatedAt)}
+                      starred={d.starred}
+                      folder={d.homeFolder}
+                      showFolder={d.kind !== "template"}
+                      extra={unsynced.has(d.id) ? <UnsyncedMarker /> : null}
+                    />
+                    {on ? <span className="sr-only">Selected</span> : null}
+                  </AppLink>
                   {on ? <SelectedCheck /> : null}
-                  <div data-card-menu="" className={`absolute top-2 flex items-center gap-1 ${d.starred && layout !== "compact" ? "right-[calc(11cqw+4px)]" : "right-2"} opacity-0 transition-[opacity,translate] duration-200 ease-[var(--ease-folio)] group-focus-within:opacity-100 group-hover:-translate-y-0.5 group-hover:opacity-100 pointer-coarse:opacity-100`}>
+                  <div data-card-menu="" className={`absolute top-2 flex items-center gap-1 ${d.starred ? "right-[calc(11cqw+4px)]" : "right-2"} opacity-0 transition-[opacity,translate] duration-200 ease-[var(--ease-folio)] group-focus-within:opacity-100 group-hover:-translate-y-0.5 group-hover:opacity-100 pointer-coarse:opacity-100`}>
                     {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} raised /> : null}
                     <div className="ui-raised rounded-tiny [&_button]:rounded-tiny">
                       <DocMenu {...menuProps(d)} />

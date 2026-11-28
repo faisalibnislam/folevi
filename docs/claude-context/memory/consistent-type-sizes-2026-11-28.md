@@ -10,3 +10,5 @@ The same kind of text looks the same everywhere in Folevi. A card's time ("Oct 2
 **Why:** mismatched sizes for the same role make the app look unfinished, and the owner reviews visual details closely.
 
 **How to apply:** before adding or changing a text style, check how the same role is styled elsewhere (note and folder cards, list rows, Home sections, native cards) and reuse one token or class (`text-footnote`, `.ui-list-name`, `.ui-list-meta`, `WebTextStyle.role(...)`) instead of a one-off size. When fixing one instance, fix every sibling in the same change. The list views' system is in globals.css (`.ui-list*`).
+
+Icons follow the same rule (2026-11-28): every line icon draws its lines at one screen width whatever its size: `--control-icon-stroke` (1.25px desktop, 1.5px touch) with `vector-effect: non-scaling-stroke` on `svg.lucide` in globals.css, and `WebIconView.lineWidth` in the native apps. Don't give an icon its own `strokeWidth`; it is ignored.

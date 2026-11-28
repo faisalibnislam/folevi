@@ -23,7 +23,6 @@ import { useBackendMode } from "@/lib/mode";
 import { appUrl } from "@/lib/env";
 import { asCapabilityCommand, macDesktop, noteFromText, setNoteFileSource, spotlightGone, spotlightLeft, type DesktopSpotlightItem, type MacCapabilities, type MacCapabilityCommand } from "@/lib/desktop/capabilities";
 import { desktopChanged } from "@/lib/engine/desktopChanged";
-import { quickNoteSpaces, saveQuickNote, validateSave } from "@/lib/desktop/quickNotes";
 // Export (Markdown, PDF, zips) loads when a note is first shared, printed or dragged out.
 const exporting = () => import("@/components/doc/export");
 import { errorMessage, useToast } from "@/components/ui/Toast";
@@ -114,7 +113,7 @@ export function DesktopCapabilities() {
 function Capabilities() {
   const bridge = macDesktop()!;
   const client = useConvex();
-  const { scope, engine, today, deviceId, workspaces } = useAppState();
+  const { scope, engine, today, deviceId } = useAppState();
   const { route, navigate } = useAppRouter();
   const local = useBackendMode() === "local";
   const toast = useToast();
@@ -187,8 +186,8 @@ function Capabilities() {
   }, [client, engine]);
 
   // The app's commands, answered with commandDone.
-  const latest = useRef({ docId, title, link, scope, today, deviceId, engine, client, quickAdd, importText, navigate, toast, workspaces });
-  latest.current = { docId, title, link, scope, today, deviceId, engine, client, quickAdd, importText, navigate, toast, workspaces };
+  const latest = useRef({ docId, title, link, scope, today, deviceId, engine, client, quickAdd, importText, navigate, toast });
+  latest.current = { docId, title, link, scope, today, deviceId, engine, client, quickAdd, importText, navigate, toast };
   useEffect(() => {
     const answer = async (c: MacCapabilityCommand): Promise<Record<string, unknown>> => {
       const now = latest.current;
@@ -217,29 +216,6 @@ function Capabilities() {
         case "spotlight-look": {
           look.current(null);
           return { ok: true };
-        }
-        case "quick-note-destinations": {
-          const spaces = await quickNoteSpaces(now.client as never, now.workspaces);
-          return { ok: true, spaces };
-        }
-        case "quick-note-save": {
-          const note = validateSave(c.note);
-          if (!note) return { ok: false, message: "Folevi couldn't read that quick note." };
-          try {
-            const id = await saveQuickNote(now.client as never, (x) => now.importText(x) as never, note);
-            return { ok: true, noteId: id };
-          } catch (e) {
-            const message = errorMessage(e);
-            return { ok: false, message: /e2ee|encrypt/i.test(message) ? "This workspace is end-to-end encrypted. Open Folevi to add notes there." : message };
-          }
-        }
-        case "quick-note-unsave": {
-          try {
-            await now.client.mutation(api.documents.bulkUpdate, { documentIds: [c.noteId], action: { kind: "trash" } });
-            return { ok: true };
-          } catch (e) {
-            return { ok: false, message: errorMessage(e) };
-          }
         }
         case "add-task": {
           try {

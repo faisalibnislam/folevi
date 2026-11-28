@@ -1,8 +1,8 @@
-// The menu bar icon (docs/MAC_POLISH_PLAN.md §3.9): Folevi's "F", tinted by the system. A click opens the quick
-// notes (QuickNotesHost.swift, 2026-11-28); a right-click or Control-click shows the menu it had before: Quick Add,
+// The menu bar icon (docs/MAC_POLISH_PLAN.md §3.9): Folevi's "F", tinted by the system. A click opens the menu
+// bar note (MenuBarNoteHost.swift, 2026-11-28); a right-click or Control-click shows the menu it had before: Quick Add,
 // New Note, Search; the recent notes (⌘1 to ⌘8 while it's open); the save state with its dot; the places when
-// there are several (choosing one switches); Open Folevi, Settings, Quit. The same items end the quick notes'
-// own menu (`appItems`). Settings > General can hide the icon.
+// there are several (choosing one switches); Open Folevi, Settings, Quit. The same items end the menu bar
+// note's own menu (`appItems`). Settings > General can hide the icon.
 import AppKit
 import FoleviDesign
 
@@ -25,8 +25,8 @@ final class StatusItem: NSObject, NSMenuDelegate {
         image?.isTemplate = true
         image?.accessibilityDescription = "Folevi"
         item.button?.image = image
-        item.button?.foleviTooltip = "Folevi quick notes"
-        item.button?.setAccessibilityLabel("Folevi quick notes")
+        item.button?.foleviTooltip = "Folevi note"
+        item.button?.setAccessibilityLabel("Folevi note")
         item.button?.target = self
         item.button?.action = #selector(clicked(_:))
         item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -35,7 +35,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         self.item = item
     }
 
-    /// A click opens the quick notes; a right-click or Control-click, the menu.
+    /// A click opens the menu bar note; a right-click or Control-click, the menu.
     @objc private func clicked(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
@@ -45,22 +45,22 @@ final class StatusItem: NSObject, NSMenuDelegate {
             item.menu = nil
             return
         }
-        MacQuickNotes.shared.toggle()
+        MacMenuBarNote.shared.toggle()
     }
 
-    /// The icon's frame on screen (the quick notes open under it), nil before the menu bar has placed it.
+    /// The icon's frame on screen (the menu bar note opens under it), nil before the menu bar has placed it.
     var buttonScreenFrame: NSRect? {
         guard let button = item?.button, let window = button.window else { return nil }
         return window.convertToScreen(button.convert(button.bounds, to: nil))
     }
 
-    /// Highlighted while the quick notes show, as a menu's icon is while its menu is open.
+    /// Highlighted while the menu bar note shows, as a menu's icon is while its menu is open.
     func setHighlighted(_ on: Bool) {
         item?.button?.highlight(on)
     }
 
-    /// The menu's items for the quick notes' own menu: the same, with the recent notes in a submenu (⌘1 to ⌘9 are
-    /// the quick notes' there).
+    /// The menu's items for the menu bar note's own menu: the same, with the recent notes in a submenu and no keys
+    /// (the panel's own shortcuts come first there).
     func appItems() -> [NSMenuItem] {
         let temp = NSMenu()
         build(into: temp, forPanel: true)
@@ -77,14 +77,14 @@ final class StatusItem: NSObject, NSMenuDelegate {
     func build(into menu: NSMenu, forPanel: Bool = false) {
         menu.removeAllItems()
         if !forPanel {
-            let notes = add(menu, "Quick Notes") { MacQuickNotes.shared.show() }
+            let notes = add(menu, "Menu Bar Note") { MacMenuBarNote.shared.show() }
             if let (key, mask) = MainMenu.menuKey(DesktopSettings.current.quickAddShortcut) {
                 notes.keyEquivalent = key
                 notes.keyEquivalentModifierMask = mask
             }
         }
         add(menu, "Quick Add Task…") {
-            if forPanel { MacQuickNotes.shared.notes.hide() }
+            if forPanel { MacMenuBarNote.shared.note.hide() }
             QuickAddPanel.shared.show()
         }
         add(menu, "New Note") { MainMenu.shared.run("file.new-note"); NSApp.activate() }

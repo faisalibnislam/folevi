@@ -1862,10 +1862,18 @@ function DocumentHeader({
   const focusedOnce = useRef(false);
   const freshTitle = useRef(false);
   useEffect(() => {
-    if (focusedOnce.current || search.get("new") !== "1") return;
+    const fresh = search.get("new");
+    if (focusedOnce.current || (fresh !== "1" && fresh !== "typed")) return;
     focusedOnce.current = true;
+    const el = titleRef.current;
+    el?.focus();
+    // "typed": the Mac's menu bar note was made from what was just typed (components/app/MenuBarNote.tsx): the caret
+    // goes after it and typing carries on, nothing is selected.
+    if (fresh === "typed") {
+      if (el) el.setSelectionRange(el.value.length, el.value.length);
+      return;
+    }
     freshTitle.current = true;
-    titleRef.current?.focus();
   }, [search]);
   // A new page from a template already has a title: it's selected (typing replaces it), also when it arrives
   // a moment after the page opens. Once the person types or moves the caret, it's theirs.

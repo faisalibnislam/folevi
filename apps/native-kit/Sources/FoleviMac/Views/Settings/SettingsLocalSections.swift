@@ -891,12 +891,12 @@ struct DesktopSettingsView: View {
     var body: some View {
         let d = model.query(.desktop).data(DesktopData.self)
         if d?.bridge == false {
-            SettingsCard("Folevi for Mac", description: "These settings are for the Folevi Mac app: quick notes from any app, opening at login, the menu bar icon and Mac notifications. Open Settings in the Mac app to change them.") {
+            SettingsCard("Folevi for Mac", description: "These settings are for the Folevi Mac app: a note from the menu bar, opening at login, the menu bar icon and Mac notifications. Open Settings in the Mac app to change them.") {
                 SMuted("You're using Folevi in a browser.")
             }
         } else if let s = d?.settings {
             VStack(alignment: .leading, spacing: SettingsStyle.pair("card").light.margin.bottom) {
-                SettingsCard("Quick notes", description: "Open your quick notes from any app: coloured notes under the menu bar icon, each saved as a Folevi note when it’s ready. Quick Add Task is in their menu.") {
+                SettingsCard("Menu bar note", description: "Write a note from any app: it opens under the menu bar icon and is saved to Drafts, or the folder you pick, like any other note. Quick Add Task is in its menu.") {
                     if native { nativeShortcut(s) } else { shortcut(s) }
                 }
                 SettingsCard("On this Mac") {
@@ -915,8 +915,8 @@ struct DesktopSettingsView: View {
 
     private func rows(_ s: DesktopData.Settings) -> [Row] {
         [
-            Row(id: "openAtLogin", label: "Open at login", hint: "Folevi starts quietly when you log in, so your quick notes are always ready.", on: s.openAtLogin),
-            Row(id: "menuBarIcon", label: "Menu bar icon", hint: "Your quick notes from the menu bar, with New Note, Quick Add Task, Search and recent notes in their menu.", on: s.menuBarIcon),
+            Row(id: "openAtLogin", label: "Open at login", hint: "Folevi starts quietly when you log in, so your menu bar note is always ready.", on: s.openAtLogin),
+            Row(id: "menuBarIcon", label: "Menu bar icon", hint: "A note from the menu bar, with New Note, Quick Add Task, Search and recent notes in its menu.", on: s.menuBarIcon),
             Row(id: "notifications", label: "Mac notifications", hint: "Comments, mentions and reminders appear as Mac notifications while Folevi isn't the app in front. The Dock icon shows how many are unread.", on: s.notifications),
         ] + (s.spotlight.map { [Row(id: "spotlight", label: "Show notes in Spotlight", hint: "Find any note by its words from Spotlight, archived ones too. Locked and encrypted notes are never added.", on: $0)] } ?? [])
     }
@@ -956,7 +956,7 @@ struct DesktopSettingsView: View {
             .buttonStyle(.bordered)
             .buttonBorderShape(.capsule)
             .overlay(Capsule().strokeBorder(MacLook.Colors.accent, lineWidth: recording ? 2 : 0).padding(-2))
-            .accessibilityLabel(recording ? "Press the new shortcut" : "Quick notes shortcut: \(s.shortcutLabel). Change")
+            .accessibilityLabel(recording ? "Press the new shortcut" : "Menu bar note shortcut: \(s.shortcutLabel). Change")
             if !s.quickAddShortcut.isEmpty { SButton("Turn off") { set("quickAddShortcut", .string("")) } }
             if s.quickAddShortcut != s.defaultShortcut { SButton("Use \(s.defaultLabel)") { set("quickAddShortcut", .string(s.defaultShortcut)) } }
         }
@@ -980,7 +980,7 @@ struct DesktopSettingsView: View {
                     }
                     .buttonStyle(.bordered)
                     .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(MacLook.Colors.accent, lineWidth: recording ? 2 : 0).padding(-2))
-                    .accessibilityLabel(recording ? "Press the new shortcut" : "Quick notes shortcut: \(s.shortcutLabel). Change")
+                    .accessibilityLabel(recording ? "Press the new shortcut" : "Menu bar note shortcut: \(s.shortcutLabel). Change")
                 } else {
                     webShortcutField(s, field: field, f: f)
                 }
@@ -1008,7 +1008,7 @@ struct DesktopSettingsView: View {
                 }
                 // The field shows the hover fill and takes no system dimming (MAC-56).
                 .buttonStyle(SettingsHoverOverlayStyle(radius: f.radius, enabled: !recording))
-                .accessibilityLabel(recording ? "Press the new shortcut" : "Quick notes shortcut: \(s.shortcutLabel). Change")
+                .accessibilityLabel(recording ? "Press the new shortcut" : "Menu bar note shortcut: \(s.shortcutLabel). Change")
     }
 
     private func start() {

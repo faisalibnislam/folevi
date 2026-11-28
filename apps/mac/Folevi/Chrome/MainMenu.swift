@@ -104,9 +104,9 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
         return m
     }
 
-    /// "Quick Notes" shows the global shortcut from Settings (none when it's off).
+    /// "Menu Bar Note" shows the global shortcut from Settings (none when it's off).
     func refreshShortcuts() {
-        guard let item = itemsById["file.quick-notes"] else { return }
+        guard let item = itemsById["file.menu-bar-note"] else { return }
         let accel = DesktopSettings.current.quickAddShortcut
         if let (key, mask) = Self.menuKey(accel) {
             item.keyEquivalent = key
@@ -207,7 +207,7 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
             NSApp.activate()
         case "app.check-for-updates": Chrome.checkForUpdates?()
         case "file.quick-add-anywhere": QuickAddPanel.shared.show()
-        case "file.quick-notes": MacQuickNotes.shared.show()
+        case "file.menu-bar-note": MacMenuBarNote.shared.show()
         case "file.new-window":
             WindowManager.shared.openMain(path: "/documents")
             NSApp.activate()

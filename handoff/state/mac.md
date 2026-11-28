@@ -9,12 +9,12 @@ Keep this short and true: rewrite it when things change, and put history in `han
 - Import from Apple Notes (PR 139): notes, folders, tags, every attachment and original dates; not in a release yet, and not yet tried on a real Notes library.
 - Settings > Writing (spell check, prediction, US/UK English, the personal dictionary) is a native section (`apps/native-kit/Sources/FoleviMac/Views/Settings/WritingSettings.swift`), saved through Settings' Convex allowlist; not in a release yet.
 - The sidebar's More section and Customize sidebar are native (`apps/native-kit/Sources/FoleviMac/Model/SidebarLayout.swift`, `SidebarLayoutStore.swift`, `Views/SidebarCustomize.swift`, `WebSidebar+Mac.swift`), reading and saving the web's layout (`convex/sidebarLayout.ts`, through Settings' Convex allowlist); not in a release yet. Tested headless only.
-- Menu bar quick notes (2026-11-28, not in a release yet): the menu bar icon and ⌥Space open a Notlet-style panel of coloured dots kept on this Mac (`apps/native-kit/Sources/FoleviQuickNotes`, host `apps/mac/Folevi/Chrome/QuickNotesHost.swift`, page side `apps/web/src/lib/desktop/quickNotes.ts`); Save to note makes a Folevi note in the chosen workspace and folder. Right-click on the icon shows the old menu. Tested headless only; no iCloud sync between Macs.
+- Menu bar note (2026-11-28, not in a release yet): the menu bar icon and ⌥Space open a panel with one real note in Folevi's editor (the float page without its bar), made in Drafts or the picked folder on the first keystroke and synced like any other note (`apps/native-kit/Sources/FoleviMenuBarNote`, `apps/mac/Folevi/Chrome/MenuBarNoteHost.swift`, `apps/web/src/components/app/MenuBarNote.tsx`). Right-click on the icon shows the old menu. Tested headless only.
 - The Mac unit tests (XCTest) and `apps/native-kit` `swift test` were not run for the 1.6.78 release; the Debug build and the universal Release build with its signing checks were.
 
 ## Next steps
 
-- The owner tries the quick notes in the app: click the menu bar icon and ⌥Space, type in a few dots, a screenshot, pin and window mode, pick a workspace folder, Save to note against the dev deployment and Undo, VoiceOver on the dots. Then decide on iCloud sync between Macs (needs an iCloud container on the Mac's provisioning profile).
+- The owner tries the menu bar note in the app: click the icon and ⌥Space, type on the empty page (a note appears in Drafts on the web), pick a workspace folder, New, a screenshot, pin and window mode, VoiceOver.
 
 - The owner tries Float this note on the Mac (several panels, pin off and on, over a full-screen app).
 - Try Import from Apple Notes with a Notes account or macOS user made only for testing (with the owner's OK): big library, big attachments, "denied", attachments saving into Folevi's temporary folder, checklist ticks.

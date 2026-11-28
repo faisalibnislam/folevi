@@ -60,8 +60,8 @@ enum Chrome {
             TitleBar.install()
             return true
         }, at: 0)
-        // ⌥Space (Settings > General) opens the menu bar's quick notes (2026-11-28); Quick Add Task is in their menu.
-        HotKey.shared.action = { MacQuickNotes.shared.toggle() }
+        // ⌥Space (Settings > General) opens the menu bar note (2026-11-28); Quick Add Task is in its menu.
+        HotKey.shared.action = { MacMenuBarNote.shared.toggle() }
         // Updates (WM3's Sparkle): the Folevi menu's item says what Updater says; off (hidden) in Debug builds.
         checkForUpdates = { Updater.shared.menuAction() }
         updateTitle = { Updater.shared.menuTitle }
@@ -76,7 +76,7 @@ enum Chrome {
                 Chrome.status = ""
                 Chrome.refresh()
                 QuickAddPanel.shared.placeChanged()
-                MacQuickNotes.shared.notes.placeChanged()
+                MacMenuBarNote.shared.placeChanged()
             }
         }
         nc.addObserver(forName: Places.quickAddChanged, object: nil, queue: .main) { _ in

@@ -18,7 +18,7 @@ export function DesktopSection() {
 
   if (!bridge) {
     return (
-      <Card title="Folevi for Mac" description="These settings are for the Folevi Mac app: quick notes from any app, opening at login, the menu bar icon and Mac notifications. Open Settings in the Mac app to change them." >
+      <Card title="Folevi for Mac" description="These settings are for the Folevi Mac app: a note from the menu bar, opening at login, the menu bar icon and Mac notifications. Open Settings in the Mac app to change them." >
         <p className="text-subheadline text-muted">You're using Folevi in a browser.</p>
       </Card>
     );
@@ -30,10 +30,10 @@ export function DesktopSection() {
   const linux = bridge.platform === "linux";
   return (
     <div className="space-y-5">
-      {/* On the Mac the shortcut opens the menu bar's quick notes (Quick Add Task is in their menu); elsewhere, Quick Add. */}
+      {/* On the Mac the shortcut opens the menu bar note (Quick Add Task is in its menu); elsewhere, Quick Add. */}
       <Card
-        title={windows || linux ? "Quick Add" : "Quick notes"}
-        description={windows || linux ? "Add a task from any app without switching to Folevi. Write “tomorrow 9am”, “!high” or “#page” as you type; tasks without a page go to your Inbox." : "Open your quick notes from any app: coloured notes under the menu bar icon, each saved as a Folevi note when it’s ready. Quick Add Task is in their menu."}
+        title={windows || linux ? "Quick Add" : "Menu bar note"}
+        description={windows || linux ? "Add a task from any app without switching to Folevi. Write “tomorrow 9am”, “!high” or “#page” as you type; tasks without a page go to your Inbox." : "Write a note from any app: it opens under the menu bar icon and is saved to Drafts, or the folder you pick, like any other note. Quick Add Task is in its menu."}
       >
         <ShortcutField value={settings.quickAddShortcut} error={state.error} platform={bridge.platform} onChange={(quickAddShortcut) => save({ quickAddShortcut })} />
       </Card>
@@ -51,8 +51,8 @@ export function DesktopSection() {
             </>
           ) : (
             <>
-              <Row label="Open at login" hint="Folevi starts quietly when you log in, so your quick notes are always ready." checked={settings.openAtLogin} onChange={(openAtLogin) => save({ openAtLogin })} />
-              <Row label="Menu bar icon" hint="Your quick notes from the menu bar, with New Note, Quick Add Task, Search and recent notes in their menu." checked={settings.menuBarIcon} onChange={(menuBarIcon) => save({ menuBarIcon })} />
+              <Row label="Open at login" hint="Folevi starts quietly when you log in, so your menu bar note is always ready." checked={settings.openAtLogin} onChange={(openAtLogin) => save({ openAtLogin })} />
+              <Row label="Menu bar icon" hint="A note from the menu bar, with New Note, Quick Add Task, Search and recent notes in its menu." checked={settings.menuBarIcon} onChange={(menuBarIcon) => save({ menuBarIcon })} />
             </>
           )}
           {settings.spotlight !== undefined ? (
@@ -130,7 +130,7 @@ function ShortcutField({ value, error, platform, onChange }: { value: string; er
         <button
           type="button"
           aria-describedby={hintId}
-          aria-label={recording ? "Press the new shortcut" : `${platform === "windows" || platform === "linux" ? "Quick Add" : "Quick notes"} shortcut: ${label(value)}. Change`}
+          aria-label={recording ? "Press the new shortcut" : `${platform === "windows" || platform === "linux" ? "Quick Add" : "Menu bar note"} shortcut: ${label(value)}. Change`}
           onClick={() => setRecording((r) => !r)}
           onKeyDown={onKeyDown}
           onBlur={() => setRecording(false)}

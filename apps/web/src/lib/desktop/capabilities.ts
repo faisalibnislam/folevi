@@ -104,13 +104,9 @@ export type MacCapabilityCommand =
   | { type: "new-note-with-text"; id: string; text: string }
   | { type: "add-task"; id: string; text: string; dueDate?: string }
   /** Spotlight lost what it held (the system asked for every note again): look at every note of the place now. */
-  | { type: "spotlight-look"; id: string }
-  /** The menu bar's quick notes (FoleviQuickNotes): where a dot can be saved, the save, and its Undo. */
-  | { type: "quick-note-destinations"; id: string }
-  | { type: "quick-note-save"; id: string; note: unknown }
-  | { type: "quick-note-unsave"; id: string; noteId: string };
+  | { type: "spotlight-look"; id: string };
 
-const COMMANDS = new Set(["share", "print", "new-note-with-text", "add-task", "spotlight-look", "quick-note-destinations", "quick-note-save", "quick-note-unsave"]);
+const COMMANDS = new Set(["share", "print", "new-note-with-text", "add-task", "spotlight-look"]);
 
 /** The capability commands among the app's commands (the menus' and links' go to DesktopBridge). */
 export function asCapabilityCommand(command: unknown): MacCapabilityCommand | null {
@@ -118,7 +114,6 @@ export function asCapabilityCommand(command: unknown): MacCapabilityCommand | nu
   const c = command as { type?: unknown; id?: unknown; text?: unknown; dueDate?: unknown };
   if (typeof c.type !== "string" || !COMMANDS.has(c.type) || typeof c.id !== "string" || !c.id) return null;
   if ((c.type === "new-note-with-text" || c.type === "add-task") && typeof c.text !== "string") return null;
-  if (c.type === "quick-note-unsave" && typeof (command as { noteId?: unknown }).noteId !== "string") return null;
   if (c.dueDate !== undefined && (typeof c.dueDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(c.dueDate))) return null;
   return command as MacCapabilityCommand;
 }

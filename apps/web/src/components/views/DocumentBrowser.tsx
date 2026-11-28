@@ -4,7 +4,7 @@ import { useMutation } from "convex/react";
 import { usePaginatedQuery, useQuery } from "@/lib/convex/queries";
 import { useCardSizes } from "@/lib/cardSize";
 import { lazy, startTransition, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
@@ -53,6 +53,8 @@ import { FolderShareDialog } from "@/components/app/FolderShareDialog";
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { FilterField, ListPageHeader, ROW_ICON_BUTTON, ROW_SEG, RowSort, RowTraySep, SECTION_LABEL } from "./ListPageHeader";
+import { NoteColumns } from "./NoteColumns";
+import { useOpenManyInBackground } from "@/lib/app/tabs";
 
 // Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
 // time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
@@ -147,7 +149,14 @@ function samePending(a: PendingDocument[], b: PendingDocument[]): boolean {
 
 export type Summary = NonNullable<ReturnType<typeof usePaginatedQuery<typeof api.documents.list>>["results"]>[number];
 
-export function DocumentBrowser({ view, folderId, tagId, title }: { view: View; folderId?: string; tagId?: string; title?: string }) {
+/** The columns layout (docs/NOTE_COLUMNS.md): the list's path, the note open in it, and that note's page. */
+export interface ColumnsInput {
+  list: string;
+  noteId: string | null;
+  note: ReactNode;
+}
+
+export function DocumentBrowser({ view, folderId, tagId, title, columns }: { view: View; folderId?: string; tagId?: string; title?: string; columns?: ColumnsInput }) {
   const { scope } = useAppState();
   const { data: org, fromCache } = useFolderTreeState(scope);
   // A folder/tag link that doesn't resolve in the current context (deleted, mistyped, or from Personal while a
@@ -158,7 +167,7 @@ export function DocumentBrowser({ view, folderId, tagId, title }: { view: View; 
     !fromCache &&
     ((view === "folder" && !org.folders.some((f) => f.id === folderId)) || (view === "tag" && !org.tags.some((t) => t.id === tagId)));
   if (missing) return <MissingContainer kind={view === "folder" ? "folder" : "tag"} />;
-  return <DocumentList view={view} folderId={folderId} tagId={tagId} org={org} titleOverride={title} />;
+  return <DocumentList view={view} folderId={folderId} tagId={tagId} org={org} titleOverride={title} columns={columns} />;
 }
 
 function MissingContainer({ kind }: { kind: "folder" | "tag" }) {
@@ -215,7 +224,7 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
   }
 }
 
-function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
+function DocumentList({ view, folderId, tagId, org, titleOverride, columns }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string; columns?: ColumnsInput }) {
   const { scale: cardScale } = useCardSizes();
   const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
@@ -367,7 +376,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   // its notes in its own way.)
   const selectable = view !== "templates";
   // While filtering, the page shows only the notes that match: its folders step aside.
-  const subfolderIds = useMemo(() => (iphone || filtering ? [] : subfolders.map((f) => f.id)), [iphone, filtering, subfolders]);
+  // (The columns layout's note column shows notes only: the sidebar has the folders inside.)
+  const subfolderIds = useMemo(() => (iphone || filtering || columns ? [] : subfolders.map((f) => f.id)), [iphone, filtering, columns, subfolders]);
   const itemIds = useMemo(() => [...subfolderIds, ...shown.map((d) => d.id)], [subfolderIds, shown]);
   const selection = useCardSelection(itemIds, selectable);
   const selectedEntries = useMemo<SelectionEntry[]>(() => {
@@ -455,6 +465,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const menuProps = (d: Summary) => ({
     doc: d,
     view,
+    columns: Boolean(columns),
     arrange: canArrange ? { up: () => nudge(d.id, -1), down: () => nudge(d.id, 1) } : undefined,
     select: selectable ? { selected: selection.selected.has(d.id), toggle: () => selection.toggle(d.id) } : undefined,
   });
@@ -559,6 +570,68 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       />
     </>
   );
+
+  if (columns && !iphone) {
+    return (
+      <NoteColumns
+        list={columns.list}
+        noteId={columns.noteId}
+        note={columns.note}
+        view={view}
+        title={title}
+        mark={view === "folder" ? <FolderGlyph color={folder?.color} size={20} /> : undefined}
+        count={loading || listEmpty ? undefined : sentence([countText, !online && cached ? "saved on this device" : null, canArrange ? "drag to arrange" : null].filter(Boolean).join(" · "))}
+        docs={docs}
+        shown={shown}
+        loading={loading}
+        failed={listFailed ? { what: LIST_WHAT[view], onRetry: paged.retry } : undefined}
+        canLoadMore={canLoadMore}
+        onLoadMore={() => (moreCached ? setCachedShown((n) => n + PAGE_SIZE) : loadMore(PAGE_SIZE))}
+        sort={sort}
+        filter={filterField(false)}
+        controls={
+          <>
+            <ColumnSort value={sort} onChange={setSort} />
+            {view === "folder" && caps.sharing ? (
+              <button type="button" aria-label="Share" title="Share" className={ROW_ICON_BUTTON} onClick={() => setSharingFolder(true)}>
+                <Share2 size={15} aria-hidden />
+              </button>
+            ) : null}
+            {view === "folder" && folder ? <FolderMenu folder={folder} tooltip="More" trigger={<MoreHorizontal size={15} aria-hidden />} triggerClassName={ROW_ICON_BUTTON} /> : null}
+            {view === "trash" && results.length ? (
+              <MenuButton label="Trash actions" trigger={<MoreHorizontal size={15} aria-hidden />} triggerClassName={ROW_ICON_BUTTON} items={[{ label: "Empty Trash…", icon: <Trash2 size={14} />, danger: true, onSelect: () => setConfirmEmpty(true) }]} />
+            ) : null}
+          </>
+        }
+        empty={{
+          ...EMPTY[view],
+          action:
+            view === "all" || view === "folder" || view === "unsorted" ? (
+              <Button variant="primary" onClick={() => void createDocument({})}>
+                <Plus size={14} aria-hidden /> New note
+              </Button>
+            ) : undefined,
+        }}
+        filtering={filtering}
+        filterEmpty={<p className="px-3 pt-4 text-subheadline text-muted">No notes match “{q.trim()}”.</p>}
+        rowProps={cardProps}
+        rowMenu={(d) => <DocMenu {...menuProps(d)} />}
+        selected={selection.selected}
+        unsynced={unsynced}
+        unsyncedMark={<UnsyncedMarker />}
+        dropTarget={dropTarget}
+        overlay={
+          selection.selectedIds.length ? (
+            <SelectionBar count={selection.selectedIds.length} total={itemIds.length} actions={bulkActions} onSelectAll={selection.selectAll} onClear={selection.clear} label={selectionActions.label} />
+          ) : null
+        }
+      >
+        {ctx ? <NoteContextMenu key={ctx.doc.id + ctx.at.x + ctx.at.y} at={ctx.at} onDone={() => setCtx(null)} {...menuProps(ctx.doc)} /> : null}
+        {selectionCtx ? <ContextMenu key={selectionCtx.x + selectionCtx.y} at={selectionCtx} label={`${selectionActions.noun} selected`} items={selectionActions.menuItems} onClose={() => setSelectionCtx(null)} /> : null}
+        {dialogs}
+      </NoteColumns>
+    );
+  }
 
   if (iphone) {
     return (
@@ -885,6 +958,18 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   );
 }
 
+/** The column's sort: a "…"-sized button with the sorts in its menu (the column is too narrow for the row's field). */
+function ColumnSort({ value, onChange }: { value: Sort; onChange: (v: Sort) => void }) {
+  return (
+    <MenuButton
+      label={`Sort by: ${NOTE_SORTS.find(([v]) => v === value)?.[1] ?? ""}`}
+      trigger={<ArrowDownUp size={15} aria-hidden />}
+      triggerClassName={ROW_ICON_BUTTON}
+      items={NOTE_SORTS.map(([v, label]) => ({ label, icon: v === value ? <Check size={14} /> : <span className="inline-block w-3.5" />, onSelect: () => onChange(v) }))}
+    />
+  );
+}
+
 /** A subfolder card is 152 px wide, about two thirds of All folders' (~234 px): its labels stay that card's size. */
 const SUBFOLDER_LABELS = 234 / 152;
 
@@ -928,18 +1013,21 @@ interface DocMenuProps {
   recent?: boolean;
   /** Offer "Float this note" (the right-click menu only; lib/app/float.ts). */
   floatable?: boolean;
+  /** In the columns layout a click already opens the note here: "Open in New Tab" instead of Open. */
+  columns?: boolean;
 }
 
 /**
  * A note's actions (shared by its "…" button and its right-click menu), with the dialogs they open.
  * `dialogOpen` tells a context menu to stay mounted while one of its dialogs is showing.
  */
-function useDocMenu({ doc, view, arrange, select, recent, floatable }: DocMenuProps): { items: (MenuItem | "separator")[]; dialogs: ReactNode; dialogOpen: boolean } {
+function useDocMenu({ doc, view, arrange, select, recent, floatable, columns }: DocMenuProps): { items: (MenuItem | "separator")[]; dialogs: ReactNode; dialogOpen: boolean } {
   const createDocument = useCreateDocument();
   const duplicate = useMutation(api.documents.duplicate);
   const notes = useNoteActions();
   const toast = useToast();
   const { navigate } = useAppRouter();
+  const openInTabs = useOpenManyInBackground();
   const [moveOpen, setMoveOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -962,7 +1050,9 @@ function useDocMenu({ doc, view, arrange, select, recent, floatable }: DocMenuPr
           ...(phone && doc.kind !== "template"
             ? []
             : [
-                { label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
+                columns && doc.kind !== "template"
+                  ? { label: "Open in New Tab", icon: <ExternalLink size={14} />, onSelect: () => openInTabs?.([{ kind: "note", id: doc.id, name: doc.title || "Untitled" }]) }
+                  : { label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
               ]),
           ...(floatable && doc.kind !== "template" ? floatMenuItems({ id: doc.id, title: doc.title }) : []),
           doc.starred

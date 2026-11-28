@@ -1,5 +1,6 @@
 "use client";
 
+import { useColumnsList } from "@/lib/app/useNoteColumns";
 import { createContext, Fragment, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@/lib/convex/queries";
 import { useOfflineQuery } from "@/lib/sync/queryCache";
@@ -434,7 +435,9 @@ function WebShell() {
   const { profile, context } = useAppState();
   const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
   const [docSidebarMode, setDocSidebarModePref] = useLocalStorage<"document" | "folders">("folevi:doc-sidebar-mode", "document");
-  const pageSidebar = route.name === "doc" && docSidebarMode === "document" && !iphone;
+  // A note open in a list's column keeps the app's sidebar: the list beside it is what you browse (docs/NOTE_COLUMNS.md).
+  const columns = useColumnsList();
+  const pageSidebar = route.name === "doc" && docSidebarMode === "document" && !iphone && !columns;
 
   // "Use this template" on folevi.com: open the picked template as a new page, once, as soon as the app can
   // create pages (after onboarding; straight away for someone already signed in, via ?template=).
@@ -795,7 +798,7 @@ function WebShell() {
         ) : null}
         {/* While the modal drawer is open, the page behind it is inert (not focusable, hidden from AT). */}
         {/* The content panel. A note brings its own panel (its page on its backdrop), so it sits straight on the canvas. */}
-        <div ref={contentPanel} className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" ? "" : "ui-content overflow-hidden rounded-container"}`} inert={isNarrow && drawerOpen}>
+        <div ref={contentPanel} className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" || columns ? "" : "ui-content overflow-hidden rounded-container"}`} inert={isNarrow && drawerOpen}>
           {/* The tab strip floats over the view: content scrolls behind it (views pad their top to clear it). */}
           {!isNarrow ? <TabStrip /> : null}
           <RouteView />

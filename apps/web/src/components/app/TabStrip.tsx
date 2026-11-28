@@ -1,5 +1,7 @@
 "use client";
 
+import { useColumnsList, useColumnsToggle } from "@/lib/app/useNoteColumns";
+import { Columns3 } from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, CalendarDays, SquareCheckBig, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Trash2, Waypoints, X, XCircle } from "lucide-react";
@@ -152,9 +154,13 @@ export function TabStrip() {
   // The first tab is always Home (the dashboard); every other view (Foli AI, Graph, Drafts, a folder…) gets a tab
   // of its own that stays until it's closed, like a note's.
   const onHome = route.name === "documents";
-  const inFolder = route.name === "folder";
+  // A note open in a folder's column counts as in the folder (docs/NOTE_COLUMNS.md).
+  const columnsList = useColumnsList();
+  const listRoute = columnsList?.route ?? route;
+  const inFolder = listRoute.name === "folder";
+  const columnsToggle = useColumnsToggle();
   // New folder shows next to New note on a folder's page (inside it). The Folders page has its own, in its title row.
-  const folderParent = route.name === "folder" ? route.id : undefined;
+  const folderParent = listRoute.name === "folder" ? listRoute.id : undefined;
 
   // Dragging a tab (with a mouse or pen; a finger scrolls the strip): it follows the pointer and trades
   // places with a neighbour once it passes that tab's middle, as tabs do in a browser.
@@ -603,6 +609,19 @@ export function TabStrip() {
         </>
       ) : (
       <>
+      {columnsToggle.available ? (
+        <button
+          type="button"
+          aria-pressed={columnsToggle.on}
+          aria-label="Columns layout"
+          title={keys(columnsToggle.on ? "Show as cards and rows" : "Show as columns: the list beside the note")}
+          onClick={columnsToggle.toggle}
+          data-columns-toggle=""
+          className={`ui-btn ui-btn-ghost size-control flex-none ${columnsToggle.on ? "bg-[var(--glass-active)] text-heading" : "text-muted"}`}
+        >
+          <Columns3 size={16} aria-hidden />
+        </button>
+      ) : null}
       {folderParent !== undefined ? <NewFolderButton key={folderParent ?? "top"} parentId={folderParent} /> : null}
       <Button variant="primary" title={keys(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)")} onClick={() => void createDocument({})} className="h-control flex-none !pl-3">
         <Plus size={14} aria-hidden /> New note

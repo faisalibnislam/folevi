@@ -7,6 +7,9 @@ import { cameFromHistory } from "./historyNav";
 import { emitNoteEvent, nativePanes, onNativePanes, setNativePanes } from "@/lib/engine/noteHost";
 import { requestNavigation } from "@/lib/engine/navigation";
 import { openInMainWindow } from "./float";
+import { useColumnsList } from "./useNoteColumns";
+
+const EMPTY_SEARCH = new URLSearchParams();
 
 /**
  * An open note in the tab strip. A tab is a top-level page (`id`); its nested pages open inside it, and
@@ -237,7 +240,13 @@ export function tabsStorageKeys(accountKey: string, workspaceId: string | null):
  * tab comes back).
  */
 export function TabsProvider({ accountKey, workspaceId, children }: { accountKey: string; workspaceId: string | null; children: ReactNode }) {
-  const { route, pathname, search, navigate } = useAppRouter();
+  const router = useAppRouter();
+  const { navigate } = router;
+  // A note opened in a list's column (docs/NOTE_COLUMNS.md) is in the list's tab: the tabs see the list's page.
+  const columns = useColumnsList();
+  const route: { name: string; id?: string | null } = columns ? columns.route : router.route;
+  const pathname = columns ? columns.path : router.pathname;
+  const search = columns ? EMPTY_SEARCH : router.search;
   const keys = tabsStorageKeys(accountKey, workspaceId);
   const [tabs, setTabs] = useLocalStorage<DocTab[]>(keys.tabs, []);
   const [homeHref, setHomeHref] = useLocalStorage<string>(keys.homeHref, "/documents");
@@ -255,7 +264,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   const used = useRef(new Map<string, number>());
   const useClock = useRef(0);
 
-  const docId = route.name === "doc" ? route.id : null;
+  const docId = route.name === "doc" ? (route.id ?? null) : null;
   const query = search.toString();
   // The pages shown most recently, newest first (this session).
   const [recent, setRecent] = useState<string[]>([]);
@@ -806,6 +815,10 @@ export function useOpenInBackground(): TabsValue["openInBackground"] | undefined
   return useContext(TabsContext)?.openInBackground;
 }
 
+export function useOpenManyInBackground(): TabsValue["openManyInBackground"] | undefined {
+  return useContext(TabsContext)?.openManyInBackground;
+}
+
 /** useFolderTabClicks without the hook, for rows drawn in a loop. */
 export function folderTabClicks(open: TabsValue["openInBackground"] | undefined, folder: { id: string; name: string }): FolderTabClicks {
   return {
@@ -855,6 +868,14 @@ export function useViewTab(title: string | undefined) {
     if (!setView || isDoc || !title) return;
     setView({ path: pathname, title });
   }, [setView, isDoc, pathname, title]);
+}
+
+/** Names a list's tab from its note column (the column has no ViewChrome of its own: docs/NOTE_COLUMNS.md). */
+export function useListViewTab(path: string, title: string | undefined) {
+  const setView = useContext(TabsActionsContext)?.setView;
+  useEffect(() => {
+    if (setView && title) setView({ path, title });
+  }, [setView, path, title]);
 }
 
 /**

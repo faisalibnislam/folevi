@@ -4,6 +4,7 @@ import { NotePanes } from "./NotePanes";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
 import { useAppRouter } from "@/lib/app/router";
+import { useColumnsList } from "@/lib/app/useNoteColumns";
 import { DocumentBrowser } from "@/components/views/DocumentBrowser";
 import { TasksView } from "@/components/views/TasksView";
 import { CalendarView } from "@/components/views/CalendarView";
@@ -138,12 +139,43 @@ function AccountOnly({ title }: { title: string }) {
   );
 }
 
+/** A note's page as the doc route draws it (on its own, or joined side by side). */
+function NotePage({ id }: { id: string }) {
+  return (
+    <NotePanes
+      documentId={id}
+      render={(pane) => (
+        <Suspense fallback={<NoteLoading />}>
+          <DocumentView key={pane} documentId={pane} />
+        </Suspense>
+      )}
+    />
+  );
+}
+
 function Routes() {
   const { route } = useAppRouter();
   const iphone = useIphoneApp();
   const caps = useCapabilities();
   // A library on this device has its own Vault (docs/MAC_REBUILD_PLAN.md §5.6) where local mode has it.
   const vaultHere = useCanCall(api.vault.get);
+  // The columns layout (docs/NOTE_COLUMNS.md): a list's page and a note opened in it are one view, kept as it is
+  // while the note changes (the column keeps its scroll, filter and selection).
+  const columns = useColumnsList();
+  if (columns) {
+    const list = columns.route;
+    const view = list.name === "notes" ? "all" : list.name;
+    return (
+      <DocumentBrowser
+        key={columns.path}
+        view={view}
+        folderId={list.name === "folder" ? list.id : undefined}
+        tagId={list.name === "tag" ? list.id : undefined}
+        title={list.name === "notes" ? "All notes" : undefined}
+        columns={{ list: columns.path, noteId: columns.noteId, note: columns.noteId ? <NotePage id={columns.noteId} /> : null }}
+      />
+    );
+  }
   if (!caps.changes && route.name === "changes") return <AccountOnly title="Changes" />;
   if (!caps.sharing && (route.name === "shared" || route.name === "shared-folder")) return <AccountOnly title="Shared with Me" />;
   if (!caps.sharing && route.name === "folder-invite") return <AccountOnly title="Invitation" />;
@@ -176,14 +208,7 @@ function Routes() {
           <DocumentView key={route.id} documentId={route.id} />
         </Suspense>
       ) : (
-        <NotePanes
-          documentId={route.id}
-          render={(id) => (
-            <Suspense fallback={<NoteLoading />}>
-              <DocumentView key={id} documentId={id} />
-            </Suspense>
-          )}
-        />
+        <NotePage id={route.id} />
       );
     case "ai":
       return (

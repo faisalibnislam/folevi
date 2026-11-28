@@ -13,6 +13,7 @@ const SHORTCUTS: [string, string][] = [
   ["New note", "⌘ ⌥ N"],
   ["Quick add task", "⌘ ⇧ A"],
   ["Toggle sidebar", "⌘ \\"],
+  ["Hide or show the note list (columns layout)", "⌘ ⌥ L"],
   ["Toggle inspector", "⌘ ⌥ I"],
   ["Tasks · Today", "⌘ ⌥ T"],
   ["Bold / italic / underline", "⌘ B / ⌘ I / ⌘ U"],

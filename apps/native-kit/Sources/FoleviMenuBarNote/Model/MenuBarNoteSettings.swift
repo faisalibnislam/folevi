@@ -11,7 +11,7 @@ public final class MenuBarNoteSettings {
         public var id: String { rawValue }
         public var size: CGSize {
             switch self {
-            case .small: CGSize(width: 360, height: 260)
+            case .small: CGSize(width: 400, height: 260)
             case .medium: CGSize(width: 440, height: 320)
             case .large: CGSize(width: 540, height: 440)
             case .gigantic: CGSize(width: 680, height: 600)
@@ -29,7 +29,9 @@ public final class MenuBarNoteSettings {
 
     enum ScreenshotFormat: String, CaseIterable, Identifiable { case automatic, png, jpeg; var id: String { rawValue } }
 
-    static let minimumPanelSize = CGSize(width: 320, height: 200)
+    /// The smallest the panel resizes to: the footer (Saves to, its place, Add as a task, Screenshot, Save), a row of
+    /// screenshots and a few lines of text still fit.
+    static let minimumPanelSize = CGSize(width: 400, height: 260)
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var isLoading = true

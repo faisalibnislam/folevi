@@ -250,8 +250,8 @@ struct FooterRow: View {
                 .lineLimit(1)
                 .fixedSize()
                 .padding(.leading, 6)
+            // Whole when there's room; a long folder name gives way (truncated in the middle) before the buttons do.
             DestinationButton()
-                .fixedSize()
                 .layoutPriority(1)
             Spacer(minLength: 4)
             // The hint only when there's room for it (Home shows it on wide boxes too).
@@ -306,6 +306,7 @@ struct DestinationButton: View {
             }
             .foregroundStyle(webColor(hovering ? "color-heading" : "color-ink-muted", scheme, .primary))
             .padding(.horizontal, 8)
+            .frame(minWidth: 90, maxHeight: 28)
             .frame(height: 28)
             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hovering ? webColor("glass-hover", scheme, Color.primary.opacity(0.07)) : .clear))
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))

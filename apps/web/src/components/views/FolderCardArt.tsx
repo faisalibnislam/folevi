@@ -44,6 +44,8 @@ export const FOLDER_FRONT_TOP = 45;
  * peeked out past them). Subfolders stacked behind use the same outline.
  */
 const BACK_PATH = "M0 0H43.3C50 0 52 3.2 54 8C56 13.2 58.7 16 65.3 16H94.8Q100 16 100 22.24V100H0Z";
+/** Where the back's body starts beside the tab, as a share of the back's height (BACK_PATH's 16 of 100). */
+const BACK_BODY_TOP = 0.16;
 /** The back's and the subfolders' box: rounded like the front, masked to BACK_PATH. */
 const BACK_BOX = "absolute bottom-0 rounded-folder";
 const BACK_MASK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='${BACK_PATH}'/></svg>`)}") 0 0 / 100% 100% no-repeat`;
@@ -96,7 +98,7 @@ function FolderNote({ note, depth, top }: { note: FolderPreview; depth: number; 
       style={{ left: `${15 + STEP[depth]!}%`, top: `${at}%`, height: `${Math.min(top > 3 ? 76 : 70, 95 - at)}%`, rotate: `${TILT[depth]}deg`, background: paper }}
     >
       {art ? (
-        <div className="absolute inset-y-0 left-0 w-[6%]" style={{ background: `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` }} />
+        <div className="absolute inset-y-0 left-0 w-[7.5%]" style={{ background: `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` }} />
       ) : (
         <div className="absolute inset-y-[7%] left-[3.3%] flex flex-col justify-between">
           {Array.from({ length: 8 }, (_, i) => (
@@ -142,6 +144,7 @@ export function FolderCardArt({
   subfolders = 0,
   subfolderColors = [],
   menuRoom = false,
+  nameLines,
 }: {
   name: string;
   color: string | null;
@@ -154,6 +157,11 @@ export function FolderCardArt({
   subfolderColors?: (string | null)[];
   /** The card has its "…" in the front's top-right corner (FOLDER_CARD_MENU): the name stops short of the 32 px chip. */
   menuRoom?: boolean;
+  /**
+   * How many lines the name may take. Left out: two, or one on a card under 144 px wide, where two lines, the counts
+   * and the Edited date don't all fit on the front (as the Mac's WebFolderCard.nameLines), so the date never gets cut.
+   */
+  nameLines?: 1 | 2;
 }) {
   const base = folderHex(color);
   const tone = toneOf(base);
@@ -165,8 +173,9 @@ export function FolderCardArt({
   const kids = stack.tops.map((_, i) => folderHex(subfolderColors[stack.tops.length - 1 - i] ?? color)).reverse();
   return (
     <div aria-hidden className="absolute inset-0" style={{ ["--fc" as string]: base, ["--fc-tone" as string]: tone }}>
-      {/* the folder's soft shadow, under its back */}
-      <div className="absolute inset-x-0 bottom-0 rounded-folder shadow-[0_1px_2px_rgb(0_0_0/0.06),0_14px_26px_-14px_rgb(30_30_50/0.42)]" data-fc="shadow" style={{ top: `${stack.back + 4}%` }} />
+      {/* the folder's soft shadow, under its back (half its first strength: the owner, 28 November 2026). It starts where the back's body does (BACK_PATH's 16 of 100), so its
+          edge never shows in the gap beside the tab. */}
+      <div className="absolute inset-x-0 bottom-0 rounded-folder shadow-[0_1px_2px_rgb(0_0_0/0.03),0_14px_26px_-14px_rgb(30_30_50/0.21)]" data-fc="shadow" style={{ top: `${stack.back + (100 - stack.back) * BACK_BODY_TOP}%` }} />
       {/* subfolders stacked behind, and the back with its tab: one 85% layer, so a subfolder's outline doesn't show through the back */}
       <div className="absolute inset-0 opacity-85">
         {kids.map((hex, i) => (
@@ -188,7 +197,7 @@ export function FolderCardArt({
       {/* the front, with the name, the counts and the last change */}
       <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-folder px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
         <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.1] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
-        <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)),30px)] font-semibold leading-[1.15]`}>
+        <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} ${nameLines === 1 ? "block truncate" : nameLines === 2 ? "line-clamp-2" : "line-clamp-2 @max-[144px]:block @max-[144px]:truncate"} text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)*var(--fc-name,1)),30px)] font-semibold leading-[1.15]`}>
           {name}
         </span>
         <span data-fc="age" className="relative flex min-h-0 flex-1 flex-col tabular-nums">

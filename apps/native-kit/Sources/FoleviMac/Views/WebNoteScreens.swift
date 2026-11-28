@@ -1392,7 +1392,7 @@ struct WebNoteBrowser: View {
         // A section of its own, under a small heading as Built-in templates has.
         return VStack(alignment: .leading, spacing: 0) {
             caps("Folders").accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: MacCards.s(152), maximum: MacCards.s(152)), spacing: MacCards.g(grid.gap), alignment: .top)], alignment: .leading, spacing: MacCards.g(32)) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: MacCards.s(190), maximum: MacCards.s(190)), spacing: MacCards.g(grid.gap), alignment: .top)], alignment: .leading, spacing: MacCards.g(32)) {
                 ForEach(model.subfolders, id: \.id) { card in
                     WebFolderCell(card: card, labelScale: 234.0 / 152.0, menu: menu(for: card.id) {
                         guard let f = model.menuFolder(card.id) else { return [] }
@@ -1403,7 +1403,7 @@ struct WebNoteBrowser: View {
                        select: model.selectable ? { range in model.select(card.id, range: range) } : nil,
                        selectionDrag: model.selectionDragItem(forFolder: card.id))
                     .onMiddleClick { frame.openInBackground(.folder(card.id), title: card.name) }
-                    .frame(width: MacCards.s(152))
+                    .frame(width: MacCards.s(190))
                 }
             }
         }

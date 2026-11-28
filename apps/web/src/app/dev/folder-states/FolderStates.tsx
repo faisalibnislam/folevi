@@ -3,6 +3,7 @@
 import { DEFAULT_COVER, type DocumentCover } from "@folevi/editor-schema";
 import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FOLDER_CARD_MENU, FolderCardArt, FolderCardMenuLook, type FolderPreview } from "@/components/views/FolderCardArt";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
+import { SUBFOLDER_NAME } from "@/components/views/FolderCard";
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 20);
@@ -31,12 +32,12 @@ const STATES: State[] = [
   { label: "Long name", name: "Quarterly planning and roadmap review for the whole team", color: "violet", count: 3, age: "2 days ago", previews: NOTES.slice(2) },
 ];
 
-function Card({ s, width }: { s: State; width: number }) {
+function Card({ s, width, labelScale }: { s: State; width: number; labelScale?: number }) {
   return (
     <figure className="grid gap-2" style={{ width }}>
-      <div className={FOLDER_CARD_BOX} data-state={s.label}>
+      <div className={FOLDER_CARD_BOX} data-state={s.label} style={labelScale ? ({ "--fc-text": labelScale, "--fc-name": SUBFOLDER_NAME } as React.CSSProperties) : undefined}>
         <div className={FOLDER_CARD_FRAME}>
-          <FolderCardArt name={s.name} color={s.color} count={s.count} age={s.age} previews={s.previews} subfolders={s.subfolders} subfolderColors={s.subfolderColors} menuRoom />
+          <FolderCardArt name={s.name} color={s.color} count={s.count} age={s.age} previews={s.previews} subfolders={s.subfolders} subfolderColors={s.subfolderColors} menuRoom nameLines={labelScale ? 1 : undefined} />
         </div>
         <div className={`${FOLDER_CARD_MENU} ${s.hover ? "!opacity-100" : ""}`}>
           <FolderCardMenuLook />
@@ -53,13 +54,14 @@ export function FolderStates() {
       {[
         { title: "Web and Mac (Home, 25% smaller)", width: 176 },
         { title: "iPad (Home)", width: 234 },
-        { title: "Subfolders on a folder page (web and Mac)", width: 114 },
+        // As DocumentBrowser draws them: 143 px, with the labels of a 234 px card (SUBFOLDER_LABELS).
+        { title: "Subfolders on a folder page (web and Mac)", width: 143, labelScale: 234 / 152 },
       ].map((g) => (
         <section key={g.title}>
           <h2 className="mb-4 text-headline font-semibold">{g.title}</h2>
           <div className="flex flex-wrap gap-x-6 gap-y-8">
             {STATES.map((s) => (
-              <Card key={s.label} s={s} width={g.width} />
+              <Card key={s.label} s={s} width={g.width} labelScale={"labelScale" in g ? g.labelScale : undefined} />
             ))}
           </div>
         </section>

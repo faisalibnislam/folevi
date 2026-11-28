@@ -1219,8 +1219,8 @@
 :root[data-theme="dark"] .fg .fg-front { fill: color-mix(in oklab, var(--fg-tone) 75%, #2a2a2e); }
 /* Card sizes in the grids (lib/cardSize.ts has the same for Home): on the web and the Mac folder and note cards are
    25% smaller than they were, so more fit in a row (the owner, 20 November 2026); the iPad and the iPhone keep the
-   full size. */
-:root { --folder-card-min: 158px; --note-card-min: 172px; --subfolder-card: 114px; --card-gap: 24px; --card-row-gap: 28px; --subfolder-gap-x: 16px; --subfolder-gap-y: 24px; }
+   full size. A folder page's subfolder cards are 25% bigger again, 143 px (the owner, 28 November 2026). */
+:root { --folder-card-min: 158px; --note-card-min: 172px; --subfolder-card: 143px; --card-gap: 24px; --card-row-gap: 28px; --subfolder-gap-x: 16px; --subfolder-gap-y: 24px; }
 :root:is([data-tablet], [data-iphone]) { --folder-card-min: 210px; --note-card-min: 230px; --subfolder-card: 152px; --card-gap: 32px; --card-row-gap: 40px; --subfolder-gap-x: 24px; --subfolder-gap-y: 32px; }
 /* Folder cards (FolderCardArt.tsx), "Frosted" (the owner, 20 November 2026): the back and the subfolders stacked
    behind in the folder's muted colour, a little darker at the top-left; a see-through front with its words in the
@@ -1234,9 +1234,13 @@
   backdrop-filter: blur(7px) saturate(1.1);
 }
 [data-fc="front"] {
-  --fc-f1: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 50%, #ffffff) 62%, transparent);
-  --fc-f2: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 92%, #3a3a48) 66%, transparent);
-  background: radial-gradient(120% 90% at 0% 0%, rgb(255 255 255 / 0.154), transparent 60%), linear-gradient(180deg, var(--fc-f1), var(--fc-f2));
+  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 50%, #ffffff) 62%, transparent);
+  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 92%, #3a3a48) 66%, transparent);
+  /* The top-to-bottom shift is a fifth of its first strength (the owner, 28 November 2026): each end is moved
+     toward the middle, so the front keeps its colour and only the gradient is softer. */
+  --fc-f1: color-mix(in oklab, var(--fc-a) 60%, var(--fc-b));
+  --fc-f2: color-mix(in oklab, var(--fc-a) 40%, var(--fc-b));
+  background: radial-gradient(120% 90% at 0% 0%, rgb(255 255 255 / 0.031), transparent 60%), linear-gradient(180deg, var(--fc-f1), var(--fc-f2));
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.275), inset 0 1.2px 0 rgb(255 255 255 / 0.175), 0 -2px 10px -6px rgb(0 0 0 / 0.25);
   color: color-mix(in oklab, var(--fc-tone) 24%, #1b1b1f);
 }
@@ -1244,12 +1248,12 @@
 :root[data-theme="dark"] [data-fc="back"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fc-tone) 44%, #1a1a1e), color-mix(in oklab, var(--fc-tone) 56%, #2a2a2f)); }
 :root[data-theme="dark"] [data-fc="sub"] { background: linear-gradient(150deg, color-mix(in oklab, var(--fs) 40%, #1a1a1e), color-mix(in oklab, var(--fs) 52%, #2a2a2f)); }
 :root[data-theme="dark"] [data-fc="front"] {
-  --fc-f1: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 48%, #3a3a42) 82%, transparent);
-  --fc-f2: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 40%, #1f1f24) 78%, transparent);
+  --fc-a: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 48%, #3a3a42) 82%, transparent);
+  --fc-b: color-mix(in oklab, color-mix(in oklab, var(--fc-tone) 40%, #1f1f24) 78%, transparent);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1.2px 0 rgb(255 255 255 / 0.175), 0 -2px 10px -6px rgb(0 0 0 / 0.5);
   color: #f6f6f8;
 }
-:root[data-theme="dark"] [data-fc="shadow"] { box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04), 0 14px 26px -14px rgb(0 0 0 / 0.9); }
+:root[data-theme="dark"] [data-fc="shadow"] { box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04), 0 14px 26px -14px rgb(0 0 0 / 0.45); }
 :root[data-theme="dark"] [data-fc="note"] { --fc-paper: #2d2d32; --fc-ink-note: #efeff2; }
 /* The iPad app: a card's or folder's "…" stays out of sight on touch, as on the iPhone (a long press or a
    right-click opens the same menu), and out of sight takes no taps (a finger or Pencil tapping the middle of a

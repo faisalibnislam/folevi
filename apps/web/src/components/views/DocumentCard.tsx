@@ -170,12 +170,14 @@ export function NoteCardFace({
         {...sheet}
         className="note-card-r fb-sheet absolute bottom-[1cqw] left-0 right-[1cqw] top-0 flex overflow-hidden rounded-l-tiny rounded-r-small bg-surface text-ink"
       >
-      {/* the spine, in the note's theme */}
-      <div aria-hidden className="relative w-[6%] flex-none shadow-[inset_-1px_0_0_rgb(0_0_0/0.06)]" style={{ background: strip }} />
+      {/* the spine, in the note's theme (7.5% of the cover, a quarter wider than it was: the owner, 28 November 2026) */}
+      <div aria-hidden className="relative w-[7.5%] flex-none shadow-[inset_-1px_0_0_rgb(0_0_0/0.06)]" style={{ background: strip }} />
       {look === "spiral" ? (
-        // A spiral's punched holes down the spine's edge.
-        <span aria-hidden className="pointer-events-none absolute bottom-[6%] left-[3.4%] top-[6%] z-10 flex flex-col justify-between">
-          {Array.from({ length: 9 }, (_, i) => <span key={i} className="block h-[2.6cqw] w-[2.6cqw] rounded-chip bg-[color-mix(in_oklab,var(--color-heading)_82%,transparent)] shadow-[0_0_0_0.6cqw_var(--color-surface)]" />)}
+        // A spiral's punched holes, centred in the spine (the owner, 28 November 2026). Each hole and its ring of cover
+        // are one radial gradient, so it stays a true circle at any size (a box with a box-shadow ring rendered
+        // squashed at its fractional pixel size).
+        <span aria-hidden className="pointer-events-none absolute bottom-[calc(6%-0.6cqw)] left-[calc(3.75%-1.9cqw)] top-[calc(6%-0.6cqw)] z-10 flex flex-col justify-between">
+          {Array.from({ length: 9 }, (_, i) => <span key={i} className="block size-[3.8cqw] bg-[radial-gradient(circle_closest-side,color-mix(in_oklab,var(--color-heading)_82%,transparent)_64%,var(--color-surface)_71%_91%,transparent_100%)]" />)}
         </span>
       ) : null}
       {/* the cover's face: title, preview and footer */}

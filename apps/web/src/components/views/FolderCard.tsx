@@ -28,11 +28,15 @@ export interface FolderSummary {
   previews?: FolderPreview[];
 }
 
+/** A folder page's subfolder cards set the name 20% smaller than their other labels (the owner, 28 November 2026). */
+export const SUBFOLDER_NAME = 0.8;
+
 /**
  * A folder card drawn as a real folder (portrait): the drawing (FolderCardArt, shared with the site's
  * replica) inside a link to the folder, with the folder's menu over the cover on hover. The page count sits
  * top-left of the front cover, the last update top-right, and the name bottom-left in large serif. `labelScale`
- * keeps those labels at a bigger card's size on a smaller card (a folder page's subfolders). In a list that
+ * keeps those labels at a bigger card's size on a smaller card (a folder page's subfolders); the name then takes one
+ * line, since at that size two lines, the counts and the Edited date can't all fit on the front. In a list that
  * multi-selects (useCardSelection), `selected` draws it picked and `dragSelection` makes dragging it carry the whole
  * selection.
  */
@@ -56,7 +60,7 @@ export function FolderCard({
   const hint = useDropHint(`card:${f.id}`);
   const tabClicks = useFolderTabClicks(f);
   return (
-    <div data-ctx-host="" data-drop-folder={f.id} data-drop-name={f.name} data-drop-key={`card:${f.id}`} data-drop-state={hint ? (hint.refused ? "refused" : "inside") : undefined} className={FOLDER_CARD_BOX} style={labelScale ? ({ "--fc-text": labelScale } as React.CSSProperties) : undefined}>
+    <div data-ctx-host="" data-drop-folder={f.id} data-drop-name={f.name} data-drop-key={`card:${f.id}`} data-drop-state={hint ? (hint.refused ? "refused" : "inside") : undefined} className={FOLDER_CARD_BOX} style={labelScale ? ({ "--fc-text": labelScale, "--fc-name": SUBFOLDER_NAME } as React.CSSProperties) : undefined}>
       {(hint && !hint.refused) || selected ? <span aria-hidden data-selected-mark={selected ? "" : undefined} className="pointer-events-none absolute -inset-2 z-0 rounded-container bg-[var(--glass-active)] shadow-[inset_0_0_0_2px_var(--color-heading)]" /> : null}
       {selected ? <SelectedCheck /> : null}
       {hint?.refused ? <DropRefusal text={hint.refused} className="bottom-2 left-1/2 -translate-x-1/2" /> : null}
@@ -70,7 +74,7 @@ export function FolderCard({
         title={parentName ? `${f.name} (in ${parentName})` : f.name}
         className={`${FOLDER_CARD_FRAME} focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-canvas`}
       >
-        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={formatRelative(f.updatedAt)} previews={f.previews} subfolders={f.childCount ?? 0} subfolderColors={f.childColors} menuRoom />
+        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={formatRelative(f.updatedAt)} previews={f.previews} subfolders={f.childCount ?? 0} subfolderColors={f.childColors} menuRoom nameLines={labelScale && labelScale > 1 ? 1 : undefined} />
       </AppLink>
       <FolderMenu
         folder={f}
